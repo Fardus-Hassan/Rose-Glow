@@ -4,16 +4,23 @@ import { STATUSES, holdsStock, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, Empty, LIST_PAGE, Pager, StatusPill } from "../ui.jsx"
+import DateRange from "../DateRange.jsx"
+import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "সব" }, ...STATUSES]
+const PAGE_SIZES = [10, 20, 50, 100, 200]
 
 export default function Orders() {
   const { go } = useRoute()
   const [status, setStatus] = useState("all")
+  const [source, setSource] = useState("all")
+  const [range, setRange] = useState(null)
+  const [sources, setSources] = useState([])
   const [q, setQ] = useState("")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   function replaceOrder(next) {
@@ -39,28 +46,43 @@ export default function Orders() {
 
   useEffect(() => {
     let live = true
+    setLoading(true)
+    setError("")
     const handle = setTimeout(() => {
       const query = new URLSearchParams({
         status,
+        source,
         q,
-        limit: String(LIST_PAGE),
-        offset: String((page - 1) * LIST_PAGE),
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize),
       })
+      if (range?.from && range?.to) {
+        query.set("from", range.from)
+        query.set("to", range.to)
+      }
       api(`/api/orders?${query}`)
         .then((body) => {
           if (!live) return
-          const pages = Math.max(1, Math.ceil(body.total / LIST_PAGE))
+          const pages = Math.max(1, Math.ceil(body.total / pageSize))
           if (page > pages) {
             setPage(pages)
             return
           }
           setData(body)
-          setError("")
         })
         .catch((reason) => { if (live) setError(reason.message) })
+        .finally(() => { if (live) setLoading(false) })
     }, 200)
     return () => { live = false; clearTimeout(handle) }
-  }, [status, q, page])
+  }, [status, source, range, q, page, pageSize])
+
+  useEffect(() => {
+    let live = true
+    api("/api/sources")
+      .then((body) => { if (live) setSources(body.sources) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [])
 
   return (
     <section className="page">
@@ -80,19 +102,29 @@ export default function Orders() {
             </button>
           ))}
         </div>
-        <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="নাম, মোবাইল বা RG নম্বর" />
+        <div className="filter-tools">
+          <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="নাম, মোবাইল বা RG নম্বর" aria-label="খোঁজ" />
+          <select aria-label="সোর্স" value={source} onChange={(event) => { setSource(event.target.value); setPage(1) }}>
+            <option value="all">সব সোর্স</option>
+            {sources.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            <option value="none">উল্লেখ নেই</option>
+          </select>
+          <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
+        </div>
       </div>
 
-      <article className="card list-card">
+      <article className="card list-card" aria-busy={loading}>
         <div className="table-card">
-        {!data ? <p className="muted">লোড হচ্ছে…</p> : null}
-        {data && data.orders.length === 0 ? <Empty title="কোনো অর্ডার নেই" text="এই খোঁজে কিছু মেলেনি।" /> : null}
-        {data && data.orders.length > 0 ? (
+        {loading ? <p className="muted load-line">লোড হচ্ছে…</p> : null}
+        {!loading && data && data.orders.length === 0 ? <Empty title="কোনো অর্ডার নেই" text="এই খোঁজে কিছু মেলেনি।" /> : null}
+        {!loading && data && data.orders.length > 0 ? (
           <table>
             <thead>
               <tr>
                 <th>অর্ডার</th>
                 <th>কাস্টমার</th>
+                <th>ঠিকানা</th>
+                <th>সোর্স</th>
                 <th>সময়</th>
                 <th>স্ট্যাটাস</th>
                 <th>মোট</th>
@@ -104,9 +136,15 @@ export default function Orders() {
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
                   <td data-label="অর্ডার"><strong>{order.number}</strong></td>
                   <td data-label="কাস্টমার">
-                    {order.customerName}
-                    <small>{order.mobile}<br />{order.courier}</small>
+                    <CopyText value={order.customerName} label="নাম" />
+                    <small>
+                      <CopyText value={order.mobile} label="নম্বর" />
+                      <br />
+                      {order.courier}
+                    </small>
                   </td>
+                  <td data-label="ঠিকানা"><CopyText value={order.address} label="ঠিকানা" className="copy-address" /></td>
+                  <td data-label="সোর্স">{order.sourceName || "—"}</td>
                   <td data-label="সময়">{when(order.orderedAt)}</td>
                   <td data-label="স্ট্যাটাস">
                     <StatusMenu order={order} onChanged={replaceOrder} />
@@ -119,8 +157,16 @@ export default function Orders() {
           </table>
         ) : null}
         </div>
-        {data && data.total > LIST_PAGE ? <Pager page={page} total={data.total} onPage={showPage} /> : null}
-        {data && data.total > 0 && data.total <= LIST_PAGE ? <p className="muted small count-line">{data.total}টা অর্ডার</p> : null}
+        {!loading && data && data.total > 0 ? (
+          <Pager
+            page={page}
+            total={data.total}
+            pageSize={pageSize}
+            pageSizes={PAGE_SIZES}
+            onPage={showPage}
+            onPageSize={(next) => { setPageSize(next); setPage(1) }}
+          />
+        ) : null}
       </article>
     </section>
   )
@@ -193,6 +239,7 @@ function StatusMenu({ order, onChanged }) {
           deliveryCharge: order.deliveryCharge,
           deliveryPaidBy: order.deliveryPaidBy || "customer",
           discount: order.discount,
+          sourceId: order.sourceId,
           codPaidBy: order.codPaidBy || "free",
           codCharge: order.codCharge || 0,
           note: order.note,

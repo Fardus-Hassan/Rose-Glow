@@ -4,11 +4,13 @@ import { COURIERS, PAYMENTS, STATUSES } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
 import { taka } from "../format.js"
 import { useRoute } from "../route.jsx"
+import { SourceField } from "../sources.jsx"
 import { Banner, Field } from "../ui.jsx"
 
 export default function OrderCreate() {
   const { go } = useRoute()
   const [products, setProducts] = useState([])
+  const [sources, setSources] = useState([])
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [pick, setPick] = useState("")
@@ -27,12 +29,18 @@ export default function OrderCreate() {
     paidAmount: "",
     paymentMethod: "cod",
     note: "",
+    sourceId: "",
   })
 
   useEffect(() => {
     let live = true
-    api("/api/products")
-      .then((body) => { if (live) setProducts(body.products) })
+    Promise.all([api("/api/products"), api("/api/sources")])
+      .then(([catalog, sourceBody]) => {
+        if (!live) return
+        setProducts(catalog.products)
+        setSources(sourceBody.sources)
+        setForm((current) => current.sourceId || !sourceBody.sources[0] ? current : { ...current, sourceId: String(sourceBody.sources[0].id) })
+      })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
   }, [])
@@ -158,11 +166,18 @@ export default function OrderCreate() {
                   {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
                 </select>
               </Field>
-              <Field label="ঠিকানা">
-                <input className="span-input" value={form.address} onChange={(event) => set("address", event.target.value)} required />
-              </Field>
-              <Field label="অর্ডারের সময়">
+              <SourceField
+                value={form.sourceId}
+                onChange={(sourceId) => set("sourceId", sourceId)}
+                sources={sources}
+                onSources={setSources}
+                required
+              />
+              <Field label="অর্ডারের সময়" className="span-2">
                 <input type="datetime-local" value={form.orderedAt} onChange={(event) => set("orderedAt", event.target.value)} required />
+              </Field>
+              <Field label="ঠিকানা" className="wide">
+                <textarea rows={3} value={form.address} onChange={(event) => set("address", event.target.value)} required />
               </Field>
             </div>
           </article>

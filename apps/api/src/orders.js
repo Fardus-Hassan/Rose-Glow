@@ -35,6 +35,8 @@ function present(row, items = undefined) {
     paidAmount: paid,
     paymentMethod: row.payment_method,
     note: row.note,
+    sourceId: row.source_id,
+    sourceName: row.source_name || "",
     stockHeld: row.stock_held,
     goods,
     cost,
@@ -53,11 +55,12 @@ const ORDER_SELECT = `
          o.cod_charge::float8 AS cod_charge,
          o.cod_paid_by,
          o.paid_amount::float8 AS paid_amount,
-         o.payment_method, o.note, o.stock_held,
+         o.payment_method, o.note, o.source_id, MAX(src.name) AS source_name, o.stock_held,
          COALESCE(SUM(oi.unit_price * oi.quantity), 0)::float8 AS goods,
          COALESCE(SUM(oi.unit_cost * oi.quantity), 0)::float8 AS cost
   FROM orders o
   LEFT JOIN order_items oi ON oi.order_id = o.id
+  LEFT JOIN order_sources src ON src.id = o.source_id
 `
 
 async function itemsFor(client, orderId) {
@@ -85,13 +88,40 @@ export async function getOrder(id) {
   return present(result.rows[0], items)
 }
 
-export async function listOrders({ status, q, limit, offset }) {
+function readSourceId(body) {
+  if (body.sourceId === null || body.sourceId === undefined || body.sourceId === "") return null
+  const sourceId = whole(body.sourceId)
+  if (!sourceId || sourceId <= 0) throw fail(400, "সোর্স ঠিক নেই")
+  return sourceId
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+export async function listOrders({ status, q, source, from, to, limit, offset }) {
   const params = []
   const where = []
   if (status && status !== "all") {
     if (!STATUS_IDS.has(status)) throw fail(400, "স্ট্যাটাস ঠিক নেই")
     params.push(status)
     where.push(`o.status = $${params.length}`)
+  }
+  if (source && source !== "all") {
+    if (source === "none") where.push("o.source_id IS NULL")
+    else {
+      const sourceId = whole(source)
+      if (!sourceId) throw fail(400, "সোর্স ঠিক নেই")
+      params.push(sourceId)
+      where.push(`o.source_id = $${params.length}`)
+    }
+  }
+  const hasFrom = Boolean(from)
+  const hasTo = Boolean(to)
+  if (hasFrom !== hasTo || (hasFrom && (!DAY.test(from) || !DAY.test(to) || from > to))) {
+    throw fail(400, "তারিখ ঠিক নেই")
+  }
+  if (hasFrom) {
+    params.push(from, to)
+    where.push(`(o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $${params.length - 1}::date AND $${params.length}::date`)
   }
   const term = String(q ?? "").trim()
   if (term) {
@@ -143,6 +173,7 @@ function readOrderFields(body, { partial = false } = {}) {
   const codPaidBy = body.codPaidBy === "customer" ? "customer" : "free"
   const codCharge = money(body.codCharge)
   const note = noteText(body.note, 400)
+  const sourceId = readSourceId(body)
   if (!customerName) throw fail(400, "কাস্টমারের নাম দিন")
   if (!phone) throw fail(400, "মোবাইল নম্বর 01 দিয়ে ১১ সংখ্যা দিন")
   if (address.length < 3) throw fail(400, "ঠিকানা দিন")
@@ -152,7 +183,7 @@ function readOrderFields(body, { partial = false } = {}) {
   if (deliveryCharge === null || discount === null || paidAmount === null || codCharge === null) throw fail(400, "টাকার অংক ঠিকমতো দিন")
   if (!PAYMENT_IDS.has(paymentMethod)) throw fail(400, "পেমেন্টের ধরন ঠিক নেই")
   if (deliveryPaidBy === "customer" && deliveryCharge <= 0) throw fail(400, "ডেলিভারির টাকা দিন")
-  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, codCharge, codPaidBy }
+  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, codCharge, codPaidBy, sourceId }
   if (partial) return fields
   return fields
 }
@@ -244,6 +275,15 @@ function assertBill(goods, fields) {
   if (cents(fields.paidAmount) > cents(total)) throw fail(400, "জমা মোট টাকার চেয়ে বেশি")
 }
 
+async function assertSource(client, sourceId, required) {
+  if (!sourceId) {
+    if (required) throw fail(400, "অর্ডারের সোর্স দিন")
+    return
+  }
+  const found = await client.query(`SELECT id FROM order_sources WHERE id = $1`, [sourceId])
+  if (!found.rows[0]) throw fail(400, "সোর্স পাওয়া যায়নি")
+}
+
 function mergedItems(body) {
   if (!Array.isArray(body.items) || body.items.length === 0) throw fail(400, "অন্তত একটা পণ্য যোগ করুন")
   if (body.items.length > 30) throw fail(400, "এক অর্ডারে ৩০টার বেশি লাইন যাবে না")
@@ -268,6 +308,7 @@ export async function createOrder(body) {
     const { lines, needs } = linesFrom(merged, byId, parts)
     const goods = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
     assertBill(goods, fields)
+    await assertSource(client, fields.sourceId, true)
     const hold = holdsStock(fields.status)
     const lockIds = [...new Set([...merged.keys(), ...needs.keys()])].sort((a, b) => a - b)
     await client.query(`SELECT id FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE`, [lockIds])
@@ -276,8 +317,8 @@ export async function createOrder(body) {
     await applyNeeds(client, built.needs, hold)
     const inserted = await client.query(
       `INSERT INTO orders
-        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING id`,
       [
         fields.customerName,
@@ -295,6 +336,7 @@ export async function createOrder(body) {
         hold,
         fields.codCharge,
         fields.codPaidBy,
+        fields.sourceId,
       ],
     )
     orderId = inserted.rows[0].id
@@ -321,28 +363,81 @@ export async function createOrder(body) {
   return getOrder(orderId)
 }
 
+async function buildReplacement(client, id, body) {
+  await client.query(`SELECT id FROM products ORDER BY id FOR UPDATE`)
+  const fresh = await catalogMaps(client)
+  const built = linesFrom(mergedItems(body), fresh.byId, fresh.parts)
+  const previous = await client.query(
+    `SELECT product_id, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost
+     FROM order_items WHERE order_id = $1`,
+    [id],
+  )
+  const oldPrice = new Map(previous.rows.map((row) => [row.product_id, row]))
+  for (const line of built.lines) {
+    const old = oldPrice.get(line.productId)
+    if (!old) continue
+    line.unitPrice = Number(old.unit_price)
+    line.unitCost = Number(old.unit_cost)
+  }
+  const goods = built.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
+  return { built, goods }
+}
+
+async function writeLines(client, id, built, hold, held) {
+  if (held) await moveSavedStock(client, id, 1)
+  await client.query(`DELETE FROM order_items WHERE order_id = $1`, [id])
+  await client.query(`DELETE FROM order_stock WHERE order_id = $1`, [id])
+  await applyNeeds(client, built.needs, hold)
+  for (const line of built.lines) {
+    await client.query(
+      `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [id, line.productId, line.productName, line.quantity, line.unitPrice, line.unitCost],
+    )
+  }
+  for (const [productId, quantity] of built.needs) {
+    await client.query(
+      `INSERT INTO order_stock (order_id, product_id, quantity) VALUES ($1,$2,$3)`,
+      [id, productId, quantity],
+    )
+  }
+}
+
 export async function updateOrder(id, body) {
   const fields = readOrderFields(body)
+  const replacing = Array.isArray(body.items)
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
     const current = await client.query(`SELECT id, status, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
     if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
-    const goodsResult = await client.query(
-      `SELECT COALESCE(SUM(unit_price * quantity), 0)::float8 AS goods FROM order_items WHERE order_id = $1`,
-      [id],
-    )
-    const goods = Number(goodsResult.rows[0].goods)
-    assertBill(goods, fields)
-    const hold = holdsStock(fields.status)
     const held = current.rows[0].stock_held
-    if (hold && !held) await moveSavedStock(client, id, -1)
-    if (!hold && held) await moveSavedStock(client, id, 1)
+    const hold = holdsStock(fields.status)
+    let goods
+    let built = null
+    if (replacing) {
+      const next = await buildReplacement(client, id, body)
+      built = next.built
+      goods = next.goods
+    } else {
+      const goodsResult = await client.query(
+        `SELECT COALESCE(SUM(unit_price * quantity), 0)::float8 AS goods FROM order_items WHERE order_id = $1`,
+        [id],
+      )
+      goods = Number(goodsResult.rows[0].goods)
+    }
+    assertBill(goods, fields)
+    await assertSource(client, fields.sourceId, false)
+    if (built) await writeLines(client, id, built, hold, held)
+    else {
+      if (hold && !held) await moveSavedStock(client, id, -1)
+      if (!hold && held) await moveSavedStock(client, id, 1)
+    }
     await client.query(
       `UPDATE orders SET
         customer_name = $2, mobile = $3, address = $4, courier = $5, status = $6, ordered_at = $7,
         delivery_charge = $8, delivery_paid_by = $9, discount = $10, paid_amount = $11, payment_method = $12, note = $13, stock_held = $14,
-        cod_charge = $15, cod_paid_by = $16
+        cod_charge = $15, cod_paid_by = $16, source_id = $17
        WHERE id = $1`,
       [
         id,
@@ -361,6 +456,7 @@ export async function updateOrder(id, body) {
         hold,
         fields.codCharge,
         fields.codPaidBy,
+        fields.sourceId,
       ],
     )
     await client.query("COMMIT")

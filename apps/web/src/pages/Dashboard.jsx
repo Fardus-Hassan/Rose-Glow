@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react"
 import { STATUSES, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
+import { ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
+import DateRange from "../DateRange.jsx"
+import { rangeFor } from "../dates.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { Banner, Empty, StatusPill } from "../ui.jsx"
@@ -19,7 +22,7 @@ export default function Dashboard() {
   }, [])
 
   return (
-    <section className="page">
+    <section className="page dash">
       <div className="page-head">
         <div>
           <p className="eyebrow">আজকের খাতা</p>
@@ -34,7 +37,37 @@ export default function Dashboard() {
   )
 }
 
+function useStats(range) {
+  const [stats, setStats] = useState(null)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let live = true
+    setLoading(true)
+    setError("")
+    const query = new URLSearchParams({ from: range.from, to: range.to })
+    api(`/api/stats?${query}`)
+      .then((body) => { if (live) setStats(body) })
+      .catch((reason) => { if (live) setError(reason.message) })
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [range.from, range.to])
+  const current = stats && stats.from === range.from && stats.to === range.to ? stats : null
+  return { stats: current, error, loading }
+}
+
+function ChartSlot({ stats, loading, error, children }) {
+  if (loading || !stats) return error && !loading ? null : <p className="muted load-line">লোড হচ্ছে…</p>
+  return children(stats)
+}
+
 function Board({ data, go }) {
+  const [trendRange, setTrendRange] = useState(() => rangeFor("30"))
+  const [sourceRange, setSourceRange] = useState(() => rangeFor("30"))
+  const [statusRange, setStatusRange] = useState(() => rangeFor("month"))
+  const trend = useStats(trendRange)
+  const sources = useStats(sourceRange)
+  const statuses = useStats(statusRange)
   const openCount = data.open.new + data.open.confirmed + data.open.courier
   return (
     <>
@@ -45,65 +78,114 @@ function Board({ data, go }) {
         <Stat kicker="এই মাস" label="লাভ" value={taka(data.month.profit)} note={`বাকি আদায় ${taka(data.dueAll)}`} />
       </div>
 
+      <article className="card dash-block">
+        <div className="card-head">
+          <div>
+            <h2>অর্ডারের ধারা</h2>
+            <p className="muted small">বাতিল ও রিটার্ন বাদ</p>
+          </div>
+          <DateRange value={trendRange} onChange={setTrendRange} />
+        </div>
+        <Banner message={trend.loading ? "" : trend.error} />
+        <ChartSlot stats={trend.stats} loading={trend.loading} error={trend.error}>
+          {(stats) => (
+            <>
+              <div className="trend-kpis">
+                <span>অর্ডার <b>{stats.orders}</b></span>
+                <span>বিক্রি <b>{taka(stats.amount)}</b></span>
+              </div>
+              <TrendChart points={stats.points} from={trendRange.from} to={trendRange.to} />
+            </>
+          )}
+        </ChartSlot>
+      </article>
+
       <div className="split">
         <article className="card">
           <div className="card-head">
-            <h2>এই মাসের অর্ডার</h2>
-            <span className="muted">{openCount}টা এখনো খোলা</span>
+            <div>
+              <h2>সোর্স</h2>
+              <p className="muted small">কোন জায়গা থেকে কত অর্ডার</p>
+            </div>
+            <DateRange value={sourceRange} onChange={setSourceRange} />
           </div>
-          <StatusChart counts={data.monthStatuses} />
-          <div className="open-row">
-            <OpenChip label="নতুন" value={data.open.new} />
-            <OpenChip label="কনফার্ম" value={data.open.confirmed} />
-            <OpenChip label="কুরিয়ারে" value={data.open.courier} />
-          </div>
+          <Banner message={sources.loading ? "" : sources.error} />
+          <ChartSlot stats={sources.stats} loading={sources.loading} error={sources.error}>
+            {(stats) => <SourceChart sources={stats.sources} />}
+          </ChartSlot>
         </article>
-
         <article className="card">
           <div className="card-head">
-            <h2>স্টকের অবস্থা</h2>
-            <button type="button" className="text-btn" onClick={() => go("/inventory")}>ইনভেন্টরি</button>
+            <div>
+              <h2>স্ট্যাটাস</h2>
+              <p className="muted small">{openCount}টা এখনো খোলা</p>
+            </div>
+            <DateRange value={statusRange} onChange={setStatusRange} />
           </div>
-          <div className="stock-metrics">
-            <div>
-              <span>মোট পিস</span>
-              <strong>{data.inventory.pieces}</strong>
-            </div>
-            <div>
-              <span>কেনা দামে</span>
-              <strong>{taka(data.inventory.costValue)}</strong>
-            </div>
-            <div>
-              <span>বিক্রি হলে</span>
-              <strong>{taka(data.inventory.sellValue)}</strong>
-            </div>
-          </div>
-          <h3>কম আছে</h3>
-          {data.inventory.low.length === 0 ? (
-            <p className="muted">{data.inventory.lowAt} পিস বা তার কম এমন কোনো মাল নেই।</p>
-          ) : (
-            <ul className="plain-list">
-              {data.inventory.low.map((item) => (
-                <li key={item.id}>
-                  <span>{item.name}</span>
-                  <b className={item.stockQty === 0 ? "danger" : "warn"}>{item.stockQty} পিস</b>
-                </li>
-              ))}
-            </ul>
-          )}
-          <h3>কম্বো</h3>
-          {data.inventory.combos.length === 0 ? <p className="muted">এখনো কোনো কম্বো নেই।</p> : (
-            <ul className="plain-list">
-              {data.inventory.combos.map((item) => (
-                <li key={item.id}>
-                  <span>{item.name}</span>
-                  <b className={item.available === 0 ? "danger" : ""}>{item.available} সেট</b>
-                </li>
-              ))}
-            </ul>
-          )}
+          <Banner message={statuses.loading ? "" : statuses.error} />
+          <ChartSlot stats={statuses.stats} loading={statuses.loading} error={statuses.error}>
+            {(stats) => <StatusChart counts={stats.statuses} />}
+          </ChartSlot>
         </article>
       </div>
+
+      <article className="card stock-band">
+        <div className="card-head">
+          <h2>স্টক</h2>
+          <button type="button" className="text-btn" onClick={() => go("/inventory")}>ইনভেন্টরি</button>
+        </div>
+        <div className="stock-kpis">
+          <div>
+            <span>মোট পিস</span>
+            <strong>{data.inventory.pieces}</strong>
+          </div>
+          <div>
+            <span>কেনা দামে</span>
+            <strong>{taka(data.inventory.costValue)}</strong>
+          </div>
+          <div>
+            <span>বিক্রি হলে</span>
+            <strong>{taka(data.inventory.sellValue)}</strong>
+          </div>
+          <div>
+            <span>সম্ভাব্য লাভ</span>
+            <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
+          </div>
+        </div>
+        <div className="stock-body">
+          <StockMix cost={data.inventory.costValue} sell={data.inventory.sellValue} />
+          <div className="stock-cols">
+            <div>
+              <h3>কম আছে</h3>
+              {data.inventory.low.length === 0 ? (
+                <p className="muted small">{data.inventory.lowAt} বা কম নেই।</p>
+              ) : (
+                <ul className="stock-list">
+                  {data.inventory.low.map((item) => (
+                    <li key={item.id}>
+                      <span>{item.name}</span>
+                      <b className={item.stockQty === 0 ? "bad" : "warn"}>{item.stockQty}</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h3>কম্বো</h3>
+              {data.inventory.combos.length === 0 ? <p className="muted small">কম্বো নেই।</p> : (
+                <ul className="stock-list">
+                  {data.inventory.combos.map((item) => (
+                    <li key={item.id}>
+                      <span>{item.name}</span>
+                      <b className={item.available === 0 ? "bad" : ""}>{item.available} সেট</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </article>
 
       <article className="card">
         <div className="card-head">
@@ -113,20 +195,37 @@ function Board({ data, go }) {
         {data.recent.length === 0 ? (
           <Empty title="এখনো অর্ডার নেই" text="প্রথম অর্ডার দিলে এখানে হিসাব দেখা যাবে।" />
         ) : (
-          <ul className="recent">
-            {data.recent.map((order) => (
-              <li key={order.id}>
-                <button type="button" onClick={() => go(`/orders/${order.id}`)}>
-                  <span>
-                    <strong>{order.number}</strong>
-                    <small>{order.customerName} · {when(order.orderedAt)}</small>
-                  </span>
-                  <StatusPill status={order.status} />
-                  <b>{taka(order.total)}</b>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>অর্ডার</th>
+                  <th>কাস্টমার</th>
+                  <th>সোর্স</th>
+                  <th>সময়</th>
+                  <th>স্ট্যাটাস</th>
+                  <th>মোট</th>
+                  <th>বাকি</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recent.map((order) => (
+                  <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
+                    <td data-label="অর্ডার"><strong>{order.number}</strong></td>
+                    <td data-label="কাস্টমার">
+                      {order.customerName}
+                      <small>{order.mobile}<br />{order.courier}</small>
+                    </td>
+                    <td data-label="সোর্স">{order.sourceName || "—"}</td>
+                    <td data-label="সময়">{when(order.orderedAt)}</td>
+                    <td data-label="স্ট্যাটাস"><StatusPill status={order.status} /></td>
+                    <td data-label="মোট">{taka(order.total)}</td>
+                    <td data-label="বাকি" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </article>
     </>
@@ -144,59 +243,19 @@ function Stat({ kicker, label, value, note }) {
   )
 }
 
-function OpenChip({ label, value }) {
-  return (
-    <div className="chip">
-      <b>{value}</b>
-      <span>{label}</span>
-    </div>
-  )
-}
-
 function StatusChart({ counts }) {
-  const slices = STATUSES.map((status) => ({ ...status, value: counts[status.id] || 0 })).filter((item) => item.value > 0)
+  const slices = STATUSES.map((status) => ({ id: status.id, name: status.label, value: counts[status.id] || 0, color: status.color }))
   const total = slices.reduce((sum, item) => sum + item.value, 0)
-  const radius = 68
-  const circ = 2 * Math.PI * radius
-  let offset = 0
-  const segments = slices.map((slice) => {
-    const length = total ? (slice.value / total) * circ : 0
-    const segment = { ...slice, length, offset }
-    offset += length
-    return segment
-  })
-
-  if (!total) {
-    return <p className="muted chart-empty">এই মাসে এখনো কোনো অর্ডার আসেনি।</p>
-  }
-
+  if (!total) return <p className="muted chart-empty">এই সময়ে কোনো অর্ডার নেই।</p>
   return (
     <div className="chart">
-      <svg viewBox="0 0 180 180" role="img" aria-label="এই মাসের অর্ডার স্ট্যাটাস">
-        <circle className="chart-track" cx="90" cy="90" r={radius} fill="none" strokeWidth="18" />
-        {segments.map((segment) => (
-          <circle
-            key={segment.id}
-            cx="90"
-            cy="90"
-            r={radius}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth="18"
-            strokeDasharray={`${segment.length} ${circ - segment.length}`}
-            strokeDashoffset={-segment.offset}
-            transform="rotate(-90 90 90)"
-          />
-        ))}
-        <text x="90" y="86" textAnchor="middle" className="chart-total">{total}</text>
-        <text x="90" y="108" textAnchor="middle" className="chart-caption">অর্ডার</text>
-      </svg>
-      <ul>
-        {STATUSES.map((status) => (
+      <ShareDonut slices={slices} label="অর্ডার" />
+      <ul className="status-key">
+        {slices.map((status) => (
           <li key={status.id}>
             <i style={{ background: status.color }} />
             <span>{statusLabel(status.id)}</span>
-            <b>{counts[status.id] || 0}</b>
+            <b>{status.value}</b>
           </li>
         ))}
       </ul>

@@ -68,12 +68,20 @@ CREATE TABLE IF NOT EXISTS combo_items (
   PRIMARY KEY (combo_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS order_sources (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   customer_name TEXT NOT NULL,
   mobile TEXT NOT NULL,
   address TEXT NOT NULL DEFAULT '',
   courier TEXT NOT NULL DEFAULT '',
+  source_id INTEGER REFERENCES order_sources(id),
   status TEXT NOT NULL CHECK (status IN ('new','confirmed','courier','delivered','cancelled','returned')),
   ordered_at TIMESTAMPTZ NOT NULL,
   delivery_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (delivery_charge >= 0),
@@ -111,6 +119,14 @@ CREATE INDEX IF NOT EXISTS orders_status_idx ON orders (status);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_paid_by TEXT NOT NULL DEFAULT 'customer' CHECK (delivery_paid_by IN ('free','customer'));
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS source_id INTEGER REFERENCES order_sources(id);
+CREATE UNIQUE INDEX IF NOT EXISTS order_sources_name_lower ON order_sources (lower(name));
+INSERT INTO order_sources (name, position)
+SELECT seed.name, seed.position
+FROM (VALUES ('Facebook', 1), ('TikTok', 2), ('WhatsApp', 3), ('IMO', 4)) AS seed(name, position)
+WHERE NOT EXISTS (
+  SELECT 1 FROM order_sources existing WHERE lower(existing.name) = lower(seed.name)
+);
 `
 
 let pending = null

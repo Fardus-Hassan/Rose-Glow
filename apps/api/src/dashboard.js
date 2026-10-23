@@ -1,6 +1,7 @@
 import { STATUSES } from "@rose/shared"
 import { pool } from "./db.js"
 import { inventorySummary } from "./catalog.js"
+import { fail } from "./http.js"
 
 const SUMMARY_SQL = `
   SELECT
@@ -64,10 +65,13 @@ export async function dashboard() {
     `),
     inventorySummary(),
     pool.query(`
-      SELECT o.id, o.customer_name, o.status, o.ordered_at,
+      SELECT o.id, o.customer_name, o.mobile, o.courier, o.status, o.ordered_at,
+             o.paid_amount::float8 AS paid_amount,
+             MAX(src.name) AS source_name,
              (COALESCE(SUM(oi.unit_price * oi.quantity), 0) - o.discount + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END)::float8 AS total
       FROM orders o
       LEFT JOIN order_items oi ON oi.order_id = o.id
+      LEFT JOIN order_sources src ON src.id = o.source_id
       GROUP BY o.id
       ORDER BY o.ordered_at DESC, o.id DESC
       LIMIT 10
@@ -88,9 +92,82 @@ export async function dashboard() {
       id: row.id,
       number: `RG-${String(row.id).padStart(4, "0")}`,
       customerName: row.customer_name,
+      mobile: row.mobile,
+      courier: row.courier,
+      sourceName: row.source_name || "",
       status: row.status,
       orderedAt: row.ordered_at,
       total: Number(row.total),
+      due: Number(row.total) - Number(row.paid_amount),
     })),
+  }
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+function daySpan(from, to) {
+  const start = Date.parse(`${from}T00:00:00Z`)
+  const end = Date.parse(`${to}T00:00:00Z`)
+  return Math.round((end - start) / 86400000) + 1
+}
+
+export async function rangeStats(from, to) {
+  if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "তারিখ ঠিক নেই")
+  if (daySpan(from, to) > 800) throw fail(400, "তারিখের পরিসর ৮০০ দিনের মধ্যে রাখুন")
+  const countable = `o.status NOT IN ('cancelled', 'returned') AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
+  const [pointRows, sourceRows, statusRows] = await Promise.all([
+    pool.query(
+      `SELECT to_char(day, 'YYYY-MM-DD') AS date, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
+       FROM (
+         SELECT (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date AS day, o.discount,
+                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         WHERE ${countable}
+         GROUP BY o.id
+       ) t
+       GROUP BY day
+       ORDER BY day`,
+      [from, to],
+    ),
+    pool.query(
+      `SELECT source_id, name, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
+       FROM (
+         SELECT o.source_id, COALESCE(src.name, 'উল্লেখ নেই') AS name, o.discount,
+                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         LEFT JOIN order_sources src ON src.id = o.source_id
+         WHERE ${countable}
+         GROUP BY o.id, src.name
+       ) t
+       GROUP BY source_id, name
+       ORDER BY orders DESC, name`,
+      [from, to],
+    ),
+    pool.query(
+      `SELECT status, COUNT(*)::int AS count
+       FROM orders o
+       WHERE (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+       GROUP BY status`,
+      [from, to],
+    ),
+  ])
+  const points = pointRows.rows.map((row) => ({ date: row.date, orders: row.orders, amount: Number(row.amount) }))
+  const statuses = Object.fromEntries(STATUSES.map((item) => [item.id, 0]))
+  for (const row of statusRows.rows) statuses[row.status] = row.count
+  return {
+    from,
+    to,
+    orders: points.reduce((sum, point) => sum + point.orders, 0),
+    amount: points.reduce((sum, point) => sum + point.amount, 0),
+    points,
+    sources: sourceRows.rows.map((row) => ({
+      id: row.source_id,
+      name: row.name,
+      orders: row.orders,
+      amount: Number(row.amount),
+    })),
+    statuses,
   }
 }

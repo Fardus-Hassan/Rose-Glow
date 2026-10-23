@@ -1,6 +1,7 @@
 import { migrate, pool } from "./db.js"
 import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
-import { dashboard } from "./dashboard.js"
+import { dashboard, rangeStats } from "./dashboard.js"
+import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, updateOrder } from "./orders.js"
 
@@ -23,6 +24,27 @@ export function mount(app) {
 
   app.get("/api/dashboard", wrap(async (req, res) => {
     res.json(await dashboard())
+  }))
+
+  app.get("/api/stats", wrap(async (req, res) => {
+    res.json(await rangeStats(req.query.from, req.query.to))
+  }))
+
+  app.get("/api/sources", wrap(async (req, res) => {
+    res.json({ sources: await listSources() })
+  }))
+
+  app.post("/api/sources", wrap(async (req, res) => {
+    res.status(201).json({ source: await createSource(req.body || {}) })
+  }))
+
+  app.patch("/api/sources/:id", wrap(async (req, res) => {
+    res.json({ source: await updateSource(idFrom(req), req.body || {}) })
+  }))
+
+  app.delete("/api/sources/:id", wrap(async (req, res) => {
+    await deleteSource(idFrom(req))
+    res.json({ ok: true })
   }))
 
   app.get("/api/products", wrap(async (req, res) => {
@@ -55,9 +77,17 @@ export function mount(app) {
   }))
 
   app.get("/api/orders", wrap(async (req, res) => {
-    const limit = Math.min(Math.max(whole(req.query.limit, 30) || 30, 1), 100)
+    const limit = Math.min(Math.max(whole(req.query.limit, 30) || 30, 1), 200)
     const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
-    res.json(await listOrders({ status: req.query.status || "all", q: req.query.q || "", limit, offset }))
+    res.json(await listOrders({
+      status: req.query.status || "all",
+      q: req.query.q || "",
+      source: req.query.source || "all",
+      from: req.query.from || "",
+      to: req.query.to || "",
+      limit,
+      offset,
+    }))
   }))
 
   app.post("/api/orders", wrap(async (req, res) => {
