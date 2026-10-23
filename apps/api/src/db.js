@@ -25,7 +25,19 @@ function loadEnv() {
 
 loadEnv()
 
-const connectionString = process.env.DATABASE_URL
+function databaseUrl() {
+  const raw = process.env.DATABASE_URL
+  if (!raw) return ""
+  try {
+    const url = new URL(raw)
+    url.searchParams.delete("channel_binding")
+    return url.toString()
+  } catch {
+    return raw
+  }
+}
+
+const connectionString = databaseUrl()
 if (!connectionString) {
   throw new Error("DATABASE_URL নেই। PostgreSQL ছাড়া অ্যাপ চালু হবে না।")
 }

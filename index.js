@@ -8,13 +8,16 @@ const app = express()
 app.use(express.json({ limit: "100kb" }))
 mount(app)
 
-const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "public")
-const indexHtml = path.join(publicDir, "index.html")
+const publicDir = [process.cwd(), path.dirname(fileURLToPath(import.meta.url))]
+  .map((dir) => path.join(dir, "public"))
+  .find((dir) => fs.existsSync(path.join(dir, "index.html")))
 
-if (!process.env.VERCEL && fs.existsSync(indexHtml)) {
+if (publicDir) {
+  const indexHtml = path.join(publicDir, "index.html")
   app.use(express.static(publicDir))
   app.use((req, res, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/api")) return next()
+    if (req.method !== "GET" && req.method !== "HEAD") return next()
+    if (req.path.startsWith("/api")) return next()
     res.sendFile(indexHtml)
   })
 }
