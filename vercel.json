@@ -4,11 +4,5 @@
     "index.js": {
       "includeFiles": "public/**"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/((?!api(?:/|$)).*)",
-      "destination": "/index.html"
-    }
-  ]
+  }
 }
