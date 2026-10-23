@@ -14,11 +14,19 @@ const publicDir = [process.cwd(), path.dirname(fileURLToPath(import.meta.url))]
 
 if (publicDir) {
   const indexHtml = path.join(publicDir, "index.html")
-  app.use(express.static(publicDir))
+  app.use(express.static(publicDir, {
+    etag: false,
+    lastModified: false,
+    setHeaders(res, filePath) {
+      if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-store")
+      else res.setHeader("Cache-Control", "public, max-age=31536000, immutable")
+    },
+  }))
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") return next()
     if (req.path.startsWith("/api") || path.extname(req.path)) return next()
-    res.sendFile(indexHtml)
+    res.setHeader("Cache-Control", "no-store")
+    res.sendFile(indexHtml, { etag: false, lastModified: false })
   })
 }
 

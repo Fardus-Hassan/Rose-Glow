@@ -712,57 +712,11 @@ tr.selected { background: var(--rose-soft); }
   .inv-table .card-head p { text-align: left; }
   .inv-table input, .inv-table .btn, .inv-table .text-btn,
   .inv-form input, .inv-form select, .inv-form .btn { min-height: 44px; }
-  .inv-table td.inv-span { display: block; text-align: left; }
-  .inv-table td.inv-span::before { content: none; }
-  .inv-table td.inv-skip { display: none; }
   .list-card { scroll-margin-top: 72px; }
   .pager-meta { width: 100%; justify-content: space-between; }
   .pager-meta select { min-height: 44px; }
   .pager-bar .pager-controls { margin-left: auto; }
   .pager-controls button { min-height: 44px; }
-  .inv-table .table-card tr.inv-product,
-  .inv-table .table-card tr.inv-combo {
-    display: grid;
-    grid-template-columns: auto auto auto minmax(0, 1fr);
-    gap: 6px 10px;
-    align-items: center;
-  }
-  .inv-table .table-card tr.inv-product {
-    grid-template-areas:
-      "name name name stock"
-      "cost sell profit profit"
-      "adjust adjust actions actions";
-  }
-  .inv-table .table-card tr.inv-combo {
-    grid-template-areas:
-      "name name name stock"
-      "cost sell actions actions";
-  }
-  .inv-table .table-card td {
-    display: block;
-    width: auto;
-    border: 0;
-    padding: 0;
-    text-align: left;
-  }
-  .inv-table .table-card td::before { content: none; }
-  .inv-table .table-card td[data-label="পণ্য"],
-  .inv-table .table-card td[data-label="কম্বো"] { grid-area: name; min-width: 0; }
-  .inv-table .table-card td[data-label="স্টক"],
-  .inv-table .table-card td[data-label="সেট"] { grid-area: stock; text-align: right; font-size: 1.15rem; }
-  .inv-table .table-card td[data-label="কেনা"] { grid-area: cost; }
-  .inv-table .table-card td[data-label="বিক্রি"] { grid-area: sell; }
-  .inv-table .table-card td[data-label="লাভ"] { grid-area: profit; }
-  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] { grid-area: adjust; }
-  .inv-table .table-card td[data-label="কাজ"] { grid-area: actions; }
-  .inv-table .table-card td[data-label="কাজ"] .row-actions { justify-content: flex-end; }
-  .inv-table .table-card td[data-label="কেনা"]::before,
-  .inv-table .table-card td[data-label="বিক্রি"]::before,
-  .inv-table .table-card td[data-label="লাভ"]::before {
-    content: attr(data-label) " ";
-    color: var(--muted);
-    font-size: 0.75rem;
-  }
 }
 
 .dash-block { margin-bottom: 16px; }
@@ -1129,6 +1083,79 @@ tr.selected { background: var(--rose-soft); }
     text-align: right;
     -webkit-line-clamp: 3;
   }
+  .inv-table .table-card tr.inv-product,
+  .inv-table .table-card tr.inv-combo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: center;
+  }
+  .inv-table .table-card tr.inv-product {
+    grid-template-areas:
+      "name name stock"
+      "cost sell profit"
+      "adjust adjust adjust"
+      "actions actions actions";
+  }
+  .inv-table .table-card tr.inv-combo {
+    grid-template-areas:
+      "name name stock"
+      "cost sell sell"
+      "actions actions actions";
+  }
+  .inv-table .table-card tr.inv-edit { display: block; }
+  .inv-table .table-card td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    text-align: left;
+  }
+  .inv-table .table-card td::before { content: none; }
+  .inv-table .table-card td.num { text-align: left; white-space: normal; }
+  .inv-table .table-card td[data-label="পণ্য"],
+  .inv-table .table-card td[data-label="কম্বো"] { grid-area: name; }
+  .inv-table .table-card td[data-label="পণ্য"] strong,
+  .inv-table .table-card td[data-label="কম্বো"] strong { overflow-wrap: anywhere; }
+  .inv-table .table-card td[data-label="কম্বো"] small { display: block; margin-top: 2px; }
+  .inv-table .table-card td[data-label="স্টক"],
+  .inv-table .table-card td[data-label="সেট"] {
+    grid-area: stock;
+    text-align: right;
+    font-size: 1.15rem;
+  }
+  .inv-table .table-card td[data-label="কেনা"] { grid-area: cost; }
+  .inv-table .table-card td[data-label="বিক্রি"] { grid-area: sell; }
+  .inv-table .table-card td[data-label="লাভ"] { grid-area: profit; }
+  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] { grid-area: adjust; }
+  .inv-table .table-card td[data-label="কাজ"] { grid-area: actions; }
+  .inv-table .table-card td[data-label="স্টক"]::before,
+  .inv-table .table-card td[data-label="সেট"]::before,
+  .inv-table .table-card td[data-label="কেনা"]::before,
+  .inv-table .table-card td[data-label="বিক্রি"]::before,
+  .inv-table .table-card td[data-label="লাভ"]::before,
+  .inv-table .table-card td[data-label="যোগ / বিয়োগ"]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-align: inherit;
+  }
+  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] .adjust { flex-wrap: wrap; }
+  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] .adjust input {
+    flex: 1 1 96px;
+    width: auto;
+    min-width: 0;
+  }
+  .inv-table .table-card td[data-label="কাজ"] .row-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .inv-table .table-card td.inv-skip { display: none; }
+  .inv-table .table-card td.inv-span { display: block; text-align: left; }
+  .inv-table .table-card td.inv-span::before { content: none; }
+  .inv-table .table-card td input { width: 100%; max-width: 100%; min-width: 0; }
 }
 
 @media (max-width: 520px) {
