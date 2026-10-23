@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rose-glow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rose
+      POSTGRES_PASSWORD: rose
+      POSTGRES_DB: roseglow
+    ports:
+      - "5433:5432"
+    volumes:
+      - rose_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rose -d roseglow"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  rose_pg:

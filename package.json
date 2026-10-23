@@ -1,0 +1,23 @@
+{
+  "name": "rose-glow",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c magenta,yellow \"node --watch index.js\" \"npm run dev -w web\"",
+    "build": "npm run build -w web",
+    "start": "node index.js",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

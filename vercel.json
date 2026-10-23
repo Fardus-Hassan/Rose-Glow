@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build -w web",
+  "rewrites": [
+    {
+      "source": "/((?!api(?:/|$)).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

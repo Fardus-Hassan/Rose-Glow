@@ -1,0 +1,8 @@
+{
+  "name": "@rose/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./constants.js"
+  }
+}

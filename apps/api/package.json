@@ -1,0 +1,14 @@
+{
+  "name": "api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch ../../index.js",
+    "start": "node ../../index.js"
+  },
+  "dependencies": {
+    "@rose/shared": "*",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
+  }
+}
