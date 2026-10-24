@@ -12,6 +12,17 @@ export function taka(value) {
   }).format(rounded)}`
 }
 
+export function dayLabel(iso) {
+  const [year, month, day] = String(iso || "").split("-").map(Number)
+  if (!year || !month || !day) return ""
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)))
+}
+
 export function when(iso) {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Dhaka",

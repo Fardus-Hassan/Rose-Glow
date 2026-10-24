@@ -66,7 +66,7 @@ export default function Inventory() {
       <article className="card inv-table list-card" id="product-list">
         <div className="card-head">
           <h2>Products</h2>
-          <p className="muted small">Stock goes down when an order is saved, and comes back on cancel or return.</p>
+          <p className="muted small">Stock goes down when an order is saved, and comes back on cancel or return. Add or remove pieces here only to fix a count. Record what you paid in Books.</p>
         </div>
         {!products ? <p className="muted">Loading…</p> : null}
         {products && singles.length === 0 ? <Empty title="No products yet" text="Add a name, cost, selling price, and how many pieces you brought in." /> : null}

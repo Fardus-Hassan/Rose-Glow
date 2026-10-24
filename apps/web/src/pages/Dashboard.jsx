@@ -78,6 +78,34 @@ function Board({ data, go }) {
         <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={`Due to collect ${taka(data.dueAll)}`} />
       </div>
 
+      <article className="card stock-band">
+        <div className="card-head">
+          <div>
+            <h2>Books</h2>
+            <p className="muted small">Goods plus the cost of bringing them in. Profit comes off after that cost.</p>
+          </div>
+          <button type="button" className="text-btn" onClick={() => go("/purchases")}>Open books</button>
+        </div>
+        <div className="stock-kpis books-kpis">
+          <div>
+            <span>Goods</span>
+            <strong>{taka(data.books.goods)}</strong>
+          </div>
+          <div>
+            <span>Bringing in</span>
+            <strong>{taka(data.books.expenses)}</strong>
+          </div>
+          <div>
+            <span>Sold</span>
+            <strong>{taka(data.books.sales)}</strong>
+          </div>
+          <div>
+            <span>Profit</span>
+            <strong>{taka(data.books.profit)}</strong>
+          </div>
+        </div>
+      </article>
+
       <article className="card dash-block">
         <div className="card-head">
           <div>

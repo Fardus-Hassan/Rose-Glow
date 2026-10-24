@@ -1,6 +1,6 @@
 import { migrate, pool } from "./db.js"
 import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
-import { dashboard, rangeStats } from "./dashboard.js"
+import { dashboard, orderTotals, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, updateOrder } from "./orders.js"
@@ -20,6 +20,7 @@ import {
   trackOrder,
 } from "./courier.js"
 import { courierFilterView, saveCourierFilters } from "./settings.js"
+import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases } from "./purchases.js"
 
 function idFrom(req) {
   const id = whole(Number(req.params.id))
@@ -89,6 +90,36 @@ export function mount(app) {
 
   app.delete("/api/products/:id", wrap(async (req, res) => {
     await deleteProduct(idFrom(req))
+    res.json({ ok: true })
+  }))
+
+  app.get("/api/purchases", wrap(async (req, res) => {
+    const limit = Math.min(Math.max(whole(req.query.limit, 20) || 20, 1), 200)
+    const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
+    const expenseLimit = Math.min(Math.max(whole(req.query.expenseLimit, 20) || 20, 1), 200)
+    const expenseOffset = Math.max(whole(req.query.expenseOffset, 0) || 0, 0)
+    const [page, trade] = await Promise.all([
+      listPurchases({ limit, offset, expenseLimit, expenseOffset }),
+      orderTotals(),
+    ])
+    res.json({ ...page, sales: trade.sales, profit: trade.profit - page.expensesTotal })
+  }))
+
+  app.post("/api/buying-expenses", wrap(async (req, res) => {
+    res.status(201).json(await createExpense(req.body || {}))
+  }))
+
+  app.delete("/api/buying-expenses/:id", wrap(async (req, res) => {
+    await deleteExpense(idFrom(req))
+    res.json({ ok: true })
+  }))
+
+  app.post("/api/purchases", wrap(async (req, res) => {
+    res.status(201).json(await createPurchase(req.body || {}))
+  }))
+
+  app.delete("/api/purchases/:id", wrap(async (req, res) => {
+    await deletePurchase(idFrom(req))
     res.json({ ok: true })
   }))
 

@@ -3,6 +3,7 @@ import Notifications from "./notifications.jsx"
 import Courier from "./pages/Courier.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
 import Inventory from "./pages/Inventory.jsx"
+import Purchases from "./pages/Purchases.jsx"
 import OrderCreate from "./pages/OrderCreate.jsx"
 import OrderDetail from "./pages/OrderDetail.jsx"
 import Orders from "./pages/Orders.jsx"
@@ -13,6 +14,7 @@ const NAV = [
   { href: "/orders/new", label: "New order", short: "New", icon: "plus" },
   { href: "/orders", label: "All orders", short: "Orders", icon: "list" },
   { href: "/inventory", label: "Inventory", short: "Stock", icon: "box" },
+  { href: "/purchases", label: "Books", short: "Books", icon: "book" },
   { href: "/courier", label: "Courier", short: "Parcels", icon: "truck" },
 ]
 
@@ -42,6 +44,7 @@ export default function App() {
   else if (orderMatch) page = <OrderDetail id={Number(orderMatch[1])} />
   else if (path === "/orders") page = <Orders />
   else if (path === "/inventory") page = <Inventory />
+  else if (path === "/purchases") page = <Purchases />
   else if (path === "/courier") page = <Courier />
   else if (path !== "/") page = <Missing go={go} />
 
@@ -159,6 +162,12 @@ function Icon({ name }) {
           <path d="M3.8 8.2 12 4.5l8.2 3.7L12 11.8 3.8 8.2z" {...pen} />
           <path d="M3.8 8.2V16L12 19.6 20.2 16V8.2" {...pen} />
           <path d="M12 11.8v7.8" {...pen} />
+        </>
+      ) : null}
+      {name === "book" ? (
+        <>
+          <path d="M6 4.5h9.2A2.3 2.3 0 0 1 17.5 6.8V19.5H8.2A2.2 2.2 0 0 0 6 17.3V4.5z" {...pen} />
+          <path d="M6 17.3A2.2 2.2 0 0 1 8.2 15.1H17.5" {...pen} />
         </>
       ) : null}
       {name === "truck" ? (

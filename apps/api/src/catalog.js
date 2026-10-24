@@ -1,6 +1,7 @@
 import { LOW_STOCK_AT } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, money, whole } from "./http.js"
+import { dhakaToday, writePurchase } from "./purchases.js"
 
 function availableFor(product, components) {
   if (!product.is_combo) return product.stock_qty
@@ -81,14 +82,36 @@ export async function createProduct(body) {
   if (!name) throw fail(400, "Enter a product name")
   if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
   if (stockQty === null || stockQty < 0 || stockQty > 100000) throw fail(400, "Enter stock as a whole number")
-  const inserted = await pool.query(
-    `INSERT INTO products (name, cost_price, sell_price, stock_qty, is_combo)
-     VALUES ($1, $2, $3, $4, FALSE)
-     RETURNING id`,
-    [name, costPrice, sellPrice, stockQty],
-  )
+  const client = await pool.connect()
+  let productId
+  try {
+    await client.query("BEGIN")
+    const inserted = await client.query(
+      `INSERT INTO products (name, cost_price, sell_price, stock_qty, is_combo)
+       VALUES ($1, $2, $3, $4, FALSE)
+       RETURNING id`,
+      [name, costPrice, sellPrice, stockQty],
+    )
+    productId = inserted.rows[0].id
+    if (stockQty > 0) {
+      await writePurchase(client, {
+        productId,
+        boughtOn: dhakaToday(),
+        quantity: stockQty,
+        unitCost: costPrice,
+        note: "",
+        addStock: false,
+      })
+    }
+    await client.query("COMMIT")
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    throw error
+  } finally {
+    client.release()
+  }
   const catalog = await loadCatalog()
-  return catalog.find((item) => item.id === inserted.rows[0].id)
+  return catalog.find((item) => item.id === productId)
 }
 
 export async function updateProduct(id, body) {
@@ -206,6 +229,8 @@ export async function deleteProduct(id) {
     [id],
   )
   if (used.rows[0]) throw fail(400, "This product has orders, so it cannot be deleted")
+  const bought = await pool.query(`SELECT 1 FROM purchases WHERE product_id = $1 LIMIT 1`, [id])
+  if (bought.rows[0]) throw fail(400, "This product is in the books. Remove those purchases first")
   await pool.query(`DELETE FROM products WHERE id = $1`, [id])
 }
 

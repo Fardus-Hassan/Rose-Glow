@@ -872,7 +872,7 @@ tr.selected { background: var(--rose-soft); }
   .topbar .brand { display: flex; }
   .tabbar {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     position: fixed;
     z-index: 6;
     left: 0;
@@ -900,6 +900,10 @@ tr.selected { background: var(--rose-soft); }
     overflow-x: clip;
   }
   .courier-page form .btn { width: 100%; }
+  .books-line, .books-line.expense { grid-template-columns: 1fr 1fr; }
+  .books-line .span-2 { grid-column: 1 / -1; }
+  .books-kpis { grid-template-columns: 1fr 1fr; }
+  .expense-list { scroll-margin-top: 72px; }
   .check-grid { grid-template-columns: 1fr; }
   .parcel-card { scroll-margin-top: 72px; }
   .courier-page .actions { display: grid; grid-template-columns: 1fr 1fr; }
@@ -1008,6 +1012,19 @@ tr.selected { background: var(--rose-soft); }
   gap: 8px;
   margin-bottom: 12px;
 }
+.books-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 16px; }
+.books-form { margin-bottom: 16px; }
+.books-form h2 { margin: 0 0 12px; }
+.books-line {
+  display: grid;
+  grid-template-columns: 150px minmax(140px, 1.3fr) 90px 110px minmax(120px, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.books-line .btn { margin-bottom: 0; }
+.books-line.expense { grid-template-columns: 150px minmax(140px, 0.7fr) 120px minmax(140px, 1fr) auto; }
+.day-book small { color: var(--muted); }
+.purchase-list { scroll-margin-top: 72px; margin-top: 16px; }
 .stock-kpis div {
   background: var(--card-2);
   border-radius: 12px;

@@ -2,6 +2,7 @@ import { STATUSES } from "@rose/shared"
 import { pool } from "./db.js"
 import { inventorySummary } from "./catalog.js"
 import { fail } from "./http.js"
+import { bookTotals } from "./purchases.js"
 
 const SUMMARY_SQL = `
   SELECT
@@ -36,6 +37,10 @@ function rangeSql(range) {
   return "TRUE"
 }
 
+export async function orderTotals() {
+  return summarize("all")
+}
+
 async function summarize(range) {
   const result = await pool.query(SUMMARY_SQL.replace("__RANGE__", rangeSql(range)))
   const row = result.rows[0]
@@ -52,7 +57,7 @@ async function summarize(range) {
 }
 
 export async function dashboard() {
-  const [today, month, allDue, statusRows, monthStatusRows, inventory, recent] = await Promise.all([
+  const [today, month, allDue, statusRows, monthStatusRows, inventory, recent, booksMoney] = await Promise.all([
     summarize("today"),
     summarize("month"),
     summarize("all"),
@@ -76,6 +81,7 @@ export async function dashboard() {
       ORDER BY o.ordered_at DESC, o.id DESC
       LIMIT 10
     `),
+    bookTotals(),
   ])
   const open = Object.fromEntries(STATUSES.filter((item) => ["new", "confirmed", "courier"].includes(item.id)).map((item) => [item.id, 0]))
   for (const row of statusRows.rows) open[row.status] = row.count
@@ -85,6 +91,13 @@ export async function dashboard() {
     today,
     month,
     dueAll: allDue.due,
+    books: {
+      goods: booksMoney.goods,
+      expenses: booksMoney.expenses,
+      broughtIn: booksMoney.goods + booksMoney.expenses,
+      sales: allDue.sales,
+      profit: allDue.profit - booksMoney.expenses,
+    },
     open,
     monthStatuses,
     inventory,

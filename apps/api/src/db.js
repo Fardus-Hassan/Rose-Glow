@@ -151,6 +151,27 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value JSONB NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS purchases (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+  bought_on DATE NOT NULL,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  unit_cost NUMERIC(12,2) NOT NULL CHECK (unit_cost >= 0),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS purchases_bought_on_idx ON purchases (bought_on DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS buying_expenses (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  spent_on DATE NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('vehicle', 'courier', 'other')),
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS buying_expenses_spent_on_idx ON buying_expenses (spent_on DESC, id DESC);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_paid_by TEXT NOT NULL DEFAULT 'customer' CHECK (delivery_paid_by IN ('free','customer'));
