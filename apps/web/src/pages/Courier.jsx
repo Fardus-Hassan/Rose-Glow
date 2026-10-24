@@ -90,7 +90,7 @@ export default function Courier() {
   }
 
   return (
-    <section className="page">
+    <section className="page courier-page">
       <div className="page-head">
         <div>
           <p className="eyebrow">কুরিয়ার</p>
@@ -137,8 +137,8 @@ export default function Courier() {
             <div className="stack tight">
               <p className="muted small">Steadfast প্যানেলের Webhook পেজে এই ঠিকানা আর টোকেন বসান। সাইট বন্ধ থাকলেও স্ট্যাটাস তখনই আসবে।</p>
               <p className="sum"><span>Callback URL</span></p>
-              <CopyText value={account.webhookUrl} label="ওয়েবহুক ঠিকানা" />
-              {account.webhookToken ? <CopyText value={account.webhookToken} label="টোকেন" /> : null}
+              <CopyText value={account.webhookUrl} label="ওয়েবহুক ঠিকানা" className="copy-block" />
+              {account.webhookToken ? <CopyText value={account.webhookToken} label="টোকেন" className="copy-block" /> : null}
             </div>
           ) : null}
         </aside>

@@ -372,6 +372,21 @@ img, svg { display: block; }
   border-radius: 4px;
 }
 .copy-text:hover { color: var(--rose); }
+.copy-block {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #141211;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.split, .card, .stack { min-width: 0; }
 .list-card td[data-label="অর্ডার"],
 .list-card td[data-label="সোর্স"],
 .list-card td[data-label="সময়"],
@@ -786,7 +801,13 @@ tr.selected { background: var(--rose-soft); }
   }
   .page {
     padding: 18px 16px calc(96px + env(safe-area-inset-bottom));
+    overflow-x: clip;
   }
+  .courier-page form .btn { width: 100%; }
+  .courier-page .actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .courier-page .actions .btn { min-width: 0; padding-inline: 8px; }
+  .courier-page .sum { gap: 8px; }
+  .courier-page .sum b { min-width: 0; }
   .status-card { flex-direction: column; align-items: stretch; }
   .status-card .field { max-width: none; }
   .status-rail { overflow-x: auto; }
