@@ -124,15 +124,18 @@ export async function disconnectAccount() {
   return { connected: false }
 }
 
-export async function parcelList() {
+export async function parcelList({ limit, offset }) {
+  const where = "WHERE consignment_id IS NOT NULL"
+  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM orders ${where}`)
   const result = await pool.query(
     `SELECT id, customer_name, mobile, status, consignment_id, tracking_code, tracking_url, courier_status, courier_error, courier_status_at
      FROM orders
-     WHERE consignment_id IS NOT NULL
+     ${where}
      ORDER BY courier_status_at DESC NULLS LAST, id DESC
-     LIMIT 40`,
+     LIMIT $1 OFFSET $2`,
+    [limit, offset],
   )
-  return result.rows.map(parcelRow)
+  return { parcels: result.rows.map(parcelRow), total: count.rows[0].total }
 }
 
 export async function notificationFeed() {

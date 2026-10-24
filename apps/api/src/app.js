@@ -127,7 +127,9 @@ export function mount(app) {
   }))
 
   app.get("/api/courier/parcels", wrap(async (req, res) => {
-    res.json({ parcels: await parcelList() })
+    const limit = Math.min(Math.max(whole(req.query.limit, 10) || 10, 1), 200)
+    const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
+    res.json(await parcelList({ limit, offset }))
   }))
 
   app.get("/api/courier/filters", wrap(async (req, res) => {

@@ -168,7 +168,8 @@ img, svg { display: block; }
 .track-steps small { color: var(--muted); }
 
 .page {
-  max-width: none;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 16px 28px 40px;
 }
@@ -408,6 +409,7 @@ img, svg { display: block; }
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
+  word-break: break-word;
   line-height: 1.45;
 }
 .split, .card, .stack { min-width: 0; }
@@ -629,19 +631,27 @@ input:-webkit-autofill {
   border-color: transparent;
 }
 .filter-pills .pill-label { font-size: 0.9rem; }
+.courier-page { display: flex; flex-direction: column; gap: 16px; min-width: 0; max-width: 100%; }
+.courier-page .lede, .courier-page .split { margin-bottom: 0; }
+.courier-page > .split, .courier-page > .card { width: 100%; max-width: 100%; min-width: 0; }
+.courier-page .split > * { min-width: 0; max-width: 100%; }
 .check-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
   gap: 8px 16px;
+  width: 100%;
+  min-width: 0;
 }
 .check {
   display: flex;
   align-items: center;
   gap: 10px;
   min-height: 36px;
+  min-width: 0;
   margin: 0;
   color: var(--ink);
 }
+.check span { min-width: 0; overflow-wrap: anywhere; }
 .check input {
   width: 18px;
   height: 18px;
@@ -891,6 +901,7 @@ tr.selected { background: var(--rose-soft); }
   }
   .courier-page form .btn { width: 100%; }
   .check-grid { grid-template-columns: 1fr; }
+  .parcel-card { scroll-margin-top: 72px; }
   .courier-page .actions { display: grid; grid-template-columns: 1fr 1fr; }
   .courier-page .filter-actions { display: flex; }
   .courier-page .actions .btn { min-width: 0; padding-inline: 8px; }

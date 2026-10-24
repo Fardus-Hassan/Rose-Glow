@@ -4,12 +4,19 @@ import { COURIER_STATUSES, courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, CopyText } from "../ui.jsx"
+import { Banner, CopyText, Pager } from "../ui.jsx"
+
+const PAGE_SIZES = [10, 20, 50, 100, 200]
 
 export default function Courier() {
   const { go } = useRoute()
   const [account, setAccount] = useState(null)
   const [parcels, setParcels] = useState([])
+  const [parcelTotal, setParcelTotal] = useState(0)
+  const [parcelPage, setParcelPage] = useState(1)
+  const [parcelPageSize, setParcelPageSize] = useState(10)
+  const [parcelsReady, setParcelsReady] = useState(false)
+  const [parcelTick, setParcelTick] = useState(0)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [apiKey, setApiKey] = useState("")
@@ -26,11 +33,10 @@ export default function Courier() {
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/courier/account"), api("/api/courier/parcels"), api("/api/courier/filters")])
-      .then(([next, body, filters]) => {
+    Promise.all([api("/api/courier/account"), api("/api/courier/filters")])
+      .then(([next, filters]) => {
         if (!live) return
         applyAccount(next)
-        setParcels(body.parcels)
         setHidden(new Set(filters.hidden || []))
         setExtra(filters.extra || [])
       })
@@ -39,6 +45,28 @@ export default function Courier() {
       })
     return () => { live = false }
   }, [])
+
+  useEffect(() => {
+    let live = true
+    const query = new URLSearchParams({
+      limit: String(parcelPageSize),
+      offset: String((parcelPage - 1) * parcelPageSize),
+    })
+    api(`/api/courier/parcels?${query}`)
+      .then((body) => {
+        if (!live) return
+        const pages = Math.max(1, Math.ceil(body.total / parcelPageSize))
+        if (parcelPage > pages) {
+          setParcelPage(pages)
+          return
+        }
+        setParcels(body.parcels)
+        setParcelTotal(body.total)
+        setParcelsReady(true)
+      })
+      .catch((reason) => { if (live) setError(reason.message) })
+    return () => { live = false }
+  }, [parcelPage, parcelPageSize, parcelTick])
 
   async function save(event) {
     event.preventDefault()
@@ -52,8 +80,8 @@ export default function Courier() {
       applyAccount(next)
       setApiKey("")
       setSecretKey("")
-      const body = await api("/api/courier/parcels")
-      setParcels(body.parcels)
+      setParcelPage(1)
+      setParcelTick((tick) => tick + 1)
       toast.success("Steadfast connected")
     } catch (reason) {
       setError(reason.message)
@@ -211,11 +239,12 @@ export default function Courier() {
         )}
       </article>
 
-      <article className="card">
+      <article className="card list-card parcel-card">
         <div className="card-head">
           <h2>Parcels</h2>
         </div>
-        {parcels.length === 0 ? <p className="muted">No parcels booked yet. Mark an order as In courier and it will be booked.</p> : null}
+        {!parcelsReady ? <p className="muted">Loading…</p> : null}
+        {parcelsReady && parcelTotal === 0 ? <p className="muted">No parcels booked yet. Mark an order as In courier and it will be booked.</p> : null}
         {parcels.length > 0 ? (
           <div className="table-card">
             <table>
@@ -241,6 +270,19 @@ export default function Courier() {
               </tbody>
             </table>
           </div>
+        ) : null}
+        {parcelsReady && parcelTotal > 0 ? (
+          <Pager
+            page={parcelPage}
+            total={parcelTotal}
+            pageSize={parcelPageSize}
+            pageSizes={PAGE_SIZES}
+            onPage={(next) => {
+              setParcelPage(next)
+              document.querySelector(".parcel-card")?.scrollIntoView({ block: "start", behavior: "smooth" })
+            }}
+            onPageSize={(next) => { setParcelPageSize(next); setParcelPage(1) }}
+          />
         ) : null}
       </article>
     </section>
