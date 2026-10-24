@@ -22,6 +22,10 @@ import {
 import { courierFilterView, saveCourierFilters } from "./settings.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 
+function feedLimit(value) {
+  return Math.min(Math.max(whole(value, 20) || 20, 1), 1000)
+}
+
 function idFrom(req) {
   const id = whole(Number(req.params.id))
   if (!id || id <= 0) throw fail(400, "That number is not valid")
@@ -100,6 +104,8 @@ export function mount(app) {
     const expenseOffset = Math.max(whole(req.query.expenseOffset, 0) || 0, 0)
     const placeLimit = Math.min(Math.max(whole(req.query.placeLimit, 10) || 10, 1), 200)
     const placeOffset = Math.max(whole(req.query.placeOffset, 0) || 0, 0)
+    const dayLimit = Math.min(Math.max(whole(req.query.dayLimit, 10) || 10, 1), 200)
+    const dayOffset = Math.max(whole(req.query.dayOffset, 0) || 0, 0)
     const [page, trade] = await Promise.all([
       listPurchases({
         limit,
@@ -108,6 +114,8 @@ export function mount(app) {
         expenseOffset,
         placeLimit,
         placeOffset,
+        dayLimit,
+        dayOffset,
         from: req.query.from,
         to: req.query.to,
       }),
@@ -193,11 +201,11 @@ export function mount(app) {
   }))
 
   app.get("/api/courier/notifications", wrap(async (req, res) => {
-    res.json(await notificationFeed())
+    res.json(await notificationFeed(feedLimit(req.query.limit)))
   }))
 
   app.post("/api/courier/notifications/read", wrap(async (req, res) => {
-    res.json(await markNotifications(req.body?.ids))
+    res.json(await markNotifications(req.body?.ids, feedLimit(req.body?.limit)))
   }))
 
   app.post("/api/courier/steadfast/webhook", wrap(async (req, res) => {

@@ -47,12 +47,24 @@ export async function bookTotals() {
   }
 }
 
-export async function listPurchases({ limit, offset, expenseLimit, expenseOffset, placeLimit, placeOffset, from, to }) {
+const DAY_ROWS = `
+  SELECT bought_on AS day, SUM(quantity) AS pieces, SUM(quantity * unit_cost) AS goods, 0::numeric AS expenses
+  FROM purchases
+  WHERE ${IN_RANGE}
+  GROUP BY bought_on
+  UNION ALL
+  SELECT spent_on, 0, 0, SUM(amount)
+  FROM buying_expenses
+  WHERE ($1::date IS NULL OR spent_on >= $1::date)
+    AND ($2::date IS NULL OR spent_on <= $2::date)
+  GROUP BY spent_on`
+
+export async function listPurchases({ limit, offset, expenseLimit, expenseOffset, placeLimit, placeOffset, dayLimit, dayOffset, from, to }) {
   const start = optionalDay(from)
   const end = optionalDay(to)
   if (start && end && start > end) throw fail(400, "The start date is after the end date")
   const range = [start, end]
-  const [count, rows, expenseCount, expenseRows, totals, places, placeCount, days] = await Promise.all([
+  const [count, rows, expenseCount, expenseRows, totals, places, placeCount, days, dayCount] = await Promise.all([
     pool.query(
       `SELECT COUNT(*)::int AS total,
               COALESCE(SUM(quantity), 0)::int AS pieces,
@@ -104,23 +116,13 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
               COALESCE(SUM(pieces), 0)::int AS pieces,
               COALESCE(SUM(goods), 0)::float8 AS goods,
               COALESCE(SUM(expenses), 0)::float8 AS expenses
-       FROM (
-         SELECT bought_on AS day, SUM(quantity) AS pieces, SUM(quantity * unit_cost) AS goods, 0::numeric AS expenses
-         FROM purchases
-         WHERE ${IN_RANGE}
-         GROUP BY bought_on
-         UNION ALL
-         SELECT spent_on, 0, 0, SUM(amount)
-         FROM buying_expenses
-         WHERE ($1::date IS NULL OR spent_on >= $1::date)
-           AND ($2::date IS NULL OR spent_on <= $2::date)
-         GROUP BY spent_on
-       ) days
+       FROM (${DAY_ROWS}) days
        GROUP BY day
        ORDER BY day DESC
-       LIMIT 400`,
-      range,
+       LIMIT $3 OFFSET $4`,
+      [start, end, dayLimit, dayOffset],
     ),
+    pool.query(`SELECT COUNT(DISTINCT day)::int AS total FROM (${DAY_ROWS}) days`, range),
   ])
   return {
     purchases: rows.rows.map((row) => ({
@@ -160,6 +162,7 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       expenses: Number(row.expenses),
       total: Number(row.goods) + Number(row.expenses),
     })),
+    dayTotal: dayCount.rows[0].total,
     places: places.rows.map((row) => ({
       place: row.place,
       lines: row.lines,

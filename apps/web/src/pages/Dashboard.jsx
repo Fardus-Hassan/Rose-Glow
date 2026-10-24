@@ -6,7 +6,22 @@ import DateRange from "../DateRange.jsx"
 import { rangeFor } from "../dates.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, Empty, StatusPill } from "../ui.jsx"
+import { Banner, Empty, Pager, StatusPill } from "../ui.jsx"
+
+const SHORT_PAGE = 6
+
+function ShortList({ items, render }) {
+  const [page, setPage] = useState(1)
+  const pages = Math.max(1, Math.ceil(items.length / SHORT_PAGE))
+  const current = Math.min(page, pages)
+  const shown = items.slice((current - 1) * SHORT_PAGE, current * SHORT_PAGE)
+  return (
+    <>
+      <ul className="stock-list">{shown.map(render)}</ul>
+      <Pager page={current} total={items.length} pageSize={SHORT_PAGE} onPage={setPage} />
+    </>
+  )
+}
 
 export default function Dashboard() {
   const { go } = useRoute()
@@ -196,27 +211,29 @@ function Board({ data, go }) {
             {data.inventory.low.length === 0 ? (
               <p className="muted small">Nothing at {data.inventory.lowAt} or below.</p>
             ) : (
-              <ul className="stock-list">
-                {data.inventory.low.map((item) => (
+              <ShortList
+                items={data.inventory.low}
+                render={(item) => (
                   <li key={item.id}>
                     <span>{item.name}</span>
                     <b className={item.stockQty === 0 ? "bad" : "warn"}>{item.stockQty}</b>
                   </li>
-                ))}
-              </ul>
+                )}
+              />
             )}
           </div>
           <div>
             <h3>Combos</h3>
             {data.inventory.combos.length === 0 ? <p className="muted small">No combos.</p> : (
-              <ul className="stock-list">
-                {data.inventory.combos.map((item) => (
+              <ShortList
+                items={data.inventory.combos}
+                render={(item) => (
                   <li key={item.id}>
                     <span>{item.name}</span>
                     <b className={item.available === 0 ? "bad" : ""}>{item.available} sets</b>
                   </li>
-                ))}
-              </ul>
+                )}
+              />
             )}
           </div>
         </div>

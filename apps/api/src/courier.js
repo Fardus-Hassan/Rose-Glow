@@ -138,25 +138,32 @@ export async function parcelList({ limit, offset }) {
   return { parcels: result.rows.map(parcelRow), total: count.rows[0].total }
 }
 
-export async function notificationFeed() {
+export async function notificationFeed(limit) {
   try {
     await syncParcels()
   } catch (error) {
     console.error(error)
   }
-  return listNotifications()
+  return listNotifications(limit)
 }
 
-async function listNotifications() {
-  const unread = await pool.query(`SELECT COUNT(*)::int AS count FROM courier_events WHERE read_at IS NULL`)
-  const items = await pool.query(
-    `SELECT id, order_id, status, message, created_at, read_at IS NULL AS unread
-     FROM courier_events
-     ORDER BY created_at DESC
-     LIMIT 20`,
-  )
+async function listNotifications(limit = 20) {
+  const [counts, items] = await Promise.all([
+    pool.query(
+      `SELECT COUNT(*) FILTER (WHERE read_at IS NULL)::int AS unread, COUNT(*)::int AS total
+       FROM courier_events`,
+    ),
+    pool.query(
+      `SELECT id, order_id, status, message, created_at, read_at IS NULL AS unread
+       FROM courier_events
+       ORDER BY created_at DESC, id DESC
+       LIMIT $1`,
+      [limit],
+    ),
+  ])
   return {
-    unread: unread.rows[0].count,
+    unread: counts.rows[0].unread,
+    total: counts.rows[0].total,
     items: items.rows.map((row) => ({
       id: row.id,
       orderId: row.order_id,
@@ -168,14 +175,14 @@ async function listNotifications() {
   }
 }
 
-export async function markNotifications(ids) {
+export async function markNotifications(ids, limit) {
   if (Array.isArray(ids) && ids.length) {
     const clean = ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0).slice(0, 50)
     if (clean.length) await pool.query(`UPDATE courier_events SET read_at = now() WHERE id = ANY($1::int[]) AND read_at IS NULL`, [clean])
   } else {
     await pool.query(`UPDATE courier_events SET read_at = now() WHERE read_at IS NULL`)
   }
-  return listNotifications()
+  return listNotifications(limit)
 }
 
 export async function receiveWebhook(req) {

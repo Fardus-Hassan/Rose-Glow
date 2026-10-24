@@ -3,17 +3,23 @@ import { api } from "./api.js"
 import { when } from "./format.js"
 import { useRoute } from "./route.jsx"
 
+const FEED_STEP = 20
+const FEED_MAX = 1000
+
 export default function Notifications() {
   const { go } = useRoute()
   const [open, setOpen] = useState(false)
-  const [feed, setFeed] = useState({ unread: 0, items: [] })
+  const [feed, setFeed] = useState({ unread: 0, total: 0, items: [] })
+  const [limit, setLimit] = useState(FEED_STEP)
+  const [loadingMore, setLoadingMore] = useState(false)
   const box = useRef(null)
+  const limitRef = useRef(FEED_STEP)
 
   useEffect(() => {
     let live = true
     async function load() {
       try {
-        const body = await api("/api/courier/notifications")
+        const body = await api(`/api/courier/notifications?limit=${limitRef.current}`)
         if (live) setFeed(body)
       } catch {
         /* bell stays quiet if the server is busy */
@@ -49,15 +55,30 @@ export default function Notifications() {
   async function openItem(item) {
     setOpen(false)
     if (item.unread) {
-      const body = await api("/api/courier/notifications/read", { method: "POST", body: { ids: [item.id] } }).catch(() => null)
+      const body = await api("/api/courier/notifications/read", { method: "POST", body: { ids: [item.id], limit } }).catch(() => null)
       if (body) setFeed(body)
     }
     if (item.orderId) go(`/orders/${item.orderId}`)
   }
 
   async function readAll() {
-    const body = await api("/api/courier/notifications/read", { method: "POST", body: {} }).catch(() => null)
+    const body = await api("/api/courier/notifications/read", { method: "POST", body: { limit } }).catch(() => null)
     if (body) setFeed(body)
+  }
+
+  async function showOlder() {
+    const next = limit + FEED_STEP
+    setLoadingMore(true)
+    try {
+      const body = await api(`/api/courier/notifications?limit=${next}`)
+      limitRef.current = next
+      setLimit(next)
+      setFeed(body)
+    } catch {
+      /* the button stays so the owner can try again */
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   return (
@@ -89,6 +110,14 @@ export default function Notifications() {
               </li>
             ))}
           </ul>
+          {feed.total > feed.items.length && limit < FEED_MAX ? (
+            <div className="bell-more">
+              <small className="muted">{feed.items.length} of {feed.total}</small>
+              <button type="button" className="btn secondary" disabled={loadingMore} onClick={showOlder}>
+                {loadingMore ? "Loading…" : "Show older"}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

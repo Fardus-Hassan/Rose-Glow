@@ -44,6 +44,9 @@ export default function Purchases() {
   const [placePage, setPlacePage] = useState(1)
   const [placePageSize, setPlacePageSize] = useState(10)
   const [placeTotal, setPlaceTotal] = useState(0)
+  const [dayPage, setDayPage] = useState(1)
+  const [dayPageSize, setDayPageSize] = useState(10)
+  const [dayTotal, setDayTotal] = useState(0)
   const [fromDraft, setFromDraft] = useState("")
   const [toDraft, setToDraft] = useState("")
   const [from, setFrom] = useState("")
@@ -87,10 +90,12 @@ export default function Purchases() {
         const pages = Math.max(1, Math.ceil(body.total / pageSize))
         const expensePages = Math.max(1, Math.ceil(body.expenseTotal / expensePageSize))
         const placePages = Math.max(1, Math.ceil((body.placeTotal || 0) / placePageSize))
-        if (page > pages || expensePage > expensePages || placePage > placePages) {
+        const dayPages = Math.max(1, Math.ceil((body.dayTotal || 0) / dayPageSize))
+        if (page > pages || expensePage > expensePages || placePage > placePages || dayPage > dayPages) {
           if (page > pages) setPage(pages)
           if (expensePage > expensePages) setExpensePage(expensePages)
           if (placePage > placePages) setPlacePage(placePages)
+          if (dayPage > dayPages) setDayPage(dayPages)
           return
         }
         applyBooks(body)
@@ -98,7 +103,7 @@ export default function Purchases() {
       })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
-  }, [page, pageSize, expensePage, expensePageSize, placePage, placePageSize, from, to])
+  }, [page, pageSize, expensePage, expensePageSize, placePage, placePageSize, dayPage, dayPageSize, from, to])
 
   function applyBooks(body) {
     setRows(body.purchases)
@@ -112,6 +117,7 @@ export default function Purchases() {
     setProfit(body.profit)
     setPlaces(body.places || [])
     setPlaceTotal(body.placeTotal || 0)
+    setDayTotal(body.dayTotal || 0)
     setMatch(body.match || { lines: 0, pieces: 0, goods: 0 })
   }
 
@@ -122,6 +128,8 @@ export default function Purchases() {
     const nextExpenseSize = overrides.expensePageSize ?? expensePageSize
     const nextPlacePage = overrides.placePage ?? placePage
     const nextPlaceSize = overrides.placePageSize ?? placePageSize
+    const nextDayPage = overrides.dayPage ?? dayPage
+    const nextDaySize = overrides.dayPageSize ?? dayPageSize
     const nextFrom = overrides.from ?? from
     const nextTo = overrides.to ?? to
     const query = new URLSearchParams({
@@ -131,6 +139,8 @@ export default function Purchases() {
       expenseOffset: String((nextExpensePage - 1) * nextExpenseSize),
       placeLimit: String(nextPlaceSize),
       placeOffset: String((nextPlacePage - 1) * nextPlaceSize),
+      dayLimit: String(nextDaySize),
+      dayOffset: String((nextDayPage - 1) * nextDaySize),
     })
     if (nextFrom) query.set("from", nextFrom)
     if (nextTo) query.set("to", nextTo)
@@ -152,6 +162,7 @@ export default function Purchases() {
     setTo(end)
     setPage(1)
     setPlacePage(1)
+    setDayPage(1)
     document.querySelector(".lookup-results")?.scrollIntoView({ block: "start", behavior: "smooth" })
   }
 
@@ -162,6 +173,7 @@ export default function Purchases() {
     setTo("")
     setPage(1)
     setPlacePage(1)
+    setDayPage(1)
   }
 
   function pickProduct(id) {
@@ -430,7 +442,7 @@ export default function Purchases() {
 
       <div className="lookup-results">
       <div className="books-side">
-      <article className="card">
+      <article className="card day-list">
         <div className="card-head">
           <h2>By day</h2>
         </div>
@@ -442,13 +454,28 @@ export default function Purchases() {
               <li key={day.day}>
                 <span>{dayLabel(day.day)}</span>
                 <small>
-                  {day.pieces} pieces
-                  {day.expenses > 0 ? ` · bringing in ${taka(day.expenses)}` : ""}
+                  {[
+                    day.pieces > 0 ? `${day.pieces} ${day.pieces === 1 ? "piece" : "pieces"}` : "",
+                    day.expenses > 0 ? `bringing in ${taka(day.expenses)}` : "",
+                  ].filter(Boolean).join(" · ")}
                 </small>
                 <b>{taka(day.total)}</b>
               </li>
             ))}
           </ul>
+        ) : null}
+        {dayTotal > dayPageSize ? (
+          <Pager
+            page={dayPage}
+            total={dayTotal}
+            pageSize={dayPageSize}
+            pageSizes={PAGE_SIZES}
+            onPage={(next) => {
+              setDayPage(next)
+              document.querySelector(".day-list")?.scrollIntoView({ block: "start", behavior: "smooth" })
+            }}
+            onPageSize={(next) => { setDayPageSize(next); setDayPage(1) }}
+          />
         ) : null}
       </article>
 

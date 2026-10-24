@@ -203,6 +203,16 @@ img, svg { display: block; }
   z-index: 30;
 }
 .bell-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bell-more {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.bell-more .btn { min-height: 36px; padding: 6px 14px; }
 .bell-list button {
   width: 100%;
   text-align: left;
@@ -1123,7 +1133,7 @@ tr.selected { background: var(--rose-soft); }
   gap: 8px;
 }
 .day-book small, .place-list small { color: var(--muted); }
-.place-list, .purchase-list, .expense-list { scroll-margin-top: 72px; }
+.day-list, .place-list, .purchase-list, .expense-list { scroll-margin-top: 72px; }
 .books-page .expense-list { margin-top: 12px; }
 @media (max-width: 1100px) {
   .books-entry, .books-side { grid-template-columns: minmax(0, 1fr); }
