@@ -149,6 +149,7 @@ img, svg { display: block; }
   transition: transform 0.45s ease;
 }
 .balance-text { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.balance-short { display: none; }
 .balance-pill.loading .balance-coin { animation: balance-spin 0.9s linear infinite; }
 .balance-pill.loading .balance-text { color: var(--muted); }
 .balance-pill.shown { background: var(--rose-soft); border-color: #e4b3ae; }
@@ -939,7 +940,6 @@ tr.selected { background: var(--rose-soft); }
   .topbar-actions { gap: 8px; flex: none; }
   .balance-pill { min-width: 0; height: 40px; padding-right: 12px; font-size: 0.82rem; }
   .balance-coin { width: 30px; height: 30px; }
-  .balance-short { display: none; }
   .tabbar {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
