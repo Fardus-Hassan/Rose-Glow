@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { COURIERS, PAYMENTS, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
+import { PAYMENTS, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -16,6 +16,7 @@ export default function OrderDetail({ id }) {
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [sources, setSources] = useState([])
+  const [couriers, setCouriers] = useState([])
   const [products, setProducts] = useState([])
   const [lines, setLines] = useState([])
   const [pick, setPick] = useState("")
@@ -44,11 +45,12 @@ export default function OrderDetail({ id }) {
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/sources"), api("/api/products")])
-      .then(([sourceBody, catalog]) => {
+    Promise.all([api("/api/sources"), api("/api/products"), api("/api/courier/active")])
+      .then(([sourceBody, catalog, courierBody]) => {
         if (!live) return
         setSources(sourceBody.sources)
         setProducts(catalog.products)
+        setCouriers(courierBody.couriers)
       })
       .catch(() => {})
     return () => { live = false }
@@ -323,8 +325,10 @@ export default function OrderDetail({ id }) {
                   <input value={draft.mobile} onChange={(event) => setDraftField("mobile", event.target.value)} required />
                 </Field>
                 <Field label="কুরিয়ার">
-                  <input list="edit-couriers" value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} required />
-                  <datalist id="edit-couriers">{COURIERS.map((courier) => <option key={courier} value={courier} />)}</datalist>
+                  <select value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} required>
+                    {draft.courier && !couriers.some((item) => item.name === draft.courier) ? <option value={draft.courier}>{draft.courier}</option> : null}
+                    {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
+                  </select>
                 </Field>
                 <Field label="স্ট্যাটাস">
                   <select value={draft.status} onChange={(event) => setDraftField("status", event.target.value)}>

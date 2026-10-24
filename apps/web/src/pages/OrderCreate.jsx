@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { COURIERS, PAYMENTS, STATUSES } from "@rose/shared"
+import { PAYMENTS, STATUSES } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
 import { taka } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -11,6 +11,7 @@ export default function OrderCreate() {
   const { go } = useRoute()
   const [products, setProducts] = useState([])
   const [sources, setSources] = useState([])
+  const [couriers, setCouriers] = useState([])
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [pick, setPick] = useState("")
@@ -20,7 +21,7 @@ export default function OrderCreate() {
     customerName: "",
     mobile: "",
     address: "",
-    courier: "Steadfast",
+    courier: "",
     status: "new",
     orderedAt: nowInput(),
     deliveryCharge: "",
@@ -34,12 +35,19 @@ export default function OrderCreate() {
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/products"), api("/api/sources")])
-      .then(([catalog, sourceBody]) => {
+    Promise.all([api("/api/products"), api("/api/sources"), api("/api/courier/active")])
+      .then(([catalog, sourceBody, courierBody]) => {
         if (!live) return
         setProducts(catalog.products)
         setSources(sourceBody.sources)
-        setForm((current) => current.sourceId || !sourceBody.sources[0] ? current : { ...current, sourceId: String(sourceBody.sources[0].id) })
+        setCouriers(courierBody.couriers)
+        setForm((current) => {
+          const next = { ...current }
+          if (!current.sourceId && sourceBody.sources[0]) next.sourceId = String(sourceBody.sources[0].id)
+          const names = courierBody.couriers.map((item) => item.name)
+          if (!names.includes(current.courier)) next.courier = names[0] || ""
+          return next
+        })
       })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
@@ -156,10 +164,10 @@ export default function OrderCreate() {
                 <input value={form.mobile} onChange={(event) => set("mobile", event.target.value)} inputMode="tel" placeholder="01XXXXXXXXX" required />
               </Field>
               <Field label="কুরিয়ার">
-                <input list="couriers" value={form.courier} onChange={(event) => set("courier", event.target.value)} required />
-                <datalist id="couriers">
-                  {COURIERS.map((courier) => <option key={courier} value={courier} />)}
-                </datalist>
+                <select value={form.courier} onChange={(event) => set("courier", event.target.value)} required>
+                  {couriers.length === 0 ? <option value="">কোনো কুরিয়ার চালু নেই</option> : null}
+                  {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
+                </select>
               </Field>
               <Field label="স্ট্যাটাস">
                 <select value={form.status} onChange={(event) => set("status", event.target.value)}>

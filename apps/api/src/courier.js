@@ -76,6 +76,13 @@ export async function requestReturn(id, reason) {
   return getOrder(id)
 }
 
+export async function activeCouriers() {
+  const row = await accountRow()
+  const couriers = []
+  if (row) couriers.push({ id: "steadfast", name: "Steadfast" })
+  return couriers
+}
+
 export async function accountView(req) {
   const row = await accountRow()
   return publicAccount(row, req)

@@ -6,6 +6,7 @@ import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, updateOrder } from "./orders.js"
 import {
   accountView,
+  activeCouriers,
   bookIfNeeded,
   bookOrder,
   disconnectAccount,
@@ -102,6 +103,10 @@ export function mount(app) {
       limit,
       offset,
     }))
+  }))
+
+  app.get("/api/courier/active", wrap(async (req, res) => {
+    res.json({ couriers: await activeCouriers() })
   }))
 
   app.get("/api/courier/account", wrap(async (req, res) => {
