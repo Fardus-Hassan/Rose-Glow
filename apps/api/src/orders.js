@@ -290,6 +290,29 @@ async function assertSource(client, sourceId, required) {
   if (!found.rows[0]) throw fail(400, "সোর্স পাওয়া যায়নি")
 }
 
+async function assertBookedUnchanged(client, id, row, fields, replacing, body) {
+  const sent = row.customer_name !== fields.customerName
+    || row.mobile !== fields.phone
+    || row.address !== fields.address
+    || row.courier !== fields.courier
+    || (row.note || "") !== fields.note
+    || cents(row.delivery_charge) !== cents(fields.deliveryCharge)
+    || (row.delivery_paid_by === "free" ? "free" : "customer") !== fields.deliveryPaidBy
+    || cents(row.discount) !== cents(fields.discount)
+    || cents(row.paid_amount) !== cents(fields.paidAmount)
+    || cents(row.cod_charge) !== cents(fields.codCharge)
+    || (row.cod_paid_by === "customer" ? "customer" : "free") !== fields.codPaidBy
+  if (sent) throw fail(400, "এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য বা টাকা আর বদলানো যাবে না।")
+  if (!replacing) return
+  const saved = await client.query(
+    `SELECT product_id, quantity FROM order_items WHERE order_id = $1 ORDER BY product_id`,
+    [id],
+  )
+  const next = [...mergedItems(body).entries()].sort((a, b) => a[0] - b[0])
+  const same = saved.rows.length === next.length && saved.rows.every((item, index) => item.product_id === next[index][0] && item.quantity === next[index][1])
+  if (!same) throw fail(400, "এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য বা টাকা আর বদলানো যাবে না।")
+}
+
 function mergedItems(body) {
   if (!Array.isArray(body.items) || body.items.length === 0) throw fail(400, "অন্তত একটা পণ্য যোগ করুন")
   if (body.items.length > 30) throw fail(400, "এক অর্ডারে ৩০টার বেশি লাইন যাবে না")
@@ -415,8 +438,16 @@ export async function updateOrder(id, body) {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query(`SELECT id, status, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
+    const current = await client.query(
+      `SELECT id, status, stock_held, consignment_id, customer_name, mobile, address, courier, note,
+              delivery_charge::float8 AS delivery_charge, delivery_paid_by,
+              discount::float8 AS discount, paid_amount::float8 AS paid_amount,
+              cod_charge::float8 AS cod_charge, cod_paid_by
+       FROM orders WHERE id = $1 FOR UPDATE`,
+      [id],
+    )
     if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+    if (current.rows[0].consignment_id) await assertBookedUnchanged(client, id, current.rows[0], fields, replacing, body)
     const held = current.rows[0].stock_held
     const hold = holdsStock(fields.status)
     let goods

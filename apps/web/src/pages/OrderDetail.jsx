@@ -317,16 +317,17 @@ export default function OrderDetail({ id }) {
       {editing && draft ? (
         <form className="order-layout order-create" onSubmit={save}>
           <div className="stack">
+            {order.consignmentId ? <Banner message="এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য আর টাকা লক। স্ট্যাটাস বদলালেও কুরিয়ারে নতুন তথ্য যায় না।" tone="good" /> : null}
             <article className="card">
               <div className="create-grid">
                 <Field label="নাম">
-                  <input value={draft.customerName} onChange={(event) => setDraftField("customerName", event.target.value)} required />
+                  <input value={draft.customerName} onChange={(event) => setDraftField("customerName", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
                 <Field label="মোবাইল">
-                  <input value={draft.mobile} onChange={(event) => setDraftField("mobile", event.target.value)} required />
+                  <input value={draft.mobile} onChange={(event) => setDraftField("mobile", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
                 <Field label="কুরিয়ার">
-                  <select value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} required>
+                  <select value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} disabled={Boolean(order.consignmentId)} required>
                     {draft.courier && !couriers.some((item) => item.name === draft.courier) ? <option value={draft.courier}>{draft.courier}</option> : null}
                     {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
                   </select>
@@ -341,13 +342,13 @@ export default function OrderDetail({ id }) {
                   <input type="datetime-local" value={draft.orderedAt} onChange={(event) => setDraftField("orderedAt", event.target.value)} required />
                 </Field>
                 <Field label="ঠিকানা" className="wide">
-                  <textarea rows={3} value={draft.address} onChange={(event) => setDraftField("address", event.target.value)} required />
+                  <textarea rows={3} value={draft.address} onChange={(event) => setDraftField("address", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
               </div>
             </article>
             <article className="card">
               <div className="add-line">
-                <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="পণ্য">
+                <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="পণ্য" disabled={Boolean(order.consignmentId)}>
                   <option value="">পণ্য বেছে নিন</option>
                   <optgroup label="পণ্য">
                     {products.filter((item) => !item.isCombo).map((product) => (
@@ -362,8 +363,8 @@ export default function OrderDetail({ id }) {
                     </optgroup>
                   ) : null}
                 </select>
-                <input aria-label="পিস" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
-                <button type="button" className="btn secondary" onClick={addLine}>যোগ</button>
+                <input aria-label="পিস" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} disabled={Boolean(order.consignmentId)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
+                <button type="button" className="btn secondary" onClick={addLine} disabled={Boolean(order.consignmentId)}>যোগ</button>
               </div>
               {lines.length === 0 ? <p className="muted small">পণ্য যোগ করুন।</p> : (
                 <ul className="lines create-lines">
@@ -376,9 +377,9 @@ export default function OrderDetail({ id }) {
                         <strong>{line.name}</strong>
                         {components.length ? <small>{components.map((part) => `${part.name} ×${part.quantity}`).join(", ")}</small> : null}
                       </div>
-                      <input className="line-qty" aria-label={`${line.name} পিস`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} />
+                      <input className="line-qty" aria-label={`${line.name} পিস`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} disabled={Boolean(order.consignmentId)} />
                       <b>{taka(line.sellPrice * line.quantity)}</b>
-                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))}>বাদ</button>
+                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))} disabled={Boolean(order.consignmentId)}>বাদ</button>
                     </li>
                     )
                   })}
@@ -390,27 +391,27 @@ export default function OrderDetail({ id }) {
           <aside className="card summary">
             <div className="bill-grid">
               <Field label="ডিসকাউন্ট">
-                <input type="number" min="0" step="1" value={draft.discount} onChange={(event) => setDraftField("discount", event.target.value)} placeholder="0" />
+                <input type="number" min="0" step="1" value={draft.discount} onChange={(event) => setDraftField("discount", event.target.value)} placeholder="0" disabled={Boolean(order.consignmentId)} />
               </Field>
               <Field label="জমা">
-                <input type="number" min="0" step="1" value={draft.paidAmount} onChange={(event) => setDraftField("paidAmount", event.target.value)} placeholder="0" />
+                <input type="number" min="0" step="1" value={draft.paidAmount} onChange={(event) => setDraftField("paidAmount", event.target.value)} placeholder="0" disabled={Boolean(order.consignmentId)} />
               </Field>
             </div>
             <Field label="পেমেন্ট">
-              <select value={draft.paymentMethod} onChange={(event) => setDraftField("paymentMethod", event.target.value)}>
+              <select value={draft.paymentMethod} onChange={(event) => setDraftField("paymentMethod", event.target.value)} disabled={Boolean(order.consignmentId)}>
                 {PAYMENTS.map((payment) => <option key={payment.id} value={payment.id}>{payment.label}</option>)}
               </select>
             </Field>
             <div className="field">
               <span>ডেলিভারি</span>
               <div className="cod-row">
-                <button type="button" className={draft.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "free")}>ফ্রি</button>
-                <button type="button" className={draft.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "customer")}>কাস্টমার</button>
-                <input type="number" min="0" step="1" value={draft.deliveryCharge} onChange={(event) => setDraftField("deliveryCharge", event.target.value)} placeholder="টাকা" aria-label="ডেলিভারি টাকা" />
+                <button type="button" className={draft.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "free")} disabled={Boolean(order.consignmentId)}>ফ্রি</button>
+                <button type="button" className={draft.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "customer")} disabled={Boolean(order.consignmentId)}>কাস্টমার</button>
+                <input type="number" min="0" step="1" value={draft.deliveryCharge} onChange={(event) => setDraftField("deliveryCharge", event.target.value)} placeholder="টাকা" aria-label="ডেলিভারি টাকা" disabled={Boolean(order.consignmentId)} />
               </div>
             </div>
             <Field label="নোট">
-              <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="চাইলে লিখুন" />
+              <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="চাইলে লিখুন" disabled={Boolean(order.consignmentId)} />
             </Field>
             <p className="sum"><span>পণ্য</span><b>{taka(goods)}</b></p>
             <p className="sum"><span>{delivery > 0 && !customerPaysDelivery ? "ডেলিভারি (আপনি)" : "ডেলিভারি"}</span><b>{delivery > 0 ? taka(delivery) : "ফ্রি"}</b></p>

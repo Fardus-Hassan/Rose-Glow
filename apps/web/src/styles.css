@@ -34,6 +34,7 @@ body {
   line-height: 1.5;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.6; cursor: not-allowed; }
 button { cursor: pointer; }
 h1, h2, h3 { font-weight: 650; letter-spacing: 0; }
 h1 { margin: 0; font-size: clamp(1.55rem, 2.4vw, 2rem); line-height: 1.2; }
