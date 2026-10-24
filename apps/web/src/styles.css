@@ -411,6 +411,54 @@ td .copy-address {
   place-items: center;
   padding: 20px;
 }
+.eye-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  margin-left: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--rose);
+  vertical-align: middle;
+}
+.eye-btn svg { width: 18px; height: 18px; }
+.parcel-modal {
+  width: min(720px, 100%);
+  max-height: min(88vh, 860px);
+  overflow: auto;
+}
+.parcel-status span { color: var(--muted); font-size: 0.8rem; }
+.parcel-status strong { display: block; font-size: 1.6rem; }
+.parcel-stages {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+.parcel-stages li { text-align: center; color: var(--muted); }
+.parcel-stages b { display: block; font-size: 0.78rem; font-weight: 600; }
+.parcel-stages small { display: block; font-size: 0.68rem; }
+.parcel-stages li.done { color: var(--good); }
+.parcel-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr;
+  gap: 12px;
+}
+.parcel-grid section, .parcel-modal > section {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.parcel-grid h3, .parcel-modal h3 { margin: 0 0 8px; }
+.parcel-grid p { margin: 0 0 4px; }
+@media (max-width: 860px) {
+  .parcel-grid { grid-template-columns: 1fr; }
+  .parcel-stages { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
+}
 .modal {
   width: min(420px, 100%);
   background: var(--card);
@@ -419,6 +467,11 @@ td .copy-address {
   padding: 20px;
   display: grid;
   gap: 12px;
+}
+.modal.parcel-modal {
+  width: min(720px, 100%);
+  max-height: min(88vh, 860px);
+  overflow: auto;
 }
 .btn.wide { width: 100%; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }

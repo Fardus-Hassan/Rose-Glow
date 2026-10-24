@@ -5,6 +5,7 @@ import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
+import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, CopyText, Field, StatusPill } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
@@ -456,7 +457,10 @@ export default function OrderDetail({ id }) {
                 <article className="card">
                   <div className="card-head">
                     <h2>Steadfast</h2>
-                    {order.trackingUrl ? <a className="text-btn" href={order.trackingUrl} target="_blank" rel="noreferrer">ট্র্যাক করুন</a> : null}
+                    <span className="actions">
+                      {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
+                      {order.trackingUrl ? <a className="text-btn" href={order.trackingUrl} target="_blank" rel="noreferrer">Steadfast-এ খুলুন</a> : null}
+                    </span>
                   </div>
                   {order.courierError && !order.consignmentId ? <Banner message={order.courierError} /> : null}
                   {order.consignmentId ? (

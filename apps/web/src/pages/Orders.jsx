@@ -5,6 +5,7 @@ import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
+import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "সব" }, ...STATUSES]
@@ -134,7 +135,10 @@ export default function Orders() {
             <tbody>
               {data.orders.map((order) => (
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
-                  <td data-label="অর্ডার"><strong>{order.number}</strong></td>
+                  <td data-label="অর্ডার">
+                    <strong>{order.number}</strong>
+                    {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
+                  </td>
                   <td data-label="কাস্টমার">
                     <CopyText value={order.customerName} label="নাম" />
                     <small>
