@@ -114,6 +114,58 @@ img, svg { display: block; }
 }
 .topbar .brand { display: none; }
 .tabbar { display: none; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.balance-pill {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 158px;
+  padding: 0 16px 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.balance-pill:hover { border-color: #e4b3ae; }
+.balance-coin {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f4c9c3, #d98a8f);
+  color: #2a1819;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 0.45s ease;
+}
+.balance-text { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.balance-pill.loading .balance-coin { animation: balance-spin 0.9s linear infinite; }
+.balance-pill.loading .balance-text { color: var(--muted); }
+.balance-pill.shown { background: var(--rose-soft); border-color: #e4b3ae; }
+.balance-pill.shown .balance-coin { transform: rotate(360deg); }
+.balance-pill.shown .balance-text { font-family: var(--display); font-size: 1.02rem; }
+.balance-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: #e4b3ae;
+  transform-origin: left;
+  animation: balance-drain linear forwards;
+}
+@keyframes balance-spin { to { transform: rotate(360deg); } }
+@keyframes balance-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .bell { position: relative; }
 .bell-btn {
   position: relative;
@@ -870,6 +922,9 @@ tr.selected { background: var(--rose-soft); }
     padding-top: calc(12px + env(safe-area-inset-top));
   }
   .topbar .brand { display: flex; }
+  .topbar-actions { gap: 8px; }
+  .balance-pill { min-width: 0; height: 40px; padding-right: 12px; font-size: 0.82rem; }
+  .balance-coin { width: 30px; height: 30px; }
   .tabbar {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));

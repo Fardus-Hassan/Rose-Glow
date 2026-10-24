@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import BalancePill from "./balance.jsx"
 import Notifications from "./notifications.jsx"
 import Courier from "./pages/Courier.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
@@ -84,7 +85,10 @@ export default function App() {
                 <small>Jewelry ledger</small>
               </span>
             </a>
-            <Notifications />
+            <div className="topbar-actions">
+              <BalancePill />
+              <Notifications />
+            </div>
           </header>
           <main>{page}</main>
           <nav className="tabbar" aria-label="Main menu">
