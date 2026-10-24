@@ -249,7 +249,7 @@ export default function Purchases() {
   }
 
   return (
-    <section className="page">
+    <section className="page books-page">
       <div className="page-head">
         <div>
           <p className="eyebrow">What you bought</p>
@@ -257,7 +257,7 @@ export default function Purchases() {
         </div>
         <button type="button" className="btn secondary" onClick={() => go("/inventory")}>Inventory</button>
       </div>
-      <p className="lede">Write each buy, and also what it cost to bring the goods in: vehicle, courier, or anything else. Pieces are added to Inventory.</p>
+      <p className="lede">Each buy adds pieces to Inventory. A bringing-in cost is the fare, not more pieces.</p>
       <Banner message={error} />
 
       <div className="stock-kpis books-kpis">
@@ -279,14 +279,15 @@ export default function Purchases() {
         </div>
       </div>
 
+      <div className="books-entry">
       <form className="card books-form" onSubmit={save}>
         <h2>Add a purchase</h2>
-        <div className="books-line">
+        <div className="books-line buy">
           <label className="field">
             <span>Date</span>
             <input type="date" value={boughtOn} max={todayISO()} min="2020-01-01" onChange={(event) => setBoughtOn(event.target.value)} required />
           </label>
-          <label className="field span-2">
+          <label className="field">
             <span>Product</span>
             <select value={productId} onChange={(event) => pickProduct(event.target.value)} required>
               <option value="">Choose</option>
@@ -295,9 +296,9 @@ export default function Purchases() {
               ))}
             </select>
           </label>
-          <label className="field span-2">
+          <label className="field">
             <span>From</span>
-            <input value={boughtFrom} onChange={(event) => setBoughtFrom(event.target.value)} placeholder="Shop, market, or person" maxLength={80} />
+            <input value={boughtFrom} onChange={(event) => setBoughtFrom(event.target.value)} placeholder="Shop or person" maxLength={80} />
           </label>
           <label className="field">
             <span>Pieces</span>
@@ -307,8 +308,8 @@ export default function Purchases() {
             <span>Cost each</span>
             <input type="number" min="0" step="1" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} required />
           </label>
-          <button className="btn span-2" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : "Save"}</button>
-          <label className="field note-field">
+          <button className="btn" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : "Save"}</button>
+          <label className="field wide">
             <span>Note</span>
             <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional" maxLength={160} />
           </label>
@@ -317,7 +318,7 @@ export default function Purchases() {
       </form>
 
       <form className="card books-form" onSubmit={saveExpense}>
-        <h2>Cost of bringing it in</h2>
+        <h2>Bringing it in</h2>
         <div className="books-line expense">
           <label className="field">
             <span>Date</span>
@@ -333,18 +334,21 @@ export default function Purchases() {
             <span>Amount</span>
             <input type="number" min="1" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} required />
           </label>
-          <label className="field span-2">
+          <label className="field">
             <span>Note</span>
             <input value={expenseNote} onChange={(event) => setExpenseNote(event.target.value)} placeholder="Vehicle fare, courier" maxLength={160} />
           </label>
-          <button className="btn span-2" type="submit" disabled={savingExpense}>{savingExpense ? "Saving…" : "Save"}</button>
+          <button className="btn wide" type="submit" disabled={savingExpense}>{savingExpense ? "Saving…" : "Save"}</button>
         </div>
       </form>
+      </div>
 
-      <form className="card books-form lookup-card" onSubmit={lookup}>
-        <h2>Look up buys</h2>
-        <p className="muted small">Pick the dates. The list shows what you bought, what it cost, and where it came from.</p>
-        <div className="books-range">
+      <form className="card books-lookup" onSubmit={lookup}>
+        <div className="lookup-bar">
+          <div className="lookup-title">
+            <h2>Look up</h2>
+            <p className="muted small">{from || to ? periodText(from, to) : "What you bought, the money, and the place."}</p>
+          </div>
           <label className="field">
             <span>Start</span>
             <input type="date" value={fromDraft} max={todayISO()} min="2020-01-01" onChange={(event) => setFromDraft(event.target.value)} />
@@ -359,8 +363,8 @@ export default function Purchases() {
         {from || to ? (
           <div className="stock-kpis range-kpis">
             <div>
-              <span>{periodText(from, to)}</span>
-              <strong>{match.lines} {match.lines === 1 ? "buy" : "buys"}</strong>
+              <span>Buys</span>
+              <strong>{match.lines}</strong>
             </div>
             <div>
               <span>Pieces</span>
@@ -379,10 +383,10 @@ export default function Purchases() {
       </form>
 
       <div className="lookup-results">
+      <div className="books-side">
       <article className="card">
         <div className="card-head">
           <h2>By day</h2>
-          {from || to ? <p className="muted small">{periodText(from, to)}</p> : null}
         </div>
         {!ready ? <p className="muted">Loading…</p> : null}
         {ready && days.length === 0 ? <Empty title="Nothing recorded yet" text={from || to ? "No purchase or bringing-in cost in these dates." : "A purchase or a bringing-in cost shows here with that day's total."} /> : null}
@@ -403,12 +407,9 @@ export default function Purchases() {
       </article>
 
       {places.length > 0 || from || to ? (
-        <article className="card list-card place-list">
+        <article className="card place-list">
           <div className="card-head">
-            <div>
-              <h2>Places</h2>
-              {from || to ? <p className="muted small">{periodText(from, to)}</p> : null}
-            </div>
+            <h2>Places</h2>
           </div>
           {places.length === 0 ? <Empty title="No place written" text="These buys have no shop, market, or person yet." /> : null}
           {places.length > 0 ? (
@@ -437,13 +438,12 @@ export default function Purchases() {
           ) : null}
         </article>
       ) : null}
+      </div>
 
-      <article className="card list-card purchase-list">
+      <article className="card purchase-list">
         <div className="card-head">
-          <div>
-            <h2>Lines</h2>
-            {from || to ? <p className="muted small">{periodText(from, to)} · {taka(match.goods)} across every page</p> : null}
-          </div>
+          <h2>Lines</h2>
+          {ready ? <p className="muted small">{match.lines} {match.lines === 1 ? "buy" : "buys"} · {taka(match.goods)}</p> : null}
         </div>
         {ready && rows.length === 0 ? (
           <Empty
@@ -499,9 +499,10 @@ export default function Purchases() {
       </article>
       </div>
 
-      <article className="card list-card expense-list">
+      <article className="card expense-list">
         <div className="card-head">
           <h2>Bringing in</h2>
+          {ready ? <p className="muted small">{expenseTotal} {expenseTotal === 1 ? "cost" : "costs"} · {taka(expenseSum)}</p> : null}
         </div>
         {ready && expenseTotal === 0 ? <p className="muted">No vehicle, courier, or other cost yet.</p> : null}
         {expenses.length > 0 ? (
