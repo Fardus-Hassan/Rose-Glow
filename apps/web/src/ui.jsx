@@ -85,14 +85,16 @@ export function ContactActions({ mobile }) {
   }
   return (
     <span className="reach" onClick={(event) => event.stopPropagation()}>
-      <a className="reach-btn" href={links.whatsapp} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
+      <a className="reach-btn reach-wa" href={links.whatsapp} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
         <WhatsAppIcon />
       </a>
-      <a className="reach-btn reach-imo" href={links.imo} onClick={openImo} aria-label="IMO" title="IMO">imo</a>
-      <a className="reach-btn" href={links.telegram} target="_blank" rel="noreferrer" aria-label="Telegram" title="Telegram">
+      <a className="reach-btn reach-imo" href={links.imo} onClick={openImo} aria-label="IMO" title="IMO">
+        <ImoIcon />
+      </a>
+      <a className="reach-btn reach-tg" href={links.telegram} target="_blank" rel="noreferrer" aria-label="Telegram" title="Telegram">
         <TelegramIcon />
       </a>
-      <a className="reach-btn" href={links.call} aria-label="Call" title="Call">
+      <a className="reach-btn reach-call" href={links.call} aria-label="Call" title="Call">
         <CallIcon />
       </a>
     </span>
@@ -102,7 +104,15 @@ export function ContactActions({ mobile }) {
 function WhatsAppIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M12 3.2A8.7 8.7 0 0 0 4.6 16.3L3.4 20.6l4.4-1.2A8.8 8.8 0 1 0 12 3.2Zm4.9 12.3c-.2.6-1.2 1.1-1.7 1.1-.4.1-1 .1-1.6-.1-.4-.1-.8-.3-1.4-.5-2.4-1-4-3.5-4.1-3.7-.1-.2-1-1.3-1-2.5s.6-1.8.9-2c.2-.2.5-.3.8-.3h.3c.2 0 .4 0 .5.4.2.5.7 1.7.7 1.8.1.1.1.3 0 .4-.1.2-.1.3-.2.4l-.4.4c-.1.1-.2.2-.1.5.1.2.6 1 1.3 1.6.9.8 1.6 1 1.9 1.2.2.1.4.1.5-.1.1-.2.6-.7.7-.9.2-.2.3-.2.5-.1.2.1 1.4.7 1.6.8.2.1.4.2.4.3.1.2.1.6-.1.9Z" />
+      <path fill="currentColor" d="M12.04 2C6.58 2 2.15 6.4 2.15 11.83c0 1.74.46 3.44 1.32 4.94L2 22l5.39-1.41a10.1 10.1 0 0 0 4.65 1.17h.01c5.46 0 9.89-4.4 9.89-9.83C21.94 6.4 17.5 2 12.04 2Zm5.8 14.15c-.24.68-1.4 1.25-1.93 1.33-.49.08-1.1.11-1.78-.11-.41-.13-.94-.31-1.62-.6-2.85-1.23-4.7-4.1-4.85-4.29-.14-.19-1.15-1.53-1.15-2.92 0-1.39.73-2.07.99-2.36.24-.27.64-.41 1.02-.41.12 0 .23 0 .33.01.3.01.44.03.64.5.24.58.82 2 .89 2.15.07.14.12.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.14-.28.29-.12.56.16.27.71 1.17 1.53 1.9 1.04.93 1.92 1.22 2.2 1.36.27.14.43.12.59-.07.16-.19.69-.8.87-1.08.18-.27.37-.23.62-.14.26.1 1.62.76 1.9.9.27.14.46.21.53.32.06.12.06.68-.18 1.36Z" />
+    </svg>
+  )
+}
+
+function ImoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M7.2 4.2h9.6A3.2 3.2 0 0 1 20 7.4v6.2a3.2 3.2 0 0 1-3.2 3.2h-4.1L8.2 19.6c-.7.5-1.7 0-1.7-.9v-2a3.2 3.2 0 0 1-2.5-3.1V7.4a3.2 3.2 0 0 1 3.2-3.2Z" />
     </svg>
   )
 }
@@ -110,7 +120,7 @@ function WhatsAppIcon() {
 function TelegramIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M20.7 4.6 3.4 11.2c-1.2.5-1.2 1.1-.2 1.4l4.4 1.4 10.2-6.4c.5-.3.9-.1.6.2l-8.3 7.5-.3 4.5c.4 0 .6-.2.9-.4l2.1-2 4.4 3.2c.8.5 1.4.2 1.6-.7l2.9-13.7c.3-1.2-.4-1.7-1.3-1.4Z" />
+      <path fill="currentColor" d="M21.2 4.4 2.9 11.4c-1.2.5-1.2 1.1-.2 1.4l4.7 1.5 1.8 5.7c.2.7.1.9.9.9.5 0 .8-.2 1.1-.5l2.5-2.4 4.9 3.6c.9.5 1.5.2 1.7-.8l3-14.1c.3-1.3-.5-1.9-1.4-1.5Zm-3.2 3.3-8.6 7.8-.3 3.4-1.4-4.4 10.3-6.8Z" />
     </svg>
   )
 }
@@ -118,7 +128,7 @@ function TelegramIcon() {
 function CallIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M8 3.8c.3-.4.9-.5 1.4-.3l1.8 1c.4.2.6.7.5 1.2l-.4 1.8c-.1.4.1.8.4 1.1l1.3 1.1c.8.6 1.7 1.1 2.7 1.4l1.7-.6c.4-.1.9 0 1.2.3l1.2 1.6c.3.4.2.9-.1 1.3l-1.2 1.1c-.4.4-.9.5-1.4.4-5.2-.9-9.3-5-10.2-10.2-.1-.5.1-1 .4-1.4Z" />
+      <path fill="currentColor" d="M7.1 3.2c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.4 1.4c-.2.2-.3.5-.2.8 1.2 3.4 3.9 6.1 7.3 7.3.3.1.6 0 .8-.2l1.4-1.4c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.2 1.2c-.5.5-1.2.8-2 .7-6.2-.7-11.1-5.6-11.8-11.8-.1-.8.2-1.5.7-2l1.2-1.2Z" />
     </svg>
   )
 }
