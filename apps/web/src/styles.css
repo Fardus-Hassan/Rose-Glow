@@ -1113,8 +1113,27 @@ tr.selected { background: var(--rose-soft); }
 @media (max-width: 1100px) {
   .chart-pair { grid-template-columns: minmax(0, 1fr); }
 }
-.pair-card .stock-kpis { grid-template-columns: 1fr 1fr; }
-.pair-card .stock-mix svg { width: min(168px, 100%); }
+.pair-body {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  grid-template-areas:
+    "mix kpis"
+    "key key";
+  column-gap: 14px;
+  row-gap: 6px;
+  align-items: center;
+}
+.pair-body .stock-mix { display: contents; }
+.pair-body .stock-mix svg { grid-area: mix; width: 128px; justify-self: center; }
+.pair-body .stock-key { grid-area: key; justify-content: center; gap: 6px 10px; }
+.pair-body .chart-empty { grid-area: mix; margin: 0; }
+.pair-card .stock-kpis {
+  grid-area: kpis;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  align-content: center;
+}
+.pair-card .stock-kpis strong { font-size: 1.05rem; }
 .stock-key i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
 .stock-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
 .stock-list { list-style: none; margin: 0; padding: 0; }

@@ -135,25 +135,27 @@ function Board({ data, go }) {
             <h2>Stock</h2>
             <button type="button" className="text-btn" onClick={() => go("/inventory")}>Inventory</button>
           </div>
-          <div className="stock-kpis">
-            <div>
-              <span>Total pieces</span>
-              <strong>{data.inventory.pieces}</strong>
-            </div>
-            <div>
-              <span>At cost</span>
-              <strong>{taka(data.inventory.costValue)}</strong>
-            </div>
-            <div>
-              <span>If sold</span>
-              <strong>{taka(data.inventory.sellValue)}</strong>
-            </div>
-            <div>
-              <span>Possible profit</span>
-              <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
+          <div className="pair-body">
+            <StockMix cost={data.inventory.costValue} sell={data.inventory.sellValue} />
+            <div className="stock-kpis">
+              <div>
+                <span>Total pieces</span>
+                <strong>{data.inventory.pieces}</strong>
+              </div>
+              <div>
+                <span>At cost</span>
+                <strong>{taka(data.inventory.costValue)}</strong>
+              </div>
+              <div>
+                <span>If sold</span>
+                <strong>{taka(data.inventory.sellValue)}</strong>
+              </div>
+              <div>
+                <span>Possible profit</span>
+                <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
+              </div>
             </div>
           </div>
-          <StockMix cost={data.inventory.costValue} sell={data.inventory.sellValue} />
         </article>
         <article className="card stock-band pair-card">
           <div className="card-head">
@@ -163,25 +165,27 @@ function Board({ data, go }) {
             </div>
             <button type="button" className="text-btn" onClick={() => go("/purchases")}>Open books</button>
           </div>
-          <div className="stock-kpis">
-            <div>
-              <span>Goods</span>
-              <strong>{taka(data.books.goods)}</strong>
-            </div>
-            <div>
-              <span>Bringing in</span>
-              <strong>{taka(data.books.expenses)}</strong>
-            </div>
-            <div>
-              <span>Sold</span>
-              <strong>{taka(data.books.sales)}</strong>
-            </div>
-            <div>
-              <span>Profit</span>
-              <strong>{taka(data.books.profit)}</strong>
+          <div className="pair-body">
+            <BooksMix goods={data.books.goods} vehicle={data.books.vehicle} courier={data.books.courier} other={data.books.other} />
+            <div className="stock-kpis">
+              <div>
+                <span>Goods</span>
+                <strong>{taka(data.books.goods)}</strong>
+              </div>
+              <div>
+                <span>Bringing in</span>
+                <strong>{taka(data.books.expenses)}</strong>
+              </div>
+              <div>
+                <span>Sold</span>
+                <strong>{taka(data.books.sales)}</strong>
+              </div>
+              <div>
+                <span>Profit</span>
+                <strong>{taka(data.books.profit)}</strong>
+              </div>
             </div>
           </div>
-          <BooksMix goods={data.books.goods} vehicle={data.books.vehicle} courier={data.books.courier} other={data.books.other} />
         </article>
       </div>
 
