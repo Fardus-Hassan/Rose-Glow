@@ -1,8 +1,14 @@
-import { PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
+import { MANUAL_STATUSES, PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, mobile, money, noteText, when, whole } from "./http.js"
 
 const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
+const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
+
+function assertHandStatus(next, current) {
+  if (MANUAL_IDS.has(next) || next === current) return
+  throw fail(400, "You can set New, Confirmed, or In courier. Steadfast updates the rest.")
+}
 const PAYMENT_IDS = new Set(PAYMENTS.map((item) => item.id))
 
 function present(row, items = undefined) {
@@ -352,6 +358,7 @@ function mergedItems(body) {
 
 export async function createOrder(body) {
   const fields = readOrderFields(body)
+  assertHandStatus(fields.status)
   const merged = mergedItems(body)
   const client = await pool.connect()
   let orderId
@@ -471,6 +478,7 @@ export async function updateOrder(id, body) {
       [id],
     )
     if (!current.rows[0]) throw fail(404, "Order was not found")
+    assertHandStatus(fields.status, current.rows[0].status)
     if (current.rows[0].consignment_id) await assertBookedUnchanged(client, id, current.rows[0], fields, replacing, body)
     const held = current.rows[0].stock_held
     const hold = holdsStock(fields.status)

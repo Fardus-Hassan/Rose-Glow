@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { PAYMENTS, STATUSES } from "@rose/shared"
+import { MANUAL_STATUSES, PAYMENTS } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
 import { taka } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -171,7 +171,7 @@ export default function OrderCreate() {
               </Field>
               <Field label="Status">
                 <select value={form.status} onChange={(event) => set("status", event.target.value)}>
-                  {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+                  {MANUAL_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
                 </select>
               </Field>
               <SourceField

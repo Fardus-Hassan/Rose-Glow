@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { PAYMENTS, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
+import { MANUAL_STATUSES, PAYMENTS, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -333,9 +333,13 @@ export default function OrderDetail({ id }) {
                   </select>
                 </Field>
                 <Field label="Status">
-                  <select value={draft.status} onChange={(event) => setDraftField("status", event.target.value)}>
-                    {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-                  </select>
+                  {MANUAL_STATUSES.some((status) => status.id === draft.status) ? (
+                    <select value={draft.status} onChange={(event) => setDraftField("status", event.target.value)}>
+                      {MANUAL_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+                    </select>
+                  ) : (
+                    <input value={statusLabel(draft.status)} disabled />
+                  )}
                 </Field>
                 <SourceField value={draft.sourceId} onChange={(value) => setDraftField("sourceId", value)} sources={sources} onSources={setSources} />
                 <Field label="Order time" className="span-2">
@@ -425,7 +429,7 @@ export default function OrderDetail({ id }) {
       ) : (
         <>
           <div className="status-rail" role="group" aria-label="Status">
-            {STATUSES.map((status) => (
+            {MANUAL_STATUSES.some((status) => status.id === order.status) ? MANUAL_STATUSES.map((status) => (
               <button
                 key={status.id}
                 type="button"
@@ -436,7 +440,9 @@ export default function OrderDetail({ id }) {
               >
                 {status.label}
               </button>
-            ))}
+            )) : (
+              <button type="button" className="on" disabled>{statusLabel(order.status)}</button>
+            )}
           </div>
           <div className="detail">
             <div className="stack">

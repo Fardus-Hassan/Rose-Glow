@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
-import { COURIER_STATUSES, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
+import { COURIER_STATUSES, MANUAL_STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -8,7 +8,7 @@ import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
-const FILTERS = [{ id: "all", label: "All" }, ...STATUSES]
+const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 
 function matchesFilter(order, filter) {
@@ -297,6 +297,8 @@ function StatusMenu({ order, onChanged }) {
     }
   }
 
+  if (!MANUAL_STATUSES.some((item) => item.id === order.status)) return <StatusPill status={order.status} />
+
   return (
     <div className="status-menu" ref={box} onClick={(event) => event.stopPropagation()}>
       <button
@@ -314,7 +316,7 @@ function StatusMenu({ order, onChanged }) {
       </button>
       {open && spot ? (
         <ul className="status-pop" role="listbox" style={{ top: spot.top, left: spot.left }}>
-          {STATUSES.map((item) => (
+          {MANUAL_STATUSES.map((item) => (
             <li key={item.id}>
               <button type="button" className={item.id === order.status ? "active" : ""} role="option" aria-selected={item.id === order.status} onClick={() => choose(item.id)}>
                 <StatusPill status={item.id} />

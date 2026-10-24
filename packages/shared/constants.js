@@ -18,6 +18,8 @@ export const COURIERS = ["Steadfast", "Pathao", "RedX", "Paperfly", "Sundarban",
 
 export const LOW_STOCK_AT = 3
 
+export const MANUAL_STATUSES = STATUSES.filter((item) => ["new", "confirmed", "courier"].includes(item.id))
+
 export function holdsStock(status) {
   return status !== "cancelled" && status !== "returned"
 }
