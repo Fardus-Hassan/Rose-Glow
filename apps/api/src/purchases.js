@@ -169,7 +169,7 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
   }
 }
 
-export async function createPurchase(body) {
+function purchaseFields(body) {
   const productId = whole(body.productId)
   const quantity = whole(body.quantity)
   const unitCost = money(body.unitCost)
@@ -179,10 +179,39 @@ export async function createPurchase(body) {
   if (!productId || productId <= 0) throw fail(400, "Choose a product")
   if (!quantity || quantity <= 0 || quantity > 100000) throw fail(400, "Enter how many pieces you bought")
   if (unitCost === null) throw fail(400, "Enter the cost of one piece")
+  return { productId, quantity, unitCost, boughtOn, note, boughtFrom }
+}
+
+function expenseFields(body) {
+  const kind = String(body.kind || "")
+  const amount = money(body.amount)
+  const spentOn = assertDay(body.spentOn)
+  const note = noteText(body.note, 160)
+  if (!KINDS.has(kind)) throw fail(400, "Choose vehicle, courier, or other")
+  if (amount === null || amount <= 0) throw fail(400, "Enter how much you spent")
+  return { kind, amount, spentOn, note }
+}
+
+async function syncCost(client, productId) {
+  const latest = await client.query(
+    `SELECT unit_cost FROM purchases
+     WHERE product_id = $1
+     ORDER BY bought_on DESC, id DESC
+     LIMIT 1`,
+    [productId],
+  )
+  if (!latest.rows[0]) return
+  await client.query(`UPDATE products SET cost_price = $2 WHERE id = $1`, [productId, latest.rows[0].unit_cost])
+}
+
+const STOCK_HELD = "Those pieces are already sold. The purchase stays so the books match the stock."
+
+export async function createPurchase(body) {
+  const fields = purchaseFields(body)
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const id = await writePurchase(client, { productId, boughtOn, quantity, unitCost, note, boughtFrom, addStock: true })
+    const id = await writePurchase(client, { ...fields, addStock: true })
     await client.query("COMMIT")
     return { id }
   } catch (error) {
@@ -216,12 +245,7 @@ export async function writePurchase(client, { productId, boughtOn, quantity, uni
 }
 
 export async function createExpense(body) {
-  const kind = String(body.kind || "")
-  const amount = money(body.amount)
-  const spentOn = assertDay(body.spentOn)
-  const note = noteText(body.note, 160)
-  if (!KINDS.has(kind)) throw fail(400, "Choose vehicle, courier, or other")
-  if (amount === null || amount <= 0) throw fail(400, "Enter how much you spent")
+  const { kind, amount, spentOn, note } = expenseFields(body)
   const inserted = await pool.query(
     `INSERT INTO buying_expenses (spent_on, kind, amount, note)
      VALUES ($1::date, $2, $3, $4)
@@ -229,6 +253,18 @@ export async function createExpense(body) {
     [spentOn, kind, amount, note],
   )
   return { id: inserted.rows[0].id }
+}
+
+export async function updateExpense(id, body) {
+  const { kind, amount, spentOn, note } = expenseFields(body)
+  const updated = await pool.query(
+    `UPDATE buying_expenses
+     SET spent_on = $2::date, kind = $3, amount = $4, note = $5
+     WHERE id = $1
+     RETURNING id`,
+    [id, spentOn, kind, amount, note],
+  )
+  if (!updated.rows[0]) throw fail(404, "That cost was not found")
 }
 
 export async function deleteExpense(id) {
@@ -251,10 +287,67 @@ export async function deletePurchase(id) {
        RETURNING id`,
       [found.rows[0].product_id, found.rows[0].quantity],
     )
-    if (!updated.rows[0]) {
-      throw fail(400, "Those pieces are already sold. The purchase stays so the books match the stock.")
-    }
+    if (!updated.rows[0]) throw fail(400, STOCK_HELD)
     await client.query(`DELETE FROM purchases WHERE id = $1`, [id])
+    await syncCost(client, found.rows[0].product_id)
+    await client.query("COMMIT")
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export async function updatePurchase(id, body) {
+  const fields = purchaseFields(body)
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const found = await client.query(
+      `SELECT id, product_id, quantity FROM purchases WHERE id = $1 FOR UPDATE`,
+      [id],
+    )
+    if (!found.rows[0]) throw fail(404, "That purchase was not found")
+    const old = found.rows[0]
+    const productIds = [...new Set([old.product_id, fields.productId])].sort((a, b) => a - b)
+    const locked = await client.query(
+      `SELECT id, is_combo, stock_qty FROM products WHERE id = ANY($1::int[]) FOR UPDATE`,
+      [productIds],
+    )
+    const products = new Map(locked.rows.map((row) => [row.id, row]))
+    const next = products.get(fields.productId)
+    if (!next || next.is_combo) throw fail(400, "Choose a product from inventory")
+    if (old.product_id === fields.productId) {
+      const delta = fields.quantity - old.quantity
+      if (delta < 0) {
+        const moved = await client.query(
+          `UPDATE products SET stock_qty = stock_qty + $2
+           WHERE id = $1 AND stock_qty + $2 >= 0
+           RETURNING id`,
+          [fields.productId, delta],
+        )
+        if (!moved.rows[0]) throw fail(400, STOCK_HELD)
+      } else if (delta > 0) {
+        await client.query(
+          `UPDATE products SET stock_qty = stock_qty + $2 WHERE id = $1`,
+          [fields.productId, delta],
+        )
+      }
+    } else {
+      const previous = products.get(old.product_id)
+      if (!previous || previous.stock_qty < old.quantity) throw fail(400, STOCK_HELD)
+      await client.query(`UPDATE products SET stock_qty = stock_qty - $2 WHERE id = $1`, [old.product_id, old.quantity])
+      await client.query(`UPDATE products SET stock_qty = stock_qty + $2 WHERE id = $1`, [fields.productId, fields.quantity])
+    }
+    await client.query(
+      `UPDATE purchases
+       SET product_id = $2, bought_on = $3::date, quantity = $4, unit_cost = $5, note = $6, bought_from = $7
+       WHERE id = $1`,
+      [id, fields.productId, fields.boughtOn, fields.quantity, fields.unitCost, fields.note, fields.boughtFrom],
+    )
+    await syncCost(client, old.product_id)
+    if (fields.productId !== old.product_id) await syncCost(client, fields.productId)
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }

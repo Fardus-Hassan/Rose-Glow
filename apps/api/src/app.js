@@ -20,7 +20,7 @@ import {
   trackOrder,
 } from "./courier.js"
 import { courierFilterView, saveCourierFilters } from "./settings.js"
-import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases } from "./purchases.js"
+import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 
 function idFrom(req) {
   const id = whole(Number(req.params.id))
@@ -120,6 +120,11 @@ export function mount(app) {
     res.status(201).json(await createExpense(req.body || {}))
   }))
 
+  app.patch("/api/buying-expenses/:id", wrap(async (req, res) => {
+    await updateExpense(idFrom(req), req.body || {})
+    res.json({ ok: true })
+  }))
+
   app.delete("/api/buying-expenses/:id", wrap(async (req, res) => {
     await deleteExpense(idFrom(req))
     res.json({ ok: true })
@@ -127,6 +132,11 @@ export function mount(app) {
 
   app.post("/api/purchases", wrap(async (req, res) => {
     res.status(201).json(await createPurchase(req.body || {}))
+  }))
+
+  app.patch("/api/purchases/:id", wrap(async (req, res) => {
+    await updatePurchase(idFrom(req), req.body || {})
+    res.json({ ok: true })
   }))
 
   app.delete("/api/purchases/:id", wrap(async (req, res) => {

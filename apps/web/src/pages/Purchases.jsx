@@ -64,6 +64,8 @@ export default function Purchases() {
   const [expenseNote, setExpenseNote] = useState("")
   const [saving, setSaving] = useState(false)
   const [savingExpense, setSavingExpense] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editingExpenseId, setEditingExpenseId] = useState(null)
 
   useEffect(() => {
     let live = true
@@ -168,23 +170,43 @@ export default function Purchases() {
     if (product) setUnitCost(String(product.costPrice))
   }
 
+  function clearPurchaseForm() {
+    setEditingId(null)
+    setProductId("")
+    setBoughtOn(todayISO())
+    setQuantity("")
+    setUnitCost("")
+    setNote("")
+    setBoughtFrom("")
+  }
+
+  function editPurchase(row) {
+    setEditingId(row.id)
+    setProductId(String(row.productId))
+    setBoughtOn(row.boughtOn)
+    setQuantity(String(row.quantity))
+    setUnitCost(String(row.unitCost))
+    setNote(row.note || "")
+    setBoughtFrom(row.boughtFrom || "")
+    document.querySelector(".buy-form")?.scrollIntoView({ block: "start", behavior: "smooth" })
+  }
+
   async function save(event) {
     event.preventDefault()
     setSaving(true)
     setError("")
+    const payload = { productId: Number(productId), boughtOn, quantity: Number(quantity), unitCost: Number(unitCost), note, boughtFrom }
+    const wasEditing = Boolean(editingId)
     try {
-      await api("/api/purchases", {
-        method: "POST",
-        body: { productId: Number(productId), boughtOn, quantity: Number(quantity), unitCost: Number(unitCost), note, boughtFrom },
-      })
-      setQuantity("")
-      setNote("")
-      setBoughtFrom("")
-      setPage(1)
-      const body = await api(`/api/purchases?${booksQuery({ page: 1 })}`)
+      if (wasEditing) await api(`/api/purchases/${editingId}`, { method: "PATCH", body: payload })
+      else await api("/api/purchases", { method: "POST", body: payload })
+      if (!wasEditing) setPage(1)
+      clearPurchaseForm()
+      const body = await api(`/api/purchases?${booksQuery(wasEditing ? {} : { page: 1 })}`)
       applyBooks(body)
       const outside = (from && boughtOn < from) || (to && boughtOn > to)
-      toast.success(outside ? "Purchase saved. It sits outside these dates." : "Purchase saved, stock updated")
+      if (wasEditing) toast.success(outside ? "Purchase updated. It sits outside these dates." : "Purchase updated")
+      else toast.success(outside ? "Purchase saved. It sits outside these dates." : "Purchase saved, stock updated")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -193,21 +215,37 @@ export default function Purchases() {
     }
   }
 
+  function clearExpenseForm() {
+    setEditingExpenseId(null)
+    setSpentOn(todayISO())
+    setKind("vehicle")
+    setAmount("")
+    setExpenseNote("")
+  }
+
+  function editExpense(row) {
+    setEditingExpenseId(row.id)
+    setSpentOn(row.spentOn)
+    setKind(row.kind)
+    setAmount(String(row.amount))
+    setExpenseNote(row.note || "")
+    document.querySelector(".expense-form")?.scrollIntoView({ block: "start", behavior: "smooth" })
+  }
+
   async function saveExpense(event) {
     event.preventDefault()
     setSavingExpense(true)
     setError("")
+    const payload = { spentOn, kind, amount: Number(amount), note: expenseNote }
+    const wasEditing = Boolean(editingExpenseId)
     try {
-      await api("/api/buying-expenses", {
-        method: "POST",
-        body: { spentOn, kind, amount: Number(amount), note: expenseNote },
-      })
-      setAmount("")
-      setExpenseNote("")
-      setExpensePage(1)
-      const body = await api(`/api/purchases?${booksQuery({ expensePage: 1 })}`)
+      if (wasEditing) await api(`/api/buying-expenses/${editingExpenseId}`, { method: "PATCH", body: payload })
+      else await api("/api/buying-expenses", { method: "POST", body: payload })
+      if (!wasEditing) setExpensePage(1)
+      clearExpenseForm()
+      const body = await api(`/api/purchases?${booksQuery(wasEditing ? {} : { expensePage: 1 })}`)
       applyBooks(body)
-      toast.success("Cost saved")
+      toast.success(wasEditing ? "Cost updated" : "Cost saved")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -221,6 +259,7 @@ export default function Purchases() {
     setError("")
     try {
       await api(`/api/buying-expenses/${row.id}`, { method: "DELETE" })
+      if (editingExpenseId === row.id) clearExpenseForm()
       const body = await api(`/api/purchases?${booksQuery()}`)
       const pages = Math.max(1, Math.ceil(body.expenseTotal / expensePageSize))
       if (expensePage > pages) setExpensePage(pages)
@@ -237,6 +276,7 @@ export default function Purchases() {
     setError("")
     try {
       await api(`/api/purchases/${row.id}`, { method: "DELETE" })
+      if (editingId === row.id) clearPurchaseForm()
       const body = await api(`/api/purchases?${booksQuery()}`)
       const pages = Math.max(1, Math.ceil(body.total / pageSize))
       if (page > pages) setPage(pages)
@@ -280,8 +320,8 @@ export default function Purchases() {
       </div>
 
       <div className="books-entry">
-      <form className="card books-form" onSubmit={save}>
-        <h2>Add a purchase</h2>
+      <form className="card books-form buy-form" onSubmit={save}>
+        <h2>{editingId ? "Edit this purchase" : "Add a purchase"}</h2>
         <div className="books-line buy">
           <label className="field">
             <span>Date</span>
@@ -308,7 +348,10 @@ export default function Purchases() {
             <span>Cost each</span>
             <input type="number" min="0" step="1" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} required />
           </label>
-          <button className="btn" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : "Save"}</button>
+          <div className="form-actions">
+            <button className="btn" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : editingId ? "Update" : "Save"}</button>
+            {editingId ? <button className="btn secondary" type="button" onClick={clearPurchaseForm}>Cancel</button> : null}
+          </div>
           <label className="field wide">
             <span>Note</span>
             <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional" maxLength={160} />
@@ -317,8 +360,8 @@ export default function Purchases() {
         {productsReady && products.length === 0 ? <p className="muted small">Add the product in Inventory first, then come back and record what you paid.</p> : null}
       </form>
 
-      <form className="card books-form" onSubmit={saveExpense}>
-        <h2>Bringing it in</h2>
+      <form className="card books-form expense-form" onSubmit={saveExpense}>
+        <h2>{editingExpenseId ? "Edit this cost" : "Bringing it in"}</h2>
         <div className="books-line expense">
           <label className="field">
             <span>Date</span>
@@ -338,7 +381,10 @@ export default function Purchases() {
             <span>Note</span>
             <input value={expenseNote} onChange={(event) => setExpenseNote(event.target.value)} placeholder="Vehicle fare, courier" maxLength={160} />
           </label>
-          <button className="btn wide" type="submit" disabled={savingExpense}>{savingExpense ? "Saving…" : "Save"}</button>
+          <div className="form-actions wide">
+            <button className="btn" type="submit" disabled={savingExpense}>{savingExpense ? "Saving…" : editingExpenseId ? "Update" : "Save"}</button>
+            {editingExpenseId ? <button className="btn secondary" type="button" onClick={clearExpenseForm}>Cancel</button> : null}
+          </div>
         </div>
       </form>
       </div>
@@ -468,7 +514,7 @@ export default function Purchases() {
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={editingId === row.id ? "selected" : undefined}>
                     <td data-label="Date">{dayLabel(row.boughtOn)}</td>
                     <td data-label="Product"><strong>{row.productName}</strong></td>
                     <td data-label="From">{row.boughtFrom || "—"}</td>
@@ -476,7 +522,12 @@ export default function Purchases() {
                     <td data-label="Cost each" className="num">{taka(row.unitCost)}</td>
                     <td data-label="Total" className="num">{taka(row.total)}</td>
                     <td data-label="Note">{row.note || "—"}</td>
-                    <td data-label=""><button type="button" className="text-btn" onClick={() => remove(row)}>Remove</button></td>
+                    <td data-label="">
+                      <div className="row-actions">
+                        <button type="button" className="text-btn" onClick={() => editPurchase(row)}>Edit</button>
+                        <button type="button" className="text-btn danger" onClick={() => remove(row)}>Remove</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -519,12 +570,17 @@ export default function Purchases() {
               </thead>
               <tbody>
                 {expenses.map((row) => (
-                  <tr key={row.id}>
+                  <tr key={row.id} className={editingExpenseId === row.id ? "selected" : undefined}>
                     <td data-label="Date">{dayLabel(row.spentOn)}</td>
                     <td data-label="What"><strong>{kindLabel(row.kind)}</strong></td>
                     <td data-label="Amount" className="num">{taka(row.amount)}</td>
                     <td data-label="Note">{row.note || "—"}</td>
-                    <td data-label=""><button type="button" className="text-btn" onClick={() => removeExpense(row)}>Remove</button></td>
+                    <td data-label="">
+                      <div className="row-actions">
+                        <button type="button" className="text-btn" onClick={() => editExpense(row)}>Edit</button>
+                        <button type="button" className="text-btn danger" onClick={() => removeExpense(row)}>Remove</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

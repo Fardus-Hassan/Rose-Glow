@@ -1038,6 +1038,10 @@ tr.selected { background: var(--rose-soft); }
 .books-line.expense { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .books-line .wide { grid-column: 1 / -1; }
 .books-line .btn { margin-bottom: 0; }
+.books-line .form-actions { display: flex; gap: 8px; }
+.books-line .form-actions .btn { flex: 1 1 auto; min-width: 0; }
+.books-page .row-actions { flex-wrap: nowrap; }
+.books-page .row-actions .text-btn { min-height: 32px; padding: 2px 4px; }
 .books-lookup { margin-bottom: 12px; }
 .lookup-bar {
   display: grid;
