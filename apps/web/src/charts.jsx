@@ -43,7 +43,7 @@ export function TrendChart({ points, from, to }) {
   const slot = innerW / buckets.length
   const stacked = monthly && slot < 48
   const top = 16
-  const bottom = monthly ? (stacked ? font + 28 : font + 16) : font * 2 + 16
+  const bottom = monthly ? (stacked ? font + 28 : font + 16) : font + 28
   const innerH = height - top - bottom
   const base = height - bottom
   const barW = Math.max(4, Math.min(28, slot * 0.46))
@@ -111,10 +111,10 @@ export function TrendChart({ points, from, to }) {
         )) : (
           <>
             {monthSpans(buckets).map((span) => (
-              <text key={`m-${span.month}`} x={(xAt(span.start) + xAt(span.end)) / 2} y={height - font - 12} textAnchor="middle" className="trend-label">{monthWord(span.month, (span.end - span.start + 1) * slot)}</text>
+              <text key={`m-${span.month}`} x={xAt(span.start) - slot / 2 + 2} y={height - font - 8} textAnchor="start" className="trend-label trend-month">{monthWord(span.month, (span.end - span.start + 1) * slot)}</text>
             ))}
             {ticks.map((index) => (
-              <text key={buckets[index].date} x={xAt(index)} y={height - 6} textAnchor="middle" className="trend-label">{parts(buckets[index].date).day}</text>
+              <text key={buckets[index].date} x={xAt(index)} y={height - 2} textAnchor="middle" className="trend-label">{parts(buckets[index].date).day}</text>
             ))}
           </>
         )}
@@ -138,10 +138,6 @@ export function TrendChart({ points, from, to }) {
           <span><i style={{ background: AMOUNT_COLOR }} />Sales <b>{taka(current.amount)}</b></span>
         </div>
       ) : null}
-      <div className="trend-legend">
-        <span><i className="bar" />Orders</span>
-        <span><i className="line" />Sales</span>
-      </div>
     </div>
   )
 }
