@@ -34,7 +34,12 @@ export default function BalancePill() {
     }
   }
 
-  const label = state === "loading" ? "Checking…" : state === "shown" ? taka(balance ?? 0).replace(/^৳/, "") : "Tap for balance"
+  const label = state === "loading" ? "Checking…" : state === "shown" ? taka(balance ?? 0).replace(/^৳/, "") : (
+    <>
+      <span className="balance-long">Tap for balance</span>
+      <span className="balance-short">Balance</span>
+    </>
+  )
 
   return (
     <button
