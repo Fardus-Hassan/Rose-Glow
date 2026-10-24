@@ -562,9 +562,10 @@ input:-webkit-autofill {
 .filter-groups { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .filter-pills {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   align-items: center;
+  padding: 12px 10px 0 0;
 }
 .filter-name { flex: none; color: var(--muted); font-size: 0.78rem; align-self: center; }
 .filter-pills .pill-btn {
@@ -573,21 +574,37 @@ input:-webkit-autofill {
   align-items: center;
   justify-content: center;
   line-height: 1.2;
-  padding: 12px 22px 7px 12px;
+  padding: 8px 14px;
   min-height: 40px;
+  overflow: visible;
 }
 .filter-pills .pill-count {
   position: absolute;
-  top: 3px;
-  right: 7px;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  transform: translate(40%, -55%);
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 209, 208, 0.5);
+  background: #3a2928;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   line-height: 1;
-  color: var(--ink);
+  pointer-events: none;
 }
-.filter-pills .pill-btn.active .pill-count { color: var(--gold); }
-.filter-pills .pill-label { font-size: 0.84rem; }
+.filter-pills .pill-btn.active .pill-count {
+  background: var(--rose-deep);
+  color: #2a1819;
+  border-color: transparent;
+}
+.filter-pills .pill-label { font-size: 0.9rem; }
 .check-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -883,6 +900,7 @@ tr.selected { background: var(--rose-soft); }
   .filter-pills {
     flex-wrap: nowrap;
     overflow-x: auto;
+    padding-top: 12px;
     padding-bottom: 2px;
     scrollbar-width: none;
   }
