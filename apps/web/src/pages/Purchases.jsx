@@ -41,6 +41,8 @@ export default function Purchases() {
   const [quantity, setQuantity] = useState("")
   const [unitCost, setUnitCost] = useState("")
   const [note, setNote] = useState("")
+  const [boughtFrom, setBoughtFrom] = useState("")
+  const [places, setPlaces] = useState([])
   const [spentOn, setSpentOn] = useState(todayISO)
   const [kind, setKind] = useState("vehicle")
   const [amount, setAmount] = useState("")
@@ -98,6 +100,7 @@ export default function Purchases() {
     setExpenseSum(body.expensesTotal)
     setSales(body.sales)
     setProfit(body.profit)
+    setPlaces(body.places || [])
   }
 
   function booksQuery(nextPage = page, nextSize = pageSize, nextExpensePage = expensePage, nextExpenseSize = expensePageSize) {
@@ -122,10 +125,11 @@ export default function Purchases() {
     try {
       await api("/api/purchases", {
         method: "POST",
-        body: { productId: Number(productId), boughtOn, quantity: Number(quantity), unitCost: Number(unitCost), note },
+        body: { productId: Number(productId), boughtOn, quantity: Number(quantity), unitCost: Number(unitCost), note, boughtFrom },
       })
       setQuantity("")
       setNote("")
+      setBoughtFrom("")
       setPage(1)
       const body = await api(`/api/purchases?${booksQuery(1, pageSize)}`)
       applyBooks(body)
@@ -240,6 +244,10 @@ export default function Purchases() {
               ))}
             </select>
           </label>
+          <label className="field span-2">
+            <span>From</span>
+            <input value={boughtFrom} onChange={(event) => setBoughtFrom(event.target.value)} placeholder="Shop, market, or person" maxLength={80} />
+          </label>
           <label className="field">
             <span>Pieces</span>
             <input type="number" min="1" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} required />
@@ -248,11 +256,11 @@ export default function Purchases() {
             <span>Cost each</span>
             <input type="number" min="0" step="1" value={unitCost} onChange={(event) => setUnitCost(event.target.value)} required />
           </label>
-          <label className="field span-2">
+          <button className="btn span-2" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : "Save"}</button>
+          <label className="field note-field">
             <span>Note</span>
             <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Optional" maxLength={160} />
           </label>
-          <button className="btn span-2" type="submit" disabled={saving || !productsReady || products.length === 0}>{saving ? "Saving…" : "Save"}</button>
         </div>
         {productsReady && products.length === 0 ? <p className="muted small">Add the product in Inventory first, then come back and record what you paid.</p> : null}
       </form>
@@ -304,6 +312,23 @@ export default function Purchases() {
         ) : null}
       </article>
 
+      {places.length > 0 ? (
+        <article className="card">
+          <div className="card-head">
+            <h2>Places</h2>
+          </div>
+          <ul className="stock-list">
+            {places.map((place) => (
+              <li key={place.place}>
+                <span>{place.place}</span>
+                <small>{place.lines} {place.lines === 1 ? "buy" : "buys"}</small>
+                <b>{taka(place.total)}</b>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
+
       <article className="card list-card purchase-list">
         <div className="card-head">
           <h2>Lines</h2>
@@ -315,6 +340,7 @@ export default function Purchases() {
                 <tr>
                   <th>Date</th>
                   <th>Product</th>
+                  <th>From</th>
                   <th className="num">Pieces</th>
                   <th className="num">Cost each</th>
                   <th className="num">Total</th>
@@ -327,6 +353,7 @@ export default function Purchases() {
                   <tr key={row.id}>
                     <td data-label="Date">{dayLabel(row.boughtOn)}</td>
                     <td data-label="Product"><strong>{row.productName}</strong></td>
+                    <td data-label="From">{row.boughtFrom || "—"}</td>
                     <td data-label="Pieces" className="num">{row.quantity}</td>
                     <td data-label="Cost each" className="num">{taka(row.unitCost)}</td>
                     <td data-label="Total" className="num">{taka(row.total)}</td>

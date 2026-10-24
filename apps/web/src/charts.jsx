@@ -252,6 +252,57 @@ export function StockMix({ cost, sell }) {
   )
 }
 
+const BOOK_SLICES = [
+  { id: "goods", name: "Goods", color: "#e4b3ae" },
+  { id: "vehicle", name: "Vehicle", color: "#e7c08a" },
+  { id: "courier", name: "Courier", color: "#3db8c9" },
+  { id: "other", name: "Other", color: "#a89490" },
+]
+
+export function BooksMix({ goods = 0, vehicle = 0, courier = 0, other = 0 }) {
+  const values = { goods, vehicle, courier, other }
+  const slices = BOOK_SLICES.map((slice) => ({ ...slice, value: Math.max(0, Number(values[slice.id]) || 0) })).filter((slice) => slice.value > 0)
+  const total = slices.reduce((sum, slice) => sum + slice.value, 0)
+  const radius = 46
+  const circ = 2 * Math.PI * radius
+  const gap = slices.length > 1 ? 3 : 0
+  let offset = 0
+  const segments = slices.map((slice) => {
+    const share = (slice.value / (total || 1)) * circ
+    const segment = { ...slice, length: Math.max(share - gap, 1), offset }
+    offset += share
+    return segment
+  })
+  return (
+    <div className="stock-mix">
+      <svg viewBox="0 0 148 148" role="img" aria-label="Goods and the cost of bringing them in">
+        <circle className="chart-track" cx="74" cy="74" r={radius} fill="none" strokeWidth="14" />
+        {total > 0 ? segments.map((segment) => (
+          <circle
+            key={segment.id}
+            cx="74"
+            cy="74"
+            r={radius}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth="14"
+            strokeDasharray={`${segment.length} ${circ - segment.length}`}
+            strokeDashoffset={-segment.offset}
+            transform="rotate(-90 74 74)"
+          />
+        )) : null}
+        <text x="74" y="70" textAnchor="middle" className="stock-mix-value">{taka(total)}</text>
+        <text x="74" y="88" textAnchor="middle" className="chart-caption">Brought in</text>
+      </svg>
+      <div className="stock-key">
+        {BOOK_SLICES.map((slice) => (
+          <span key={slice.id}><i style={{ background: slice.color }} />{slice.name}</span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function HBars({ rows, max }) {
   if (!rows.length) return null
   const peak = max || Math.max(...rows.map((row) => row.value), 1)

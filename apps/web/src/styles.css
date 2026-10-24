@@ -850,7 +850,7 @@ tr.selected { background: var(--rose-soft); }
 
 @media (max-width: 1100px) {
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .split, .order-layout, .detail { grid-template-columns: 1fr; }
+  .split, .order-layout, .detail, .chart-pair { grid-template-columns: 1fr; }
   .summary { position: static; }
   .order-create { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }
   .order-create .summary { position: sticky; top: 12px; }
@@ -1017,10 +1017,11 @@ tr.selected { background: var(--rose-soft); }
 .books-form h2 { margin: 0 0 12px; }
 .books-line {
   display: grid;
-  grid-template-columns: 150px minmax(140px, 1.3fr) 90px 110px minmax(120px, 1fr) auto;
+  grid-template-columns: 146px minmax(0, 1.15fr) minmax(0, 1fr) 84px 100px auto;
   gap: 8px;
   align-items: end;
 }
+.books-line .note-field { grid-column: 1 / -1; }
 .books-line .btn { margin-bottom: 0; }
 .books-line.expense { grid-template-columns: 150px minmax(140px, 0.7fr) 120px minmax(140px, 1fr) auto; }
 .day-book small { color: var(--muted); }
@@ -1048,7 +1049,17 @@ tr.selected { background: var(--rose-soft); }
 .stock-mix svg { width: 148px; height: auto; }
 .stock-mix-value { fill: var(--ink); font-size: 13px; font-family: var(--sans); font-variant-numeric: tabular-nums; }
 .stock-key, .stock-key span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; }
-.stock-key { gap: 14px; }
+.stock-key { gap: 14px; flex-wrap: wrap; justify-content: center; }
+.chart-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+.dash .chart-pair { gap: 10px; margin-bottom: 10px; }
+.pair-card .stock-kpis { grid-template-columns: 1fr 1fr; }
+.pair-card .stock-mix svg { width: min(168px, 100%); }
 .stock-key i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
 .stock-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
 .stock-list { list-style: none; margin: 0; padding: 0; }

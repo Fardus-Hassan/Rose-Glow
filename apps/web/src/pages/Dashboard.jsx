@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { STATUSES, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
-import { ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
+import { BooksMix, ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
 import DateRange from "../DateRange.jsx"
 import { rangeFor } from "../dates.js"
 import { taka, when } from "../format.js"
@@ -78,34 +78,6 @@ function Board({ data, go }) {
         <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={`Due to collect ${taka(data.dueAll)}`} />
       </div>
 
-      <article className="card stock-band">
-        <div className="card-head">
-          <div>
-            <h2>Books</h2>
-            <p className="muted small">Goods plus the cost of bringing them in. Profit comes off after that cost.</p>
-          </div>
-          <button type="button" className="text-btn" onClick={() => go("/purchases")}>Open books</button>
-        </div>
-        <div className="stock-kpis books-kpis">
-          <div>
-            <span>Goods</span>
-            <strong>{taka(data.books.goods)}</strong>
-          </div>
-          <div>
-            <span>Bringing in</span>
-            <strong>{taka(data.books.expenses)}</strong>
-          </div>
-          <div>
-            <span>Sold</span>
-            <strong>{taka(data.books.sales)}</strong>
-          </div>
-          <div>
-            <span>Profit</span>
-            <strong>{taka(data.books.profit)}</strong>
-          </div>
-        </div>
-      </article>
-
       <article className="card dash-block">
         <div className="card-head">
           <div>
@@ -157,60 +129,91 @@ function Board({ data, go }) {
         </article>
       </div>
 
-      <article className="card stock-band">
-        <div className="card-head">
-          <h2>Stock</h2>
-          <button type="button" className="text-btn" onClick={() => go("/inventory")}>Inventory</button>
-        </div>
-        <div className="stock-kpis">
-          <div>
-            <span>Total pieces</span>
-            <strong>{data.inventory.pieces}</strong>
+      <div className="chart-pair">
+        <article className="card stock-band pair-card">
+          <div className="card-head">
+            <h2>Stock</h2>
+            <button type="button" className="text-btn" onClick={() => go("/inventory")}>Inventory</button>
           </div>
-          <div>
-            <span>At cost</span>
-            <strong>{taka(data.inventory.costValue)}</strong>
+          <div className="stock-kpis">
+            <div>
+              <span>Total pieces</span>
+              <strong>{data.inventory.pieces}</strong>
+            </div>
+            <div>
+              <span>At cost</span>
+              <strong>{taka(data.inventory.costValue)}</strong>
+            </div>
+            <div>
+              <span>If sold</span>
+              <strong>{taka(data.inventory.sellValue)}</strong>
+            </div>
+            <div>
+              <span>Possible profit</span>
+              <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
+            </div>
           </div>
-          <div>
-            <span>If sold</span>
-            <strong>{taka(data.inventory.sellValue)}</strong>
-          </div>
-          <div>
-            <span>Possible profit</span>
-            <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
-          </div>
-        </div>
-        <div className="stock-body">
           <StockMix cost={data.inventory.costValue} sell={data.inventory.sellValue} />
-          <div className="stock-cols">
+        </article>
+        <article className="card stock-band pair-card">
+          <div className="card-head">
             <div>
-              <h3>Running low</h3>
-              {data.inventory.low.length === 0 ? (
-                <p className="muted small">Nothing at {data.inventory.lowAt} or below.</p>
-              ) : (
-                <ul className="stock-list">
-                  {data.inventory.low.map((item) => (
-                    <li key={item.id}>
-                      <span>{item.name}</span>
-                      <b className={item.stockQty === 0 ? "bad" : "warn"}>{item.stockQty}</b>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <h2>Books</h2>
+              <p className="muted small">Goods, vehicle, courier, and other costs</p>
+            </div>
+            <button type="button" className="text-btn" onClick={() => go("/purchases")}>Open books</button>
+          </div>
+          <div className="stock-kpis">
+            <div>
+              <span>Goods</span>
+              <strong>{taka(data.books.goods)}</strong>
             </div>
             <div>
-              <h3>Combos</h3>
-              {data.inventory.combos.length === 0 ? <p className="muted small">No combos.</p> : (
-                <ul className="stock-list">
-                  {data.inventory.combos.map((item) => (
-                    <li key={item.id}>
-                      <span>{item.name}</span>
-                      <b className={item.available === 0 ? "bad" : ""}>{item.available} sets</b>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <span>Bringing in</span>
+              <strong>{taka(data.books.expenses)}</strong>
             </div>
+            <div>
+              <span>Sold</span>
+              <strong>{taka(data.books.sales)}</strong>
+            </div>
+            <div>
+              <span>Profit</span>
+              <strong>{taka(data.books.profit)}</strong>
+            </div>
+          </div>
+          <BooksMix goods={data.books.goods} vehicle={data.books.vehicle} courier={data.books.courier} other={data.books.other} />
+        </article>
+      </div>
+
+      <article className="card stock-band">
+        <div className="stock-cols">
+          <div>
+            <h3>Running low</h3>
+            {data.inventory.low.length === 0 ? (
+              <p className="muted small">Nothing at {data.inventory.lowAt} or below.</p>
+            ) : (
+              <ul className="stock-list">
+                {data.inventory.low.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.name}</span>
+                    <b className={item.stockQty === 0 ? "bad" : "warn"}>{item.stockQty}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <h3>Combos</h3>
+            {data.inventory.combos.length === 0 ? <p className="muted small">No combos.</p> : (
+              <ul className="stock-list">
+                {data.inventory.combos.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.name}</span>
+                    <b className={item.available === 0 ? "bad" : ""}>{item.available} sets</b>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </article>

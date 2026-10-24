@@ -23,22 +23,29 @@ function assertDay(value) {
 const KINDS = new Set(["vehicle", "courier", "other"])
 
 export async function bookTotals() {
-  const [goods, expenses] = await Promise.all([
+  const [goods, kinds] = await Promise.all([
     pool.query(`SELECT COALESCE(SUM(quantity * unit_cost), 0)::float8 AS total FROM purchases`),
-    pool.query(`SELECT COALESCE(SUM(amount), 0)::float8 AS total FROM buying_expenses`),
+    pool.query(`SELECT kind, COALESCE(SUM(amount), 0)::float8 AS total FROM buying_expenses GROUP BY kind`),
   ])
+  const byKind = { vehicle: 0, courier: 0, other: 0 }
+  for (const row of kinds.rows) {
+    if (row.kind in byKind) byKind[row.kind] = Number(row.total)
+  }
   return {
     goods: Number(goods.rows[0].total),
-    expenses: Number(expenses.rows[0].total),
+    expenses: byKind.vehicle + byKind.courier + byKind.other,
+    vehicle: byKind.vehicle,
+    courier: byKind.courier,
+    other: byKind.other,
   }
 }
 
 export async function listPurchases({ limit, offset, expenseLimit, expenseOffset }) {
-  const [count, rows, expenseCount, expenseRows, totals, days] = await Promise.all([
+  const [count, rows, expenseCount, expenseRows, totals, places, days] = await Promise.all([
     pool.query(`SELECT COUNT(*)::int AS total FROM purchases`),
     pool.query(
       `SELECT p.id, p.product_id, pr.name AS product_name, p.bought_on::text AS bought_on,
-              p.quantity, p.unit_cost::float8 AS unit_cost, p.note,
+              p.quantity, p.unit_cost::float8 AS unit_cost, p.note, p.bought_from,
               (p.quantity * p.unit_cost)::float8 AS total
        FROM purchases p
        JOIN products pr ON pr.id = p.product_id
@@ -55,6 +62,14 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       [expenseLimit, expenseOffset],
     ),
     bookTotals(),
+    pool.query(
+      `SELECT bought_from AS place, COUNT(*)::int AS lines, COALESCE(SUM(quantity * unit_cost), 0)::float8 AS total
+       FROM purchases
+       WHERE bought_from <> ''
+       GROUP BY bought_from
+       ORDER BY total DESC, place
+       LIMIT 20`,
+    ),
     pool.query(
       `SELECT day::text AS day,
               COALESCE(SUM(pieces), 0)::int AS pieces,
@@ -83,6 +98,7 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       quantity: row.quantity,
       unitCost: Number(row.unit_cost),
       note: row.note,
+      boughtFrom: row.bought_from || "",
       total: Number(row.total),
     })),
     total: count.rows[0].total,
@@ -104,6 +120,11 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       expenses: Number(row.expenses),
       total: Number(row.goods) + Number(row.expenses),
     })),
+    places: places.rows.map((row) => ({
+      place: row.place,
+      lines: row.lines,
+      total: Number(row.total),
+    })),
   }
 }
 
@@ -113,13 +134,14 @@ export async function createPurchase(body) {
   const unitCost = money(body.unitCost)
   const boughtOn = assertDay(body.boughtOn)
   const note = noteText(body.note, 160)
+  const boughtFrom = noteText(body.boughtFrom, 80)
   if (!productId || productId <= 0) throw fail(400, "Choose a product")
   if (!quantity || quantity <= 0 || quantity > 100000) throw fail(400, "Enter how many pieces you bought")
   if (unitCost === null) throw fail(400, "Enter the cost of one piece")
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const id = await writePurchase(client, { productId, boughtOn, quantity, unitCost, note, addStock: true })
+    const id = await writePurchase(client, { productId, boughtOn, quantity, unitCost, note, boughtFrom, addStock: true })
     await client.query("COMMIT")
     return { id }
   } catch (error) {
@@ -130,7 +152,7 @@ export async function createPurchase(body) {
   }
 }
 
-export async function writePurchase(client, { productId, boughtOn, quantity, unitCost, note, addStock }) {
+export async function writePurchase(client, { productId, boughtOn, quantity, unitCost, note, boughtFrom = "", addStock }) {
   const locked = await client.query(
     `SELECT id, is_combo FROM products WHERE id = $1 FOR UPDATE`,
     [productId],
@@ -144,10 +166,10 @@ export async function writePurchase(client, { productId, boughtOn, quantity, uni
     )
   }
   const inserted = await client.query(
-    `INSERT INTO purchases (product_id, bought_on, quantity, unit_cost, note)
-     VALUES ($1, $2::date, $3, $4, $5)
+    `INSERT INTO purchases (product_id, bought_on, quantity, unit_cost, note, bought_from)
+     VALUES ($1, $2::date, $3, $4, $5, $6)
      RETURNING id`,
-    [productId, boughtOn, quantity, unitCost, note],
+    [productId, boughtOn, quantity, unitCost, note, boughtFrom],
   )
   return inserted.rows[0].id
 }

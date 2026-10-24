@@ -94,6 +94,9 @@ export async function dashboard() {
     books: {
       goods: booksMoney.goods,
       expenses: booksMoney.expenses,
+      vehicle: booksMoney.vehicle,
+      courier: booksMoney.courier,
+      other: booksMoney.other,
       broughtIn: booksMoney.goods + booksMoney.expenses,
       sales: allDue.sales,
       profit: allDue.profit - booksMoney.expenses,
