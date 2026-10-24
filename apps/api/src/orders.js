@@ -103,14 +103,11 @@ function readSourceId(body) {
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
+const COURIER_STATUS_ID = /^[a-z0-9_]{1,80}$/
+
 export async function listOrders({ status, q, source, from, to, limit, offset }) {
   const params = []
   const where = []
-  if (status && status !== "all") {
-    if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
-    params.push(status)
-    where.push(`o.status = $${params.length}`)
-  }
   if (source && source !== "all") {
     if (source === "none") where.push("o.source_id IS NULL")
     else {
@@ -138,14 +135,41 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     const exact = `$${params.length}`
     where.push(`(o.customer_name ILIKE ${like} ESCAPE '\\' OR o.mobile ILIKE ${like} ESCAPE '\\' OR CAST(o.id AS TEXT) = ${exact})`)
   }
+  const sharedParams = [...params]
+  const sharedWhere = [...where]
+  if (status && status !== "all") {
+    if (String(status).startsWith("sf:")) {
+      const courierStatus = String(status).slice(3)
+      if (!COURIER_STATUS_ID.test(courierStatus)) throw fail(400, "Status is not valid")
+      params.push(courierStatus)
+      where.push(`o.courier_status = $${params.length}`)
+    } else {
+      if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
+      params.push(status)
+      where.push(`o.status = $${params.length}`)
+    }
+  }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : ""
+  const facetWhere = [...sharedWhere, "o.courier_status IS NOT NULL", "o.courier_status <> ''"]
+  const facets = await pool.query(
+    `SELECT o.courier_status AS id, COUNT(*)::int AS count
+     FROM orders o
+     WHERE ${facetWhere.join(" AND ")}
+     GROUP BY o.courier_status
+     ORDER BY count DESC, o.courier_status`,
+    sharedParams,
+  )
   const count = await pool.query(`SELECT COUNT(*)::int AS total FROM orders o ${clause}`, params)
   params.push(limit, offset)
   const rows = await pool.query(
     `${ORDER_SELECT} ${clause} GROUP BY o.id ORDER BY o.ordered_at DESC, o.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   )
-  return { orders: rows.rows.map((row) => present(row)), total: count.rows[0].total }
+  return {
+    orders: rows.rows.map((row) => present(row)),
+    total: count.rows[0].total,
+    courierFilters: facets.rows,
+  }
 }
 
 async function catalogMaps(client) {

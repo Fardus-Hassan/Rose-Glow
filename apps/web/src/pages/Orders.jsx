@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
-import { STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
+import { COURIER_STATUSES, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -10,6 +10,12 @@ import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
+
+function matchesFilter(order, filter) {
+  if (filter === "all") return true
+  if (filter.startsWith("sf:")) return order.courierStatus === filter.slice(3)
+  return order.status === filter
+}
 
 export default function Orders() {
   const { go } = useRoute()
@@ -21,11 +27,12 @@ export default function Orders() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [data, setData] = useState(null)
+  const [courierFilters, setCourierFilters] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   function replaceOrder(next) {
-    const dropped = status !== "all" && next.status !== status
+    const dropped = !matchesFilter(next, status)
     if (dropped && data?.orders.length === 1 && page > 1) {
       setPage(page - 1)
       return
@@ -70,6 +77,7 @@ export default function Orders() {
             return
           }
           setData(body)
+          setCourierFilters(body.courierFilters || [])
         })
         .catch((reason) => { if (live) setError(reason.message) })
         .finally(() => { if (live) setLoading(false) })
@@ -85,6 +93,13 @@ export default function Orders() {
     return () => { live = false }
   }, [])
 
+  const knownIds = Object.keys(COURIER_STATUSES)
+  const extraIds = courierFilters.map((item) => item.id).filter((id) => !COURIER_STATUSES[id])
+  const selectedId = status.startsWith("sf:") ? status.slice(3) : ""
+  const courierPills = selectedId && !knownIds.includes(selectedId) && !extraIds.includes(selectedId)
+    ? [...knownIds, ...extraIds, selectedId]
+    : [...knownIds, ...extraIds]
+
   return (
     <section className="page">
       <div className="page-head">
@@ -96,12 +111,27 @@ export default function Orders() {
       </div>
       <Banner message={error} />
       <div className="filters">
-        <div className="filter-pills">
-          {FILTERS.map((item) => (
-            <button key={item.id} type="button" className={status === item.id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(item.id); setPage(1) }}>
-              {item.label}
-            </button>
-          ))}
+        <div className="filter-groups">
+          <div className="filter-pills">
+            {FILTERS.map((item) => (
+              <button key={item.id} type="button" className={status === item.id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(item.id); setPage(1) }}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {courierPills.length ? (
+            <div className="filter-pills courier-pills">
+              <span className="filter-name">Steadfast</span>
+              {courierPills.map((item) => {
+                const id = `sf:${item}`
+                return (
+                  <button key={id} type="button" className={status === id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(id); setPage(1) }}>
+                    {courierStatusLabel(item)}
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
         </div>
         <div className="filter-tools">
           <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="Name, mobile, or RG number" aria-label="Search" />

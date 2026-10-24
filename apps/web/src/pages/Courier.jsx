@@ -97,7 +97,7 @@ export default function Courier() {
           <h1>Steadfast</h1>
         </div>
       </div>
-      <p className="lede">Add the keys and a parcel is booked when an order is marked with the courier. Status changes show up in the bell. Steadfast has no test mode, so this is a real parcel.</p>
+      <p className="lede">Add the keys and a parcel is booked when an order is marked In courier. Status changes show up in the bell. Steadfast has no test mode, so this is a real parcel.</p>
       <Banner message={error} />
 
       <div className="split">
@@ -148,7 +148,7 @@ export default function Courier() {
         <div className="card-head">
           <h2>Parcels</h2>
         </div>
-        {parcels.length === 0 ? <p className="muted">No parcels booked yet. Mark an order as with the courier and it will be booked.</p> : null}
+        {parcels.length === 0 ? <p className="muted">No parcels booked yet. Mark an order as In courier and it will be booked.</p> : null}
         {parcels.length > 0 ? (
           <div className="table-card">
             <table>

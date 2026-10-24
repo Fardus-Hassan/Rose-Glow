@@ -1,7 +1,7 @@
 export const STATUSES = [
   { id: "new", label: "New", color: "#e4b3ae" },
   { id: "confirmed", label: "Confirmed", color: "#2d6d8a" },
-  { id: "courier", label: "With courier", color: "#6d4b8a" },
+  { id: "courier", label: "In courier", color: "#6d4b8a" },
   { id: "delivered", label: "Delivered", color: "#2d7a52" },
   { id: "cancelled", label: "Cancelled", color: "#8d847c" },
   { id: "returned", label: "Returned", color: "#a33d45" },
@@ -53,5 +53,6 @@ export const COURIER_STATUSES = {
 
 export function courierStatusLabel(id) {
   if (!id) return ""
-  return COURIER_STATUSES[id] || id
+  if (COURIER_STATUSES[id]) return COURIER_STATUSES[id]
+  return String(id).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
 }

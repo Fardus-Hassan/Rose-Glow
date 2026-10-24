@@ -559,11 +559,14 @@ input:-webkit-autofill {
 .sum.strong b { font-size: 1.25rem; }
 
 .filters { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.filter-groups { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .filter-pills {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
+.filter-name { flex: none; color: var(--muted); font-size: 0.78rem; }
 .filter-tools { display: flex; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; min-width: min(100%, 280px); }
 .filter-tools input { width: min(100%, 240px); }
 .filter-tools select { width: 148px; }
@@ -830,7 +833,7 @@ tr.selected { background: var(--rose-soft); }
   .chart { justify-items: center; }
   .chart ul { width: 100%; }
   .filters { flex-direction: column; align-items: stretch; width: 100%; min-width: 0; }
-  .filter-pills, .filter-tools { width: 100%; max-width: 100%; min-width: 0; }
+  .filter-groups, .filter-pills, .filter-tools { width: 100%; max-width: 100%; min-width: 0; }
   .filter-tools { flex-direction: column; align-items: stretch; }
   .filter-tools input, .filter-tools select, .range, .range-trigger { width: 100%; max-width: 100%; }
   .filter-pills {
