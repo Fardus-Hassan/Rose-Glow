@@ -8,7 +8,7 @@ import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
-const FILTERS = [{ id: "all", label: "সব" }, ...STATUSES]
+const FILTERS = [{ id: "all", label: "All" }, ...STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 
 export default function Orders() {
@@ -89,10 +89,10 @@ export default function Orders() {
     <section className="page">
       <div className="page-head">
         <div>
-          <p className="eyebrow">খোঁজ আর আপডেট</p>
-          <h1>সব অর্ডার</h1>
+          <p className="eyebrow">Search and updates</p>
+          <h1>All orders</h1>
         </div>
-        <button type="button" className="btn" onClick={() => go("/orders/new")}>নতুন অর্ডার</button>
+        <button type="button" className="btn" onClick={() => go("/orders/new")}>New order</button>
       </div>
       <Banner message={error} />
       <div className="filters">
@@ -104,11 +104,11 @@ export default function Orders() {
           ))}
         </div>
         <div className="filter-tools">
-          <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="নাম, মোবাইল বা RG নম্বর" aria-label="খোঁজ" />
-          <select aria-label="সোর্স" value={source} onChange={(event) => { setSource(event.target.value); setPage(1) }}>
-            <option value="all">সব সোর্স</option>
+          <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="Name, mobile, or RG number" aria-label="Search" />
+          <select aria-label="Source" value={source} onChange={(event) => { setSource(event.target.value); setPage(1) }}>
+            <option value="all">All sources</option>
             {sources.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            <option value="none">উল্লেখ নেই</option>
+            <option value="none">Not set</option>
           </select>
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
         </div>
@@ -116,47 +116,47 @@ export default function Orders() {
 
       <article className="card list-card" aria-busy={loading}>
         <div className="table-card">
-        {loading ? <p className="muted load-line">লোড হচ্ছে…</p> : null}
-        {!loading && data && data.orders.length === 0 ? <Empty title="কোনো অর্ডার নেই" text="এই খোঁজে কিছু মেলেনি।" /> : null}
+        {loading ? <p className="muted load-line">Loading…</p> : null}
+        {!loading && data && data.orders.length === 0 ? <Empty title="No orders" text="Nothing matched this search." /> : null}
         {!loading && data && data.orders.length > 0 ? (
           <table>
             <thead>
               <tr>
-                <th>অর্ডার</th>
-                <th>কাস্টমার</th>
-                <th>ঠিকানা</th>
-                <th>সোর্স</th>
-                <th>সময়</th>
-                <th>স্ট্যাটাস</th>
-                <th>মোট</th>
-                <th>বাকি</th>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Address</th>
+                <th>Source</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Due</th>
               </tr>
             </thead>
             <tbody>
               {data.orders.map((order) => (
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
-                  <td data-label="অর্ডার">
+                  <td data-label="Order">
                     <strong>{order.number}</strong>
                     {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
                   </td>
-                  <td data-label="কাস্টমার">
-                    <CopyText value={order.customerName} label="নাম" />
+                  <td data-label="Customer">
+                    <CopyText value={order.customerName} label="Name" />
                     <small>
-                      <CopyText value={order.mobile} label="নম্বর" />
+                      <CopyText value={order.mobile} label="Number" />
                       <br />
                       {order.courier}
                       {order.trackingCode ? <><br />{order.trackingCode}</> : null}
                       {order.courierStatus ? <><br />{courierStatusLabel(order.courierStatus)}</> : null}
                     </small>
                   </td>
-                  <td data-label="ঠিকানা"><CopyText value={order.address} label="ঠিকানা" className="copy-address" /></td>
-                  <td data-label="সোর্স">{order.sourceName || "—"}</td>
-                  <td data-label="সময়">{when(order.orderedAt)}</td>
-                  <td data-label="স্ট্যাটাস">
+                  <td data-label="Address"><CopyText value={order.address} label="Address" className="copy-address" /></td>
+                  <td data-label="Source">{order.sourceName || "—"}</td>
+                  <td data-label="Time">{when(order.orderedAt)}</td>
+                  <td data-label="Status">
                     <StatusMenu order={order} onChanged={replaceOrder} />
                   </td>
-                  <td data-label="মোট">{taka(order.total)}</td>
-                  <td data-label="বাকি" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
+                  <td data-label="Total">{taka(order.total)}</td>
+                  <td data-label="Due" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
                 </tr>
               ))}
             </tbody>
@@ -258,7 +258,7 @@ function StatusMenu({ order, onChanged }) {
         return
       }
       const restored = !holdsStock(nextStatus) && holdsStock(order.status)
-      toast.success(restored ? `${statusLabel(nextStatus)} হয়েছে। স্টক ফিরে এসেছে।` : `স্ট্যাটাস এখন ${statusLabel(nextStatus)}`)
+      toast.success(restored ? `Marked ${statusLabel(nextStatus)}. Stock is back.` : `Status is now ${statusLabel(nextStatus)}`)
       setOpen(false)
     } catch (reason) {
       toast.error(reason.message)
@@ -275,7 +275,7 @@ function StatusMenu({ order, onChanged }) {
         className={`pill pill-${order.status} status-trigger`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`${statusLabel(order.status)}, স্ট্যাটাস বদলান`}
+        aria-label={`${statusLabel(order.status)}, change status`}
         disabled={busy}
         onClick={() => setOpen((value) => !value)}
       >

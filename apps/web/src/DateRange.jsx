@@ -115,10 +115,10 @@ export default function DateRange({ value, onChange, allowAll = false }) {
         <span>{formatRange(value)}</span>
       </button>
       {open && spot ? createPortal(
-        <div className="range-pop" ref={pop} style={{ top: spot.top, left: spot.left, width: spot.width, maxHeight: spot.maxHeight }} role="dialog" aria-label="তারিখের পরিসর">
+        <div className="range-pop" ref={pop} style={{ top: spot.top, left: spot.left, width: spot.width, maxHeight: spot.maxHeight }} role="dialog" aria-label="Date range">
           <div className="range-body">
             <div className="range-presets">
-              {allowAll ? <button type="button" className={preset === "all" ? "active" : ""} onClick={() => choosePreset("all")}>সব সময়</button> : null}
+              {allowAll ? <button type="button" className={preset === "all" ? "active" : ""} onClick={() => choosePreset("all")}>All time</button> : null}
               {PRESETS.map((item) => (
                 <button key={item.id} type="button" className={preset === item.id ? "active" : ""} onClick={() => choosePreset(item.id)}>{item.label}</button>
               ))}
@@ -129,10 +129,10 @@ export default function DateRange({ value, onChange, allowAll = false }) {
             </div>
           </div>
           <div className="range-foot">
-            <span>{draft ? `${formatDay(draft.from)} – ${formatDay(draft.to)}` : "সব সময়"}</span>
+            <span>{draft ? `${formatDay(draft.from)} – ${formatDay(draft.to)}` : "All time"}</span>
             <div>
-              <button type="button" className="btn secondary" onClick={() => setOpen(false)}>বাতিল</button>
-              <button type="button" className="btn" disabled={preset !== "all" && !draft} onClick={() => { onChange(draft); setOpen(false) }}>প্রয়োগ</button>
+              <button type="button" className="btn secondary" onClick={() => setOpen(false)}>Cancel</button>
+              <button type="button" className="btn" disabled={preset !== "all" && !draft} onClick={() => { onChange(draft); setOpen(false) }}>Apply</button>
             </div>
           </div>
         </div>,
@@ -146,9 +146,9 @@ function Month({ year, month, preview, today, onPick, onHover, onPrev, onNext })
   return (
     <div className="cal">
       <div className="cal-head">
-        {onPrev ? <button type="button" aria-label="আগের মাস" onClick={onPrev}>‹</button> : <span />}
+        {onPrev ? <button type="button" aria-label="Previous month" onClick={onPrev}>‹</button> : <span />}
         <strong>{monthTitle(year, month)}</strong>
-        {onNext ? <button type="button" className="next-month" aria-label="পরের মাস" onClick={onNext}>›</button> : <span />}
+        {onNext ? <button type="button" className="next-month" aria-label="Next month" onClick={onNext}>›</button> : <span />}
       </div>
       <div className="cal-grid cal-week">
         {weekdayLabels().map((label) => <span key={label}>{label}</span>)}

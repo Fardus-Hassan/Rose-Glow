@@ -65,7 +65,7 @@ export default function Notifications() {
       <button
         type="button"
         className="bell-btn"
-        aria-label={feed.unread ? `নোটিফিকেশন, ${feed.unread}টা নতুন` : "নোটিফিকেশন"}
+        aria-label={feed.unread ? `Notifications, ${feed.unread} new` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
@@ -73,12 +73,12 @@ export default function Notifications() {
         {feed.unread > 0 ? <span className="bell-count">{feed.unread > 9 ? "9+" : feed.unread}</span> : null}
       </button>
       {open ? (
-        <div className="bell-panel card" role="dialog" aria-label="পার্সেল নোটিফিকেশন">
+        <div className="bell-panel card" role="dialog" aria-label="Parcel notifications">
           <div className="card-head">
-            <h2>পার্সেল</h2>
-            {feed.unread > 0 ? <button type="button" className="text-btn" onClick={readAll}>সব পড়া হয়েছে</button> : null}
+            <h2>Parcels</h2>
+            {feed.unread > 0 ? <button type="button" className="text-btn" onClick={readAll}>Mark all read</button> : null}
           </div>
-          {feed.items.length === 0 ? <p className="muted">এখনো কোনো আপডেট নেই।</p> : null}
+          {feed.items.length === 0 ? <p className="muted">No updates yet.</p> : null}
           <ul className="bell-list">
             {feed.items.map((item) => (
               <li key={item.id}>

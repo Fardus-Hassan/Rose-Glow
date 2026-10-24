@@ -22,7 +22,7 @@ import {
 
 function idFrom(req) {
   const id = whole(Number(req.params.id))
-  if (!id || id <= 0) throw fail(400, "নম্বরটা ঠিক নেই")
+  if (!id || id <= 0) throw fail(400, "That number is not valid")
   return id
 }
 
@@ -173,7 +173,7 @@ export function mount(app) {
   }))
 
   app.use("/api", (req, res) => {
-    res.status(404).json({ error: "এই ঠিকানা পাওয়া যায়নি" })
+    res.status(404).json({ error: "That address was not found" })
   })
 
   app.use((error, req, res, next) => {
@@ -181,7 +181,7 @@ export function mount(app) {
     const status = error.status || 500
     if (status >= 500) console.error(error)
     const offline = ["ECONNREFUSED", "ENOTFOUND", "57P01", "28P01", "3D000"].includes(error.code)
-    const message = offline ? "ডেটাবেসে যোগাযোগ করা যাচ্ছে না" : status >= 500 ? "সার্ভারে সমস্যা হয়েছে" : error.message
+    const message = offline ? "Cannot reach the database" : status >= 500 ? "Something went wrong on the server" : error.message
     res.status(status).json({ error: message })
   })
 }

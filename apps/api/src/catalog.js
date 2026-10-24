@@ -56,20 +56,20 @@ export async function loadCatalog(client = pool) {
 
 function readComponents(body, catalog) {
   if (!Array.isArray(body.items) || body.items.length === 0) {
-    throw fail(400, "কম্বোতে কোন পণ্য যাবে সেটা দিন")
+    throw fail(400, "Choose which products go in the combo")
   }
   const merged = new Map()
   for (const item of body.items) {
     const productId = whole(item.productId)
     const quantity = whole(item.quantity)
     const product = catalog.find((entry) => entry.id === productId)
-    if (!product || product.isCombo) throw fail(400, "কম্বোর ভিতরে আরেকটা কম্বো যাবে না")
-    if (!quantity || quantity <= 0 || quantity > 99) throw fail(400, "কম্বোর পিস ঠিকমতো দিন")
+    if (!product || product.isCombo) throw fail(400, "A combo cannot contain another combo")
+    if (!quantity || quantity <= 0 || quantity > 99) throw fail(400, "Enter a valid quantity for the combo")
     merged.set(productId, (merged.get(productId) || 0) + quantity)
   }
   const items = [...merged].map(([productId, quantity]) => ({ productId, quantity }))
   const pieces = items.reduce((sum, item) => sum + item.quantity, 0)
-  if (pieces < 2) throw fail(400, "কম্বোতে অন্তত দুই পিস মাল লাগবে")
+  if (pieces < 2) throw fail(400, "A combo needs at least two pieces")
   return items
 }
 
@@ -78,9 +78,9 @@ export async function createProduct(body) {
   const costPrice = money(body.costPrice)
   const sellPrice = money(body.sellPrice)
   const stockQty = whole(body.stockQty, 0)
-  if (!name) throw fail(400, "পণ্যের নাম দিন")
-  if (costPrice === null || sellPrice === null) throw fail(400, "দাম ঠিকমতো দিন")
-  if (stockQty === null || stockQty < 0 || stockQty > 100000) throw fail(400, "স্টক পুরো সংখ্যায় দিন")
+  if (!name) throw fail(400, "Enter a product name")
+  if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
+  if (stockQty === null || stockQty < 0 || stockQty > 100000) throw fail(400, "Enter stock as a whole number")
   const inserted = await pool.query(
     `INSERT INTO products (name, cost_price, sell_price, stock_qty, is_combo)
      VALUES ($1, $2, $3, $4, FALSE)
@@ -95,8 +95,8 @@ export async function updateProduct(id, body) {
   const name = cleanName(body.name)
   const costPrice = money(body.costPrice)
   const sellPrice = money(body.sellPrice)
-  if (!name) throw fail(400, "পণ্যের নাম দিন")
-  if (costPrice === null || sellPrice === null) throw fail(400, "দাম ঠিকমতো দিন")
+  if (!name) throw fail(400, "Enter a product name")
+  if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
   const updated = await pool.query(
     `UPDATE products
      SET name = $2, cost_price = $3, sell_price = $4
@@ -104,7 +104,7 @@ export async function updateProduct(id, body) {
      RETURNING id`,
     [id, name, costPrice, sellPrice],
   )
-  if (!updated.rows[0]) throw fail(404, "পণ্য পাওয়া যায়নি")
+  if (!updated.rows[0]) throw fail(404, "Product was not found")
   const catalog = await loadCatalog()
   return catalog.find((item) => item.id === id)
 }
@@ -112,7 +112,7 @@ export async function updateProduct(id, body) {
 export async function adjustStock(id, body) {
   const delta = whole(body.delta)
   if (delta === null || delta === 0 || Math.abs(delta) > 100000) {
-    throw fail(400, "কত পিস যোগ বা বিয়োগ হবে সেটা দিন")
+    throw fail(400, "Enter how many pieces to add or remove")
   }
   const updated = await pool.query(
     `UPDATE products
@@ -121,7 +121,7 @@ export async function adjustStock(id, body) {
      RETURNING id`,
     [id, delta],
   )
-  if (!updated.rows[0]) throw fail(400, "স্টক শূন্যের নিচে নামানো যাবে না")
+  if (!updated.rows[0]) throw fail(400, "Stock cannot go below zero")
   const catalog = await loadCatalog()
   return catalog.find((item) => item.id === id)
 }
@@ -129,8 +129,8 @@ export async function adjustStock(id, body) {
 export async function createCombo(body) {
   const name = cleanName(body.name)
   const sellPrice = money(body.sellPrice)
-  if (!name) throw fail(400, "কম্বোর নাম দিন")
-  if (sellPrice === null) throw fail(400, "কম্বোর বিক্রির দাম দিন")
+  if (!name) throw fail(400, "Enter a combo name")
+  if (sellPrice === null) throw fail(400, "Enter the combo's selling price")
   const catalog = await loadCatalog()
   const items = readComponents(body, catalog)
   const client = await pool.connect()
@@ -164,11 +164,11 @@ export async function createCombo(body) {
 export async function updateCombo(id, body) {
   const name = cleanName(body.name)
   const sellPrice = money(body.sellPrice)
-  if (!name) throw fail(400, "কম্বোর নাম দিন")
-  if (sellPrice === null) throw fail(400, "কম্বোর বিক্রির দাম দিন")
+  if (!name) throw fail(400, "Enter a combo name")
+  if (sellPrice === null) throw fail(400, "Enter the combo's selling price")
   const catalog = await loadCatalog()
   const existing = catalog.find((item) => item.id === id && item.isCombo)
-  if (!existing) throw fail(404, "কম্বো পাওয়া যায়নি")
+  if (!existing) throw fail(404, "Combo was not found")
   const items = readComponents(body, catalog)
   const client = await pool.connect()
   try {
@@ -195,9 +195,9 @@ export async function updateCombo(id, body) {
 export async function deleteProduct(id) {
   const catalog = await loadCatalog()
   const product = catalog.find((item) => item.id === id)
-  if (!product) throw fail(404, "পণ্য পাওয়া যায়নি")
+  if (!product) throw fail(404, "Product was not found")
   const usedInCombo = catalog.some((item) => item.components.some((part) => part.productId === id))
-  if (usedInCombo) throw fail(400, "এই পণ্য একটা কম্বোতে আছে, আগে কম্বো থেকে সরান")
+  if (usedInCombo) throw fail(400, "This product is in a combo. Remove it from the combo first")
   const used = await pool.query(
     `SELECT 1 FROM order_items WHERE product_id = $1
      UNION ALL
@@ -205,7 +205,7 @@ export async function deleteProduct(id) {
      LIMIT 1`,
     [id],
   )
-  if (used.rows[0]) throw fail(400, "এই পণ্যের অর্ডার আছে, মুছে ফেলা যাবে না")
+  if (used.rows[0]) throw fail(400, "This product has orders, so it cannot be deleted")
   await pool.query(`DELETE FROM products WHERE id = $1`, [id])
 }
 

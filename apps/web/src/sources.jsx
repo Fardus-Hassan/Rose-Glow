@@ -9,11 +9,11 @@ export function SourceField({ value, onChange, sources, onSources, required = fa
     <>
       <label className="field span-2">
         <span className="label-line">
-          সোর্স
-          <button type="button" className="icon-add" aria-label="সোর্স যোগ বা বদলান" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen(true)}>+</button>
+          Source
+          <button type="button" className="icon-add" aria-label="Add or edit sources" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen(true)}>+</button>
         </span>
         <select value={value} required={required} onChange={(event) => onChange(event.target.value)}>
-          <option value="">বেছে নিন</option>
+          <option value="">Choose</option>
           {sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
         </select>
       </label>
@@ -50,7 +50,7 @@ function SourceModal({ sources, onSources, onRemoved, onClose }) {
   async function add() {
     const next = name.trim()
     if (next.length < 2) {
-      setError("সোর্সের নাম দিন")
+      setError("Enter a source name")
       return
     }
     setBusy(true)
@@ -70,13 +70,13 @@ function SourceModal({ sources, onSources, onRemoved, onClose }) {
     <div className="modal-back" role="presentation" onClick={onClose}>
       <div className="modal source-modal" role="dialog" aria-modal="true" aria-labelledby="source-title" onClick={(event) => event.stopPropagation()}>
         <div className="card-head">
-          <h2 id="source-title">সোর্স</h2>
-          <button type="button" className="text-btn" onClick={onClose}>বন্ধ</button>
+          <h2 id="source-title">Sources</h2>
+          <button type="button" className="text-btn" onClick={onClose}>Close</button>
         </div>
         <Banner message={error} />
         <div className="source-add">
-          <input value={name} placeholder="নতুন সোর্স" aria-label="নতুন সোর্স" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add() } }} />
-          <button type="button" className="btn" disabled={busy} onClick={add}>যোগ</button>
+          <input value={name} placeholder="New source" aria-label="New source" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add() } }} />
+          <button type="button" className="btn" disabled={busy} onClick={add}>Add</button>
         </div>
         <ul className="source-list">
           {sources.map((source) => (
@@ -140,13 +140,13 @@ function SourceRow({ source, onSaved, onDeleted, onError }) {
     <li>
       <input
         value={name}
-        aria-label={`${source.name} বদলান`}
+        aria-label={`Edit ${source.name}`}
         disabled={busy}
         onChange={(event) => setName(event.target.value)}
         onBlur={commit}
         onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); event.currentTarget.blur() } }}
       />
-      <button type="button" className="text-btn danger" disabled={busy} onClick={remove} aria-label={`${source.name} মুছুন`}>মুছুন</button>
+      <button type="button" className="text-btn danger" disabled={busy} onClick={remove} aria-label={`Delete ${source.name}`}>Delete</button>
     </li>
   )
 }

@@ -25,13 +25,13 @@ export default function Dashboard() {
     <section className="page dash">
       <div className="page-head">
         <div>
-          <p className="eyebrow">আজকের খাতা</p>
-          <h1>ড্যাশবোর্ড</h1>
+          <p className="eyebrow">Today's books</p>
+          <h1>Dashboard</h1>
         </div>
-        <button type="button" className="btn" onClick={() => go("/orders/new")}>নতুন অর্ডার</button>
+        <button type="button" className="btn" onClick={() => go("/orders/new")}>New order</button>
       </div>
       <Banner message={error} />
-      {!data && !error ? <p className="muted">লোড হচ্ছে…</p> : null}
+      {!data && !error ? <p className="muted">Loading…</p> : null}
       {data ? <Board data={data} go={go} /> : null}
     </section>
   )
@@ -57,7 +57,7 @@ function useStats(range) {
 }
 
 function ChartSlot({ stats, loading, error, children }) {
-  if (loading || !stats) return error && !loading ? null : <p className="muted load-line">লোড হচ্ছে…</p>
+  if (loading || !stats) return error && !loading ? null : <p className="muted load-line">Loading…</p>
   return children(stats)
 }
 
@@ -72,17 +72,17 @@ function Board({ data, go }) {
   return (
     <>
       <div className="stats">
-        <Stat kicker="আজ" label="বিক্রি" value={taka(data.today.sales)} note={`${data.today.orders}টা অর্ডার · ডেলিভারি ${taka(data.today.delivery)}`} />
-        <Stat kicker="আজ" label="লাভ" value={taka(data.today.profit)} note="বিক্রি থেকে কেনার দাম আর আপনার ডেলিভারি বাদ" />
-        <Stat kicker="এই মাস" label="বিক্রি" value={taka(data.month.sales)} note={`${data.month.orders}টা অর্ডার`} />
-        <Stat kicker="এই মাস" label="লাভ" value={taka(data.month.profit)} note={`বাকি আদায় ${taka(data.dueAll)}`} />
+        <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
+        <Stat kicker="Today" label="Profit" value={taka(data.today.profit)} note="Sales minus cost and the delivery you pay" />
+        <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders`} />
+        <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={`Due to collect ${taka(data.dueAll)}`} />
       </div>
 
       <article className="card dash-block">
         <div className="card-head">
           <div>
-            <h2>অর্ডারের ধারা</h2>
-            <p className="muted small">বাতিল ও রিটার্ন বাদ</p>
+            <h2>Order trend</h2>
+            <p className="muted small">Cancelled and returned left out</p>
           </div>
           <DateRange value={trendRange} onChange={setTrendRange} />
         </div>
@@ -91,8 +91,8 @@ function Board({ data, go }) {
           {(stats) => (
             <>
               <div className="trend-kpis">
-                <span>অর্ডার <b>{stats.orders}</b></span>
-                <span>বিক্রি <b>{taka(stats.amount)}</b></span>
+                <span>Orders <b>{stats.orders}</b></span>
+                <span>Sales <b>{taka(stats.amount)}</b></span>
               </div>
               <TrendChart points={stats.points} from={trendRange.from} to={trendRange.to} />
             </>
@@ -104,8 +104,8 @@ function Board({ data, go }) {
         <article className="card">
           <div className="card-head">
             <div>
-              <h2>সোর্স</h2>
-              <p className="muted small">কোন জায়গা থেকে কত অর্ডার</p>
+              <h2>Sources</h2>
+              <p className="muted small">How many orders came from each place</p>
             </div>
             <DateRange value={sourceRange} onChange={setSourceRange} />
           </div>
@@ -117,8 +117,8 @@ function Board({ data, go }) {
         <article className="card">
           <div className="card-head">
             <div>
-              <h2>স্ট্যাটাস</h2>
-              <p className="muted small">{openCount}টা এখনো খোলা</p>
+              <h2>Status</h2>
+              <p className="muted small">{openCount} still open</p>
             </div>
             <DateRange value={statusRange} onChange={setStatusRange} />
           </div>
@@ -131,24 +131,24 @@ function Board({ data, go }) {
 
       <article className="card stock-band">
         <div className="card-head">
-          <h2>স্টক</h2>
-          <button type="button" className="text-btn" onClick={() => go("/inventory")}>ইনভেন্টরি</button>
+          <h2>Stock</h2>
+          <button type="button" className="text-btn" onClick={() => go("/inventory")}>Inventory</button>
         </div>
         <div className="stock-kpis">
           <div>
-            <span>মোট পিস</span>
+            <span>Total pieces</span>
             <strong>{data.inventory.pieces}</strong>
           </div>
           <div>
-            <span>কেনা দামে</span>
+            <span>At cost</span>
             <strong>{taka(data.inventory.costValue)}</strong>
           </div>
           <div>
-            <span>বিক্রি হলে</span>
+            <span>If sold</span>
             <strong>{taka(data.inventory.sellValue)}</strong>
           </div>
           <div>
-            <span>সম্ভাব্য লাভ</span>
+            <span>Possible profit</span>
             <strong>{taka(data.inventory.sellValue - data.inventory.costValue)}</strong>
           </div>
         </div>
@@ -156,9 +156,9 @@ function Board({ data, go }) {
           <StockMix cost={data.inventory.costValue} sell={data.inventory.sellValue} />
           <div className="stock-cols">
             <div>
-              <h3>কম আছে</h3>
+              <h3>Running low</h3>
               {data.inventory.low.length === 0 ? (
-                <p className="muted small">{data.inventory.lowAt} বা কম নেই।</p>
+                <p className="muted small">Nothing at {data.inventory.lowAt} or below.</p>
               ) : (
                 <ul className="stock-list">
                   {data.inventory.low.map((item) => (
@@ -171,13 +171,13 @@ function Board({ data, go }) {
               )}
             </div>
             <div>
-              <h3>কম্বো</h3>
-              {data.inventory.combos.length === 0 ? <p className="muted small">কম্বো নেই।</p> : (
+              <h3>Combos</h3>
+              {data.inventory.combos.length === 0 ? <p className="muted small">No combos.</p> : (
                 <ul className="stock-list">
                   {data.inventory.combos.map((item) => (
                     <li key={item.id}>
                       <span>{item.name}</span>
-                      <b className={item.available === 0 ? "bad" : ""}>{item.available} সেট</b>
+                      <b className={item.available === 0 ? "bad" : ""}>{item.available} sets</b>
                     </li>
                   ))}
                 </ul>
@@ -189,38 +189,38 @@ function Board({ data, go }) {
 
       <article className="card">
         <div className="card-head">
-          <h2>সাম্প্রতিক অর্ডার <span className="muted small">শেষ ১০টা</span></h2>
-          <button type="button" className="text-btn" onClick={() => go("/orders")}>সব দেখুন</button>
+          <h2>Recent orders <span className="muted small">Last 10</span></h2>
+          <button type="button" className="text-btn" onClick={() => go("/orders")}>See all</button>
         </div>
         {data.recent.length === 0 ? (
-          <Empty title="এখনো অর্ডার নেই" text="প্রথম অর্ডার দিলে এখানে হিসাব দেখা যাবে।" />
+          <Empty title="No orders yet" text="The first order will show up here." />
         ) : (
           <div className="table-card">
             <table>
               <thead>
                 <tr>
-                  <th>অর্ডার</th>
-                  <th>কাস্টমার</th>
-                  <th>সোর্স</th>
-                  <th>সময়</th>
-                  <th>স্ট্যাটাস</th>
-                  <th>মোট</th>
-                  <th>বাকি</th>
+                  <th>Order</th>
+                  <th>Customer</th>
+                  <th>Source</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Due</th>
                 </tr>
               </thead>
               <tbody>
                 {data.recent.map((order) => (
                   <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
-                    <td data-label="অর্ডার"><strong>{order.number}</strong></td>
-                    <td data-label="কাস্টমার">
+                    <td data-label="Order"><strong>{order.number}</strong></td>
+                    <td data-label="Customer">
                       {order.customerName}
                       <small>{order.mobile}<br />{order.courier}</small>
                     </td>
-                    <td data-label="সোর্স">{order.sourceName || "—"}</td>
-                    <td data-label="সময়">{when(order.orderedAt)}</td>
-                    <td data-label="স্ট্যাটাস"><StatusPill status={order.status} /></td>
-                    <td data-label="মোট">{taka(order.total)}</td>
-                    <td data-label="বাকি" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
+                    <td data-label="Source">{order.sourceName || "—"}</td>
+                    <td data-label="Time">{when(order.orderedAt)}</td>
+                    <td data-label="Status"><StatusPill status={order.status} /></td>
+                    <td data-label="Total">{taka(order.total)}</td>
+                    <td data-label="Due" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -246,10 +246,10 @@ function Stat({ kicker, label, value, note }) {
 function StatusChart({ counts }) {
   const slices = STATUSES.map((status) => ({ id: status.id, name: status.label, value: counts[status.id] || 0, color: status.color }))
   const total = slices.reduce((sum, item) => sum + item.value, 0)
-  if (!total) return <p className="muted chart-empty">এই সময়ে কোনো অর্ডার নেই।</p>
+  if (!total) return <p className="muted chart-empty">No orders in this period.</p>
   return (
     <div className="chart">
-      <ShareDonut slices={slices} label="অর্ডার" />
+      <ShareDonut slices={slices} label="Orders" />
       <ul className="status-key">
         {slices.map((status) => (
           <li key={status.id}>

@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEq
 
 function key() {
   const raw = process.env.DATABASE_URL || ""
-  if (!raw) throw new Error("DATABASE_URL নেই")
+  if (!raw) throw new Error("DATABASE_URL is missing")
   return createHash("sha256").update(`rose-glow:courier:v1:${raw}`).digest()
 }
 
@@ -16,7 +16,7 @@ export function seal(text) {
 
 export function open(payload) {
   const buf = Buffer.from(payload, "base64url")
-  if (buf.length < 29) throw new Error("সেভ করা কী পড়া যায়নি")
+  if (buf.length < 29) throw new Error("Saved key could not be read")
   const iv = buf.subarray(0, 12)
   const tag = buf.subarray(12, 28)
   const body = buf.subarray(28)

@@ -112,8 +112,8 @@ function daySpan(from, to) {
 }
 
 export async function rangeStats(from, to) {
-  if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "তারিখ ঠিক নেই")
-  if (daySpan(from, to) > 800) throw fail(400, "তারিখের পরিসর ৮০০ দিনের মধ্যে রাখুন")
+  if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
+  if (daySpan(from, to) > 800) throw fail(400, "Keep the date range within 800 days")
   const countable = `o.status NOT IN ('cancelled', 'returned') AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
   const [pointRows, sourceRows, statusRows] = await Promise.all([
     pool.query(
@@ -133,7 +133,7 @@ export async function rangeStats(from, to) {
     pool.query(
       `SELECT source_id, name, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
        FROM (
-         SELECT o.source_id, COALESCE(src.name, 'উল্লেখ নেই') AS name, o.discount,
+         SELECT o.source_id, COALESCE(src.name, 'Not set') AS name, o.discount,
                 COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods
          FROM orders o
          JOIN order_items oi ON oi.order_id = o.id

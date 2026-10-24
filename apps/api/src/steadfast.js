@@ -19,7 +19,7 @@ export async function steadfast(keys, path, { method = "GET", body } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     })
     if (response.status >= 300 && response.status < 400) {
-      throw fail(502, "Steadfast অন্য ঠিকানায় পাঠিয়েছে, কী পাঠানো হয়নি")
+      throw fail(502, "Steadfast redirected the request, so the keys were not sent")
     }
     const text = await response.text()
     let data = {}
@@ -27,15 +27,15 @@ export async function steadfast(keys, path, { method = "GET", body } = {}) {
       try {
         data = JSON.parse(text)
       } catch {
-        throw fail(502, "Steadfast থেকে উত্তর পড়া যায়নি")
+        throw fail(502, "Could not read Steadfast's reply")
       }
     }
     const code = Number(data.status)
     const rejected = !response.ok || (Number.isInteger(code) && code >= 400)
     if (rejected) {
-      if (response.status === 401 || code === 401) throw fail(400, "Steadfast-এর API কী বা সিক্রেট মেলেনি")
-      if (response.status === 403 || code === 403) throw fail(400, "Steadfast অ্যাকাউন্ট এখন অর্ডার নিতে পারছে না")
-      const message = firstMessage(data) || "Steadfast এই অনুরোধ নেয়নি"
+      if (response.status === 401 || code === 401) throw fail(400, "The Steadfast API key or secret does not match")
+      if (response.status === 403 || code === 403) throw fail(400, "This Steadfast account cannot take orders right now")
+      const message = firstMessage(data) || "Steadfast rejected this request"
       const error = fail(response.status === 422 || code === 422 ? 400 : 502, message)
       error.steadfastStatus = response.status
       throw error
@@ -43,8 +43,8 @@ export async function steadfast(keys, path, { method = "GET", body } = {}) {
     return data
   } catch (error) {
     if (error.status) throw error
-    if (error.name === "AbortError") throw fail(504, "Steadfast দেরি করছে, একটু পরে আবার চেষ্টা করুন")
-    throw fail(502, "Steadfast-এ যোগাযোগ হচ্ছে না")
+    if (error.name === "AbortError") throw fail(504, "Steadfast is taking too long. Try again in a moment")
+    throw fail(502, "Could not reach Steadfast")
   } finally {
     clearTimeout(timer)
   }
@@ -76,7 +76,7 @@ export function readStatus(data) {
 export function readConsignment(data) {
   const row = data.consignment || data.data || data
   const id = Number(row.consignment_id)
-  if (!Number.isInteger(id) || id <= 0) throw fail(502, "Steadfast পার্সেল নম্বর দেয়নি")
+  if (!Number.isInteger(id) || id <= 0) throw fail(502, "Steadfast did not return a parcel number")
   const code = String(row.tracking_code || "").trim()
   const link = String(row.tracking_link || (code ? `https://steadfast.com.bd/t/${code}` : "")).trim()
   return { id, code, link, status: String(row.status || "in_review").trim().toLowerCase() }

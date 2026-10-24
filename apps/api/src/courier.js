@@ -17,7 +17,7 @@ export async function bookIfNeeded(order) {
   try {
     await bookOrder(order.id)
   } catch (error) {
-    const message = error.status && error.status < 500 ? error.message : (error.message || "Steadfast-এ পাঠানো যায়নি")
+    const message = error.status && error.status < 500 ? error.message : (error.message || "Could not send to Steadfast")
     await pool.query(
       `UPDATE orders SET courier_error = $2 WHERE id = $1 AND consignment_id IS NULL`,
       [order.id, message],
@@ -28,8 +28,8 @@ export async function bookIfNeeded(order) {
 
 export async function bookOrder(id) {
   const order = await getOrder(id)
-  if (!isSteadfast(order.courier)) throw fail(400, "কুরিয়ার Steadfast নয়")
-  if (order.status === "cancelled" || order.status === "returned") throw fail(400, "বাতিল বা রিটার্ন অর্ডার পাঠানো যাবে না")
+  if (!isSteadfast(order.courier)) throw fail(400, "Courier is not Steadfast")
+  if (order.status === "cancelled" || order.status === "returned") throw fail(400, "Cancelled or returned orders cannot be sent")
   if (order.consignmentId) return order
   const keys = await requireKeys()
   const parcel = await place(keys, order)
@@ -40,7 +40,7 @@ export async function bookOrder(id) {
      WHERE id = $1 AND consignment_id IS NULL`,
     [order.id, parcel.id, parcel.code, parcel.link, parcel.status || "in_review"],
   )
-  await remember(order, parcel.status || "in_review", parcel.id, `${order.number} Steadfast-এ বুক হয়েছে${parcel.code ? `। ট্র্যাকিং ${parcel.code}` : ""}`, `book:${order.id}`)
+  await remember(order, parcel.status || "in_review", parcel.id, `${order.number} booked with Steadfast${parcel.code ? `. Tracking ${parcel.code}` : ""}`, `book:${order.id}`)
   if (order.status === "new" || order.status === "confirmed") {
     await setOrderStatus(order.id, "courier", ["new", "confirmed"])
   }
@@ -49,7 +49,7 @@ export async function bookOrder(id) {
 
 export async function trackOrder(id) {
   const order = await getOrder(id)
-  if (!order.consignmentId) throw fail(400, "এই অর্ডার এখনো Steadfast-এ যায়নি")
+  if (!order.consignmentId) throw fail(400, "This order has not been sent to Steadfast yet")
   const keys = await requireKeys()
   const statusData = await fetchStatus(keys, order.consignmentId)
   const status = readStatus(statusData)
@@ -65,14 +65,14 @@ export async function trackOrder(id) {
 
 export async function requestReturn(id, reason) {
   const order = await getOrder(id)
-  if (!order.consignmentId) throw fail(400, "এই অর্ডার এখনো Steadfast-এ যায়নি")
+  if (!order.consignmentId) throw fail(400, "This order has not been sent to Steadfast yet")
   const keys = await requireKeys()
-  const note = String(reason || "কাস্টমার ফেরত চেয়েছে").trim().slice(0, 500)
+  const note = String(reason || "Customer asked for a return").trim().slice(0, 500)
   await steadfast(keys, "/create_return_request", {
     method: "POST",
     body: { consignment_id: order.consignmentId, reason: note },
   })
-  await applyRemote(order, "cancelled_return_processing", "ফেরতের অনুরোধ গেছে")
+  await applyRemote(order, "cancelled_return_processing", "Return requested")
   return getOrder(id)
 }
 
@@ -92,8 +92,8 @@ export async function saveAccount(body, req) {
   const apiKey = String(body.apiKey || "").trim()
   const secretKey = String(body.secretKey || "").trim()
   const webhookToken = String(body.webhookToken || "").trim() || randomBytes(24).toString("hex")
-  if (apiKey.length < 8 || secretKey.length < 8) throw fail(400, "API কী আর সিক্রেট কী দিন")
-  if (webhookToken.length < 8) throw fail(400, "ওয়েবহুক টোকেন আর একটু লম্বা দিন")
+  if (apiKey.length < 8 || secretKey.length < 8) throw fail(400, "Enter the API key and secret key")
+  if (webhookToken.length < 8) throw fail(400, "Use a longer webhook token")
   const data = await steadfast({ apiKey, secretKey }, "/get_balance")
   const balance = readBalance(data)
   await pool.query(
@@ -177,10 +177,10 @@ export async function markNotifications(ids) {
 
 export async function receiveWebhook(req) {
   const row = await accountRow()
-  if (!row?.webhook_token_enc) throw fail(401, "ওয়েবহুক সেট করা নেই")
+  if (!row?.webhook_token_enc) throw fail(401, "Webhook is not set up")
   const header = req.get("authorization") || ""
   const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : ""
-  if (!sameText(token, open(row.webhook_token_enc))) throw fail(401, "ওয়েবহুক টোকেন মেলেনি")
+  if (!sameText(token, open(row.webhook_token_enc))) throw fail(401, "Webhook token does not match")
   const event = req.body && typeof req.body === "object" ? req.body : {}
   const type = String(event.notification_type || "delivery_status")
   const consignmentId = Number(event.consignment_id)
@@ -345,7 +345,7 @@ function shapeOrder(row) {
 
 async function requireKeys() {
   const keys = await keysOrNull()
-  if (!keys) throw fail(400, "আগে কুরিয়ার পেজে Steadfast কী বসান")
+  if (!keys) throw fail(400, "Add the Steadfast keys on the Courier page first")
   return keys
 }
 
@@ -355,7 +355,7 @@ async function keysOrNull() {
   try {
     return { apiKey: open(row.api_key_enc), secretKey: open(row.secret_key_enc) }
   } catch {
-    throw fail(500, "সেভ করা Steadfast কী পড়া যায়নি। আবার বসান")
+    throw fail(500, "Saved Steadfast keys could not be read. Add them again")
   }
 }
 

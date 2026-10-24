@@ -23,13 +23,13 @@ export function CopyText({ value, label, className = "" }) {
     if (!text) return
     try {
       await writeClipboard(text)
-      toast.success(`${label} কপি হয়েছে`)
+      toast.success(`${label} copied`)
     } catch {
-      toast.error("কপি করা যায়নি")
+      toast.error("Could not copy")
     }
   }
   return (
-    <button type="button" className={`copy-text ${className}`.trim()} onClick={copy} title="কপি করতে চাপুন">
+    <button type="button" className={`copy-text ${className}`.trim()} onClick={copy} title="Click to copy">
       {value}
     </button>
   )
@@ -79,28 +79,28 @@ export function Pager({ page, total, pageSize = LIST_PAGE, onPage, pageSizes, on
   const start = (page - 1) * pageSize + 1
   const end = Math.min(total, page * pageSize)
   return (
-    <nav className={pageSizes ? "pager pager-bar" : "pager"} aria-label="পেজ">
+    <nav className={pageSizes ? "pager pager-bar" : "pager"} aria-label="Pages">
       {pageSizes ? (
         <div className="pager-meta">
-          <span>পেজ {page} / {pages}</span>
+          <span>Page {page} / {pages}</span>
           <label>
-            সারি
-            <select aria-label="প্রতি পেজে সারি" value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>
+            Rows
+            <select aria-label="Rows per page" value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>
               {pageSizes.map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
         </div>
       ) : <p className="muted small">{start}–{end} / {total}</p>}
       <div className="pager-controls">
-        {pageSizes ? <button type="button" aria-label="প্রথম পেজ" onClick={() => onPage(1)} disabled={page <= 1}>«</button> : null}
-        <button type="button" aria-label="আগের পেজ" onClick={() => onPage(page - 1)} disabled={page <= 1}>{pageSizes ? "‹" : "আগে"}</button>
+        {pageSizes ? <button type="button" aria-label="First page" onClick={() => onPage(1)} disabled={page <= 1}>«</button> : null}
+        <button type="button" aria-label="Previous page" onClick={() => onPage(page - 1)} disabled={page <= 1}>{pageSizes ? "‹" : "Previous"}</button>
         {pageList(page, pages).map((item, index) => (
           item === "…"
             ? <span key={`gap-${index}`} className="pager-gap">…</span>
             : <button type="button" key={item} className={item === page ? "active" : ""} aria-current={item === page ? "page" : undefined} onClick={() => onPage(item)}>{item}</button>
         ))}
-        <button type="button" aria-label="পরের পেজ" onClick={() => onPage(page + 1)} disabled={page >= pages}>{pageSizes ? "›" : "পরে"}</button>
-        {pageSizes ? <button type="button" aria-label="শেষ পেজ" onClick={() => onPage(pages)} disabled={page >= pages}>»</button> : null}
+        <button type="button" aria-label="Next page" onClick={() => onPage(page + 1)} disabled={page >= pages}>{pageSizes ? "›" : "Next"}</button>
+        {pageSizes ? <button type="button" aria-label="Last page" onClick={() => onPage(pages)} disabled={page >= pages}>»</button> : null}
       </div>
     </nav>
   )

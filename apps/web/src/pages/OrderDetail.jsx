@@ -99,7 +99,7 @@ export default function OrderDetail({ id }) {
     const product = products.find((item) => item.id === Number(pick))
     const quantity = Number(pickQty)
     if (!product || !Number.isInteger(quantity) || quantity <= 0) {
-      setError("পণ্য আর পিস ঠিকমতো বেছে নিন")
+      setError("Choose a product and a quantity")
       return
     }
     setError("")
@@ -142,7 +142,7 @@ export default function OrderDetail({ id }) {
         return
       }
       const back = !holdsStock(status) && holdsStock(order.status)
-      toast.success(back ? `${statusLabel(status)} হয়েছে। স্টক ফিরে এসেছে।` : `স্ট্যাটাস এখন ${statusLabel(status)}`)
+      toast.success(back ? `Marked ${statusLabel(status)}. Stock is back.` : `Status is now ${statusLabel(status)}`)
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -154,12 +154,12 @@ export default function OrderDetail({ id }) {
   async function save(event) {
     event.preventDefault()
     if (!lines.length) {
-      setError("অন্তত একটা পণ্য যোগ করুন")
+      setError("Add at least one product")
       return
     }
     if (shortage) {
       const product = products.find((item) => item.id === shortage[0])
-      setError(`${product?.name || "পণ্য"} পর্যাপ্ত নেই`)
+      setError(`Not enough ${product?.name || "stock"}`)
       return
     }
     setSaving(true)
@@ -188,7 +188,7 @@ export default function OrderDetail({ id }) {
       setEditing(false)
       setDraft(null)
       if (body.order.courierError && !body.order.consignmentId) toast.error(body.order.courierError)
-      else toast.success("আপডেট হয়েছে")
+      else toast.success("Updated")
       api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
     } catch (reason) {
       setError(reason.message)
@@ -204,7 +204,7 @@ export default function OrderDetail({ id }) {
     try {
       const body = await api(`/api/orders/${order.id}/dispatch`, { method: "POST", body: {} })
       setOrder(body.order)
-      toast.success("পার্সেল বুক হয়েছে")
+      toast.success("Parcel booked")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -220,7 +220,7 @@ export default function OrderDetail({ id }) {
       const body = await api(`/api/orders/${order.id}/track`, { method: "POST", body: {} })
       setOrder(body.order)
       setSteps(body.steps || [])
-      toast.success("স্ট্যাটাস এসেছে")
+      toast.success("Status updated")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -233,9 +233,9 @@ export default function OrderDetail({ id }) {
     setSaving(true)
     setError("")
     try {
-      const body = await api(`/api/orders/${order.id}/return`, { method: "POST", body: { reason: "কাস্টমার ফেরত চেয়েছে" } })
+      const body = await api(`/api/orders/${order.id}/return`, { method: "POST", body: { reason: "Customer asked for a return" } })
       setOrder(body.order)
-      toast.success("ফেরতের অনুরোধ গেছে")
+      toast.success("Return requested")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -249,7 +249,7 @@ export default function OrderDetail({ id }) {
     setError("")
     try {
       await api(`/api/orders/${order.id}`, { method: "DELETE" })
-      toast.success("অর্ডার মুছে ফেলা হয়েছে")
+      toast.success("Order deleted")
       go("/orders")
     } catch (reason) {
       setError(reason.message)
@@ -285,7 +285,7 @@ export default function OrderDetail({ id }) {
     return (
       <section className="page">
         <Banner message={error} />
-        {missing ? <button type="button" className="btn" onClick={() => go("/orders")}>সব অর্ডারে যান</button> : <p className="muted">লোড হচ্ছে…</p>}
+        {missing ? <button type="button" className="btn" onClick={() => go("/orders")}>Go to all orders</button> : <p className="muted">Loading…</p>}
       </section>
     )
   }
@@ -294,7 +294,7 @@ export default function OrderDetail({ id }) {
     <section className="page order-detail">
       <div className="page-head">
         <div>
-          <button type="button" className="text-btn back" onClick={() => go("/orders")}>সব অর্ডার</button>
+          <button type="button" className="text-btn back" onClick={() => go("/orders")}>All orders</button>
           <div className="detail-title">
             <h1>{order.number}</h1>
             <StatusPill status={editing && draft ? draft.status : order.status} />
@@ -308,8 +308,8 @@ export default function OrderDetail({ id }) {
               setDraft(null)
               setError("")
             } else beginEdit()
-          }}>{editing ? "বন্ধ" : "এডিট"}</button>
-          <button type="button" className="btn danger" onClick={() => setConfirmDelete(true)}>মুছুন</button>
+          }}>{editing ? "Close" : "Edit"}</button>
+          <button type="button" className="btn danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
       <Banner message={error} />
@@ -317,56 +317,56 @@ export default function OrderDetail({ id }) {
       {editing && draft ? (
         <form className="order-layout order-create" onSubmit={save}>
           <div className="stack">
-            {order.consignmentId ? <Banner message="এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য আর টাকা লক। স্ট্যাটাস বদলালেও কুরিয়ারে নতুন তথ্য যায় না।" tone="good" /> : null}
+            {order.consignmentId ? <Banner message="This parcel is booked with Steadfast. Name, phone, address, items, and amounts are locked. Changing the status does not send new details to the courier." tone="good" /> : null}
             <article className="card">
               <div className="create-grid">
-                <Field label="নাম">
+                <Field label="Name">
                   <input value={draft.customerName} onChange={(event) => setDraftField("customerName", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
-                <Field label="মোবাইল">
+                <Field label="Mobile">
                   <input value={draft.mobile} onChange={(event) => setDraftField("mobile", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
-                <Field label="কুরিয়ার">
+                <Field label="Courier">
                   <select value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} disabled={Boolean(order.consignmentId)} required>
                     {draft.courier && !couriers.some((item) => item.name === draft.courier) ? <option value={draft.courier}>{draft.courier}</option> : null}
                     {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
                   </select>
                 </Field>
-                <Field label="স্ট্যাটাস">
+                <Field label="Status">
                   <select value={draft.status} onChange={(event) => setDraftField("status", event.target.value)}>
                     {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
                   </select>
                 </Field>
                 <SourceField value={draft.sourceId} onChange={(value) => setDraftField("sourceId", value)} sources={sources} onSources={setSources} />
-                <Field label="অর্ডারের সময়" className="span-2">
+                <Field label="Order time" className="span-2">
                   <input type="datetime-local" value={draft.orderedAt} onChange={(event) => setDraftField("orderedAt", event.target.value)} required />
                 </Field>
-                <Field label="ঠিকানা" className="wide">
+                <Field label="Address" className="wide">
                   <textarea rows={3} value={draft.address} onChange={(event) => setDraftField("address", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
               </div>
             </article>
             <article className="card">
               <div className="add-line">
-                <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="পণ্য" disabled={Boolean(order.consignmentId)}>
-                  <option value="">পণ্য বেছে নিন</option>
-                  <optgroup label="পণ্য">
+                <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="Product" disabled={Boolean(order.consignmentId)}>
+                  <option value="">Choose a product</option>
+                  <optgroup label="Products">
                     {products.filter((item) => !item.isCombo).map((product) => (
-                      <option key={product.id} value={product.id}>{product.name} · আছে {shownStock(product, heldPieces)}</option>
+                      <option key={product.id} value={product.id}>{product.name} · in stock {shownStock(product, heldPieces)}</option>
                     ))}
                   </optgroup>
                   {products.some((item) => item.isCombo) ? (
-                    <optgroup label="কম্বো">
+                    <optgroup label="Combos">
                       {products.filter((item) => item.isCombo).map((product) => (
-                        <option key={product.id} value={product.id}>{product.name} · বানানো যাবে {shownCombo(product, products, heldPieces)}</option>
+                        <option key={product.id} value={product.id}>{product.name} · can make {shownCombo(product, products, heldPieces)}</option>
                       ))}
                     </optgroup>
                   ) : null}
                 </select>
-                <input aria-label="পিস" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} disabled={Boolean(order.consignmentId)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
-                <button type="button" className="btn secondary" onClick={addLine} disabled={Boolean(order.consignmentId)}>যোগ</button>
+                <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} disabled={Boolean(order.consignmentId)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
+                <button type="button" className="btn secondary" onClick={addLine} disabled={Boolean(order.consignmentId)}>Add</button>
               </div>
-              {lines.length === 0 ? <p className="muted small">পণ্য যোগ করুন।</p> : (
+              {lines.length === 0 ? <p className="muted small">Add a product.</p> : (
                 <ul className="lines create-lines">
                   {lines.map((line) => {
                     const product = products.find((item) => item.id === line.productId)
@@ -377,54 +377,54 @@ export default function OrderDetail({ id }) {
                         <strong>{line.name}</strong>
                         {components.length ? <small>{components.map((part) => `${part.name} ×${part.quantity}`).join(", ")}</small> : null}
                       </div>
-                      <input className="line-qty" aria-label={`${line.name} পিস`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} disabled={Boolean(order.consignmentId)} />
+                      <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} disabled={Boolean(order.consignmentId)} />
                       <b>{taka(line.sellPrice * line.quantity)}</b>
-                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))} disabled={Boolean(order.consignmentId)}>বাদ</button>
+                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))} disabled={Boolean(order.consignmentId)}>Remove</button>
                     </li>
                     )
                   })}
                 </ul>
               )}
-              {shortage ? <p className="banner banner-bad">{products.find((item) => item.id === shortage[0])?.name} পর্যাপ্ত নেই।</p> : null}
+              {shortage ? <p className="banner banner-bad">{products.find((item) => item.id === shortage[0])?.name} does not have enough stock.</p> : null}
             </article>
           </div>
           <aside className="card summary">
             <div className="bill-grid">
-              <Field label="ডিসকাউন্ট">
+              <Field label="Discount">
                 <input type="number" min="0" step="1" value={draft.discount} onChange={(event) => setDraftField("discount", event.target.value)} placeholder="0" disabled={Boolean(order.consignmentId)} />
               </Field>
-              <Field label="জমা">
+              <Field label="Paid">
                 <input type="number" min="0" step="1" value={draft.paidAmount} onChange={(event) => setDraftField("paidAmount", event.target.value)} placeholder="0" disabled={Boolean(order.consignmentId)} />
               </Field>
             </div>
-            <Field label="পেমেন্ট">
+            <Field label="Payment">
               <select value={draft.paymentMethod} onChange={(event) => setDraftField("paymentMethod", event.target.value)} disabled={Boolean(order.consignmentId)}>
                 {PAYMENTS.map((payment) => <option key={payment.id} value={payment.id}>{payment.label}</option>)}
               </select>
             </Field>
             <div className="field">
-              <span>ডেলিভারি</span>
+              <span>Delivery</span>
               <div className="cod-row">
-                <button type="button" className={draft.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "free")} disabled={Boolean(order.consignmentId)}>ফ্রি</button>
-                <button type="button" className={draft.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "customer")} disabled={Boolean(order.consignmentId)}>কাস্টমার</button>
-                <input type="number" min="0" step="1" value={draft.deliveryCharge} onChange={(event) => setDraftField("deliveryCharge", event.target.value)} placeholder="টাকা" aria-label="ডেলিভারি টাকা" disabled={Boolean(order.consignmentId)} />
+                <button type="button" className={draft.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "free")} disabled={Boolean(order.consignmentId)}>Free</button>
+                <button type="button" className={draft.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => setDraftField("deliveryPaidBy", "customer")} disabled={Boolean(order.consignmentId)}>Customer</button>
+                <input type="number" min="0" step="1" value={draft.deliveryCharge} onChange={(event) => setDraftField("deliveryCharge", event.target.value)} placeholder="Amount" aria-label="Delivery amount" disabled={Boolean(order.consignmentId)} />
               </div>
             </div>
-            <Field label="নোট">
-              <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="চাইলে লিখুন" disabled={Boolean(order.consignmentId)} />
+            <Field label="Note">
+              <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="Optional" disabled={Boolean(order.consignmentId)} />
             </Field>
-            <p className="sum"><span>পণ্য</span><b>{taka(goods)}</b></p>
-            <p className="sum"><span>{delivery > 0 && !customerPaysDelivery ? "ডেলিভারি (আপনি)" : "ডেলিভারি"}</span><b>{delivery > 0 ? taka(delivery) : "ফ্রি"}</b></p>
-            {order.codCharge > 0 ? <p className="sum"><span>{order.codPaidBy === "customer" ? "COD চার্জ" : "COD (আপনি)"}</span><b>{taka(order.codCharge)}</b></p> : null}
-            <p className="sum strong"><span>মোট</span><b>{taka(total)}</b></p>
-            <p className="sum strong"><span>বাকি</span><b>{taka(due)}</b></p>
-            <p className="sum strong"><span>লাভ</span><b>{taka(profit)}</b></p>
-            <button className="btn wide" type="submit" disabled={saving || Boolean(shortage)}>{saving ? "সেভ হচ্ছে…" : "সেভ"}</button>
+            <p className="sum"><span>Items</span><b>{taka(goods)}</b></p>
+            <p className="sum"><span>{delivery > 0 && !customerPaysDelivery ? "Delivery (you)" : "Delivery"}</span><b>{delivery > 0 ? taka(delivery) : "Free"}</b></p>
+            {order.codCharge > 0 ? <p className="sum"><span>{order.codPaidBy === "customer" ? "COD charge" : "COD (you)"}</span><b>{taka(order.codCharge)}</b></p> : null}
+            <p className="sum strong"><span>Total</span><b>{taka(total)}</b></p>
+            <p className="sum strong"><span>Due</span><b>{taka(due)}</b></p>
+            <p className="sum strong"><span>Profit</span><b>{taka(profit)}</b></p>
+            <button className="btn wide" type="submit" disabled={saving || Boolean(shortage)}>{saving ? "Saving…" : "Save"}</button>
           </aside>
         </form>
       ) : (
         <>
-          <div className="status-rail" role="group" aria-label="স্ট্যাটাস">
+          <div className="status-rail" role="group" aria-label="Status">
             {STATUSES.map((status) => (
               <button
                 key={status.id}
@@ -442,15 +442,15 @@ export default function OrderDetail({ id }) {
             <div className="stack">
               <article className="card who-card">
                 <div className="who-head">
-                  <h2><CopyText value={order.customerName} label="নাম" /></h2>
-                  <CopyText value={order.mobile} label="নম্বর" />
+                  <h2><CopyText value={order.customerName} label="Name" /></h2>
+                  <CopyText value={order.mobile} label="Number" />
                 </div>
-                <p className="who-address"><CopyText value={order.address} label="ঠিকানা" /></p>
+                <p className="who-address"><CopyText value={order.address} label="Address" /></p>
                 <div className="fact-grid">
-                  <p><span>কুরিয়ার</span><b>{order.courier}</b></p>
-                  <p><span>সোর্স</span><b>{order.sourceName || "উল্লেখ নেই"}</b></p>
-                  <p><span>পেমেন্ট</span><b>{paymentLabel(order.paymentMethod)}</b></p>
-                  <p><span>সময়</span><b>{when(order.orderedAt)}</b></p>
+                  <p><span>Courier</span><b>{order.courier}</b></p>
+                  <p><span>Source</span><b>{order.sourceName || "Not set"}</b></p>
+                  <p><span>Payment</span><b>{paymentLabel(order.paymentMethod)}</b></p>
+                  <p><span>Time</span><b>{when(order.orderedAt)}</b></p>
                 </div>
                 {order.note ? <p className="who-note">{order.note}</p> : null}
               </article>
@@ -460,20 +460,20 @@ export default function OrderDetail({ id }) {
                     <h2>Steadfast</h2>
                     <span className="actions">
                       {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
-                      {order.trackingUrl ? <a className="text-btn" href={order.trackingUrl} target="_blank" rel="noreferrer">Steadfast-এ খুলুন</a> : null}
+                      {order.trackingUrl ? <a className="text-btn" href={order.trackingUrl} target="_blank" rel="noreferrer">Open in Steadfast</a> : null}
                     </span>
                   </div>
                   {order.courierError && !order.consignmentId ? <Banner message={order.courierError} /> : null}
                   {order.consignmentId ? (
                     <>
                       <div className="fact-grid">
-                        <p><span>স্ট্যাটাস</span><b>{courierStatusLabel(order.courierStatus) || "অপেক্ষায়"}</b></p>
-                        <p><span>ট্র্যাকিং</span><b>{order.trackingCode || order.consignmentId}</b></p>
+                        <p><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
+                        <p><span>Tracking</span><b>{order.trackingCode || order.consignmentId}</b></p>
                       </div>
-                      {order.trackingCode ? <CopyText value={order.trackingCode} label="ট্র্যাকিং কোড" /> : null}
+                      {order.trackingCode ? <CopyText value={order.trackingCode} label="Tracking code" /> : null}
                       <div className="actions">
-                        <button type="button" className="btn secondary" disabled={saving} onClick={refreshTrack}>স্ট্যাটাস আনুন</button>
-                        {order.status === "courier" ? <button type="button" className="btn danger" disabled={saving} onClick={askReturn}>ফেরত চাই</button> : null}
+                        <button type="button" className="btn secondary" disabled={saving} onClick={refreshTrack}>Refresh status</button>
+                        {order.status === "courier" ? <button type="button" className="btn danger" disabled={saving} onClick={askReturn}>Request return</button> : null}
                       </div>
                       {steps.length > 0 ? (
                         <ol className="track-steps">
@@ -487,12 +487,12 @@ export default function OrderDetail({ id }) {
                       ) : null}
                     </>
                   ) : (
-                    <button type="button" className="btn" disabled={saving} onClick={sendParcel}>Steadfast-এ পাঠান</button>
+                    <button type="button" className="btn" disabled={saving} onClick={sendParcel}>Send to Steadfast</button>
                   )}
                 </article>
               ) : null}
               <article className="card">
-                <h2>পণ্য</h2>
+                <h2>Items</h2>
                 <ul className="lines detail-lines">
                   {order.items.map((item) => (
                     <li key={item.id}>
@@ -505,16 +505,16 @@ export default function OrderDetail({ id }) {
               </article>
             </div>
             <aside className="card summary bill">
-              <h2>হিসাব</h2>
-              <p className="sum"><span>পণ্যের দাম</span><b>{taka(order.goods)}</b></p>
-              <p className="sum"><span>ডিসকাউন্ট</span><b>{taka(order.discount)}</b></p>
-              <p className="sum"><span>{order.deliveryPaidBy === "free" && order.deliveryCharge > 0 ? "ডেলিভারি (আপনি)" : "ডেলিভারি"}</span><b>{order.deliveryCharge > 0 ? taka(order.deliveryCharge) : "ফ্রি"}</b></p>
-              <p className="sum strong"><span>মোট</span><b>{taka(order.total)}</b></p>
-              <p className="sum"><span>জমা</span><b>{taka(order.paidAmount)}</b></p>
-              <p className="sum"><span>মালের দাম</span><b>{taka(order.cost)}</b></p>
+              <h2>Totals</h2>
+              <p className="sum"><span>Items</span><b>{taka(order.goods)}</b></p>
+              <p className="sum"><span>Discount</span><b>{taka(order.discount)}</b></p>
+              <p className="sum"><span>{order.deliveryPaidBy === "free" && order.deliveryCharge > 0 ? "Delivery (you)" : "Delivery"}</span><b>{order.deliveryCharge > 0 ? taka(order.deliveryCharge) : "Free"}</b></p>
+              <p className="sum strong"><span>Total</span><b>{taka(order.total)}</b></p>
+              <p className="sum"><span>Paid</span><b>{taka(order.paidAmount)}</b></p>
+              <p className="sum"><span>Cost</span><b>{taka(order.cost)}</b></p>
               <div className="bill-spots">
-                <p className={order.due > 0 ? "due" : ""}><span>বাকি</span><b>{taka(order.due)}</b></p>
-                <p className="gain"><span>লাভ</span><b>{taka(order.profit)}</b></p>
+                <p className={order.due > 0 ? "due" : ""}><span>Due</span><b>{taka(order.due)}</b></p>
+                <p className="gain"><span>Profit</span><b>{taka(order.profit)}</b></p>
               </div>
             </aside>
           </div>
@@ -524,11 +524,11 @@ export default function OrderDetail({ id }) {
       {confirmDelete ? (
         <div className="modal-back" role="presentation" onClick={() => { if (!saving) setConfirmDelete(false) }}>
           <div className="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title" onClick={(event) => event.stopPropagation()}>
-            <h2 id="delete-title">{order.number} মুছে ফেলবেন?</h2>
-            <p className="muted">অর্ডারটা আর তালিকায় থাকবে না। স্টক কেটে থাকলে ফিরে আসবে।</p>
+            <h2 id="delete-title">Delete {order.number}?</h2>
+            <p className="muted">The order will leave the list. Stock that was held will come back.</p>
             <div className="actions">
-              <button type="button" className="btn secondary" disabled={saving} onClick={() => setConfirmDelete(false)}>না</button>
-              <button type="button" className="btn danger" disabled={saving} onClick={remove}>{saving ? "মুছছে…" : "হ্যাঁ, মুছুন"}</button>
+              <button type="button" className="btn secondary" disabled={saving} onClick={() => setConfirmDelete(false)}>No</button>
+              <button type="button" className="btn danger" disabled={saving} onClick={remove}>{saving ? "Deleting…" : "Yes, delete"}</button>
             </div>
           </div>
         </div>

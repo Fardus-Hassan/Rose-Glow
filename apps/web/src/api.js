@@ -7,10 +7,10 @@ export async function api(path, options = {}) {
       body: options.body ? JSON.stringify(options.body) : undefined,
     })
   } catch {
-    throw new Error("সার্ভারের সাথে যোগাযোগ হচ্ছে না")
+    throw new Error("Cannot reach the server")
   }
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error || "কোনো একটা সমস্যা হয়েছে")
+  if (!response.ok) throw new Error(data.error || "Something went wrong")
   return data
 }
 

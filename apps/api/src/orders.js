@@ -89,7 +89,7 @@ async function itemsFor(client, orderId) {
 
 export async function getOrder(id) {
   const result = await pool.query(`${ORDER_SELECT} WHERE o.id = $1 GROUP BY o.id`, [id])
-  if (!result.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+  if (!result.rows[0]) throw fail(404, "Order was not found")
   const items = await itemsFor(pool, id)
   return present(result.rows[0], items)
 }
@@ -97,7 +97,7 @@ export async function getOrder(id) {
 function readSourceId(body) {
   if (body.sourceId === null || body.sourceId === undefined || body.sourceId === "") return null
   const sourceId = whole(body.sourceId)
-  if (!sourceId || sourceId <= 0) throw fail(400, "সোর্স ঠিক নেই")
+  if (!sourceId || sourceId <= 0) throw fail(400, "Source is not valid")
   return sourceId
 }
 
@@ -107,7 +107,7 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   const params = []
   const where = []
   if (status && status !== "all") {
-    if (!STATUS_IDS.has(status)) throw fail(400, "স্ট্যাটাস ঠিক নেই")
+    if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
     params.push(status)
     where.push(`o.status = $${params.length}`)
   }
@@ -115,7 +115,7 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     if (source === "none") where.push("o.source_id IS NULL")
     else {
       const sourceId = whole(source)
-      if (!sourceId) throw fail(400, "সোর্স ঠিক নেই")
+      if (!sourceId) throw fail(400, "Source is not valid")
       params.push(sourceId)
       where.push(`o.source_id = $${params.length}`)
     }
@@ -123,7 +123,7 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   const hasFrom = Boolean(from)
   const hasTo = Boolean(to)
   if (hasFrom !== hasTo || (hasFrom && (!DAY.test(from) || !DAY.test(to) || from > to))) {
-    throw fail(400, "তারিখ ঠিক নেই")
+    throw fail(400, "The date is not valid")
   }
   if (hasFrom) {
     params.push(from, to)
@@ -180,15 +180,15 @@ function readOrderFields(body, { partial = false } = {}) {
   const codCharge = money(body.codCharge)
   const note = noteText(body.note, 400)
   const sourceId = readSourceId(body)
-  if (!customerName) throw fail(400, "কাস্টমারের নাম দিন")
-  if (!phone) throw fail(400, "মোবাইল নম্বর 01 দিয়ে ১১ সংখ্যা দিন")
-  if (address.length < 3) throw fail(400, "ঠিকানা দিন")
-  if (courier.length < 2) throw fail(400, "কুরিয়ার দিন")
-  if (!STATUS_IDS.has(status)) throw fail(400, "স্ট্যাটাস ঠিক নেই")
-  if (!orderedAt) throw fail(400, "অর্ডারের সময় দিন")
-  if (deliveryCharge === null || discount === null || paidAmount === null || codCharge === null) throw fail(400, "টাকার অংক ঠিকমতো দিন")
-  if (!PAYMENT_IDS.has(paymentMethod)) throw fail(400, "পেমেন্টের ধরন ঠিক নেই")
-  if (deliveryPaidBy === "customer" && deliveryCharge <= 0) throw fail(400, "ডেলিভারির টাকা দিন")
+  if (!customerName) throw fail(400, "Enter the customer's name")
+  if (!phone) throw fail(400, "Enter an 11-digit mobile number starting with 01")
+  if (address.length < 3) throw fail(400, "Enter the address")
+  if (courier.length < 2) throw fail(400, "Choose a courier")
+  if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
+  if (!orderedAt) throw fail(400, "Enter the order time")
+  if (deliveryCharge === null || discount === null || paidAmount === null || codCharge === null) throw fail(400, "Enter valid amounts")
+  if (!PAYMENT_IDS.has(paymentMethod)) throw fail(400, "Payment method is not valid")
+  if (deliveryPaidBy === "customer" && deliveryCharge <= 0) throw fail(400, "Enter the delivery charge")
   const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, codCharge, codPaidBy, sourceId }
   if (partial) return fields
   return fields
@@ -199,14 +199,14 @@ function linesFrom(merged, byId, parts) {
   const needs = new Map()
   for (const [productId, quantity] of merged) {
     const product = byId.get(productId)
-    if (!product) throw fail(400, "পণ্য পাওয়া যায়নি")
-    if (quantity <= 0 || quantity > 999) throw fail(400, "পণ্যের পিস ঠিকমতো দিন")
+    if (!product) throw fail(400, "Product was not found")
+    if (quantity <= 0 || quantity > 999) throw fail(400, "Enter a valid quantity")
     let unitCost = 0
     const recipe = product.is_combo ? parts.get(product.id) || [] : [{ productId: product.id, quantity: 1 }]
-    if (product.is_combo && recipe.length === 0) throw fail(400, "এই কম্বোতে কোনো পণ্য নেই")
+    if (product.is_combo && recipe.length === 0) throw fail(400, "This combo has no products")
     for (const part of recipe) {
       const piece = byId.get(part.productId)
-      if (!piece || piece.is_combo) throw fail(400, "কম্বোর পণ্য পাওয়া যায়নি")
+      if (!piece || piece.is_combo) throw fail(400, "A product in the combo was not found")
       unitCost += Number(piece.cost_price) * part.quantity
       needs.set(part.productId, (needs.get(part.productId) || 0) + part.quantity * quantity)
     }
@@ -232,9 +232,9 @@ async function applyNeeds(client, needs, hold) {
   if (hold) {
     for (const [productId, quantity] of needs) {
       const row = stock.get(productId)
-      if (!row) throw fail(400, "স্টকের পণ্য পাওয়া যায়নি")
+      if (!row) throw fail(400, "A stocked product was not found")
       if (row.stock_qty < quantity) {
-        throw fail(400, `${row.name} পর্যাপ্ত নেই। আছে ${row.stock_qty} পিস, লাগবে ${quantity} পিস।`)
+        throw fail(400, `${row.name} does not have enough stock. Available ${row.stock_qty}, need ${quantity}.`)
       }
     }
     for (const [productId, quantity] of needs) {
@@ -258,9 +258,9 @@ async function moveSavedStock(client, orderId, direction) {
   if (direction < 0) {
     for (const row of saved.rows) {
       const product = stock.get(row.product_id)
-      if (!product) throw fail(400, "স্টকের পণ্য আর নেই")
+      if (!product) throw fail(400, "A stocked product no longer exists")
       if (product.stock_qty < row.quantity) {
-        throw fail(400, `${product.name} পর্যাপ্ত নেই। আছে ${product.stock_qty} পিস, লাগবে ${row.quantity} পিস।`)
+        throw fail(400, `${product.name} does not have enough stock. Available ${product.stock_qty}, need ${row.quantity}.`)
       }
     }
   }
@@ -274,20 +274,20 @@ function cents(value) {
 }
 
 function assertBill(goods, fields) {
-  if (cents(fields.discount) > cents(goods)) throw fail(400, "ডিসকাউন্ট পণ্যের দামের চেয়ে বেশি")
+  if (cents(fields.discount) > cents(goods)) throw fail(400, "Discount is higher than the item total")
   const deliveryOnBill = fields.deliveryPaidBy === "customer" ? fields.deliveryCharge : 0
   const codOnBill = fields.codPaidBy === "customer" ? fields.codCharge : 0
   const total = goods - fields.discount + deliveryOnBill + codOnBill
-  if (cents(fields.paidAmount) > cents(total)) throw fail(400, "জমা মোট টাকার চেয়ে বেশি")
+  if (cents(fields.paidAmount) > cents(total)) throw fail(400, "Paid amount is higher than the total")
 }
 
 async function assertSource(client, sourceId, required) {
   if (!sourceId) {
-    if (required) throw fail(400, "অর্ডারের সোর্স দিন")
+    if (required) throw fail(400, "Choose the order source")
     return
   }
   const found = await client.query(`SELECT id FROM order_sources WHERE id = $1`, [sourceId])
-  if (!found.rows[0]) throw fail(400, "সোর্স পাওয়া যায়নি")
+  if (!found.rows[0]) throw fail(400, "Source was not found")
 }
 
 async function assertBookedUnchanged(client, id, row, fields, replacing, body) {
@@ -302,7 +302,7 @@ async function assertBookedUnchanged(client, id, row, fields, replacing, body) {
     || cents(row.paid_amount) !== cents(fields.paidAmount)
     || cents(row.cod_charge) !== cents(fields.codCharge)
     || (row.cod_paid_by === "customer" ? "customer" : "free") !== fields.codPaidBy
-  if (sent) throw fail(400, "এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য বা টাকা আর বদলানো যাবে না।")
+  if (sent) throw fail(400, "This parcel is already booked with Steadfast. Name, phone, address, items, and amounts can no longer be changed.")
   if (!replacing) return
   const saved = await client.query(
     `SELECT product_id, quantity FROM order_items WHERE order_id = $1 ORDER BY product_id`,
@@ -310,17 +310,17 @@ async function assertBookedUnchanged(client, id, row, fields, replacing, body) {
   )
   const next = [...mergedItems(body).entries()].sort((a, b) => a[0] - b[0])
   const same = saved.rows.length === next.length && saved.rows.every((item, index) => item.product_id === next[index][0] && item.quantity === next[index][1])
-  if (!same) throw fail(400, "এই পার্সেল Steadfast-এ বুক হয়ে গেছে। নাম, ফোন, ঠিকানা, পণ্য বা টাকা আর বদলানো যাবে না।")
+  if (!same) throw fail(400, "This parcel is already booked with Steadfast. Name, phone, address, items, and amounts can no longer be changed.")
 }
 
 function mergedItems(body) {
-  if (!Array.isArray(body.items) || body.items.length === 0) throw fail(400, "অন্তত একটা পণ্য যোগ করুন")
-  if (body.items.length > 30) throw fail(400, "এক অর্ডারে ৩০টার বেশি লাইন যাবে না")
+  if (!Array.isArray(body.items) || body.items.length === 0) throw fail(400, "Add at least one product")
+  if (body.items.length > 30) throw fail(400, "An order cannot have more than 30 lines")
   const merged = new Map()
   for (const item of body.items) {
     const productId = whole(item.productId)
     const quantity = whole(item.quantity)
-    if (!productId || !quantity || quantity <= 0) throw fail(400, "পণ্যের পিস ঠিকমতো দিন")
+    if (!productId || !quantity || quantity <= 0) throw fail(400, "Enter a valid quantity")
     merged.set(productId, (merged.get(productId) || 0) + quantity)
   }
   return merged
@@ -446,7 +446,7 @@ export async function updateOrder(id, body) {
        FROM orders WHERE id = $1 FOR UPDATE`,
       [id],
     )
-    if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+    if (!current.rows[0]) throw fail(404, "Order was not found")
     if (current.rows[0].consignment_id) await assertBookedUnchanged(client, id, current.rows[0], fields, replacing, body)
     const held = current.rows[0].stock_held
     const hold = holdsStock(fields.status)
@@ -507,12 +507,12 @@ export async function updateOrder(id, body) {
 }
 
 export async function setOrderStatus(id, status, allowedFrom) {
-  if (!STATUS_IDS.has(status)) throw fail(400, "স্ট্যাটাস ঠিক নেই")
+  if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
     const current = await client.query(`SELECT id, status, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
-    if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+    if (!current.rows[0]) throw fail(404, "Order was not found")
     const row = current.rows[0]
     if (row.status === status || (allowedFrom && !allowedFrom.includes(row.status))) {
       await client.query("COMMIT")
@@ -537,7 +537,7 @@ export async function deleteOrder(id) {
   try {
     await client.query("BEGIN")
     const current = await client.query(`SELECT id, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
-    if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+    if (!current.rows[0]) throw fail(404, "Order was not found")
     if (current.rows[0].stock_held) await moveSavedStock(client, id, 1)
     await client.query(`DELETE FROM orders WHERE id = $1`, [id])
     await client.query("COMMIT")

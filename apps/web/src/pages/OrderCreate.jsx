@@ -76,7 +76,7 @@ export default function OrderCreate() {
     const product = products.find((item) => item.id === Number(pick))
     const quantity = Number(pickQty)
     if (!product || !Number.isInteger(quantity) || quantity <= 0) {
-      setError("পণ্য আর পিস ঠিকমতো বেছে নিন")
+      setError("Choose a product and a quantity")
       return
     }
     setError("")
@@ -108,12 +108,12 @@ export default function OrderCreate() {
   async function submit(event) {
     event.preventDefault()
     if (!lines.length) {
-      setError("অন্তত একটা পণ্য যোগ করুন")
+      setError("Add at least one product")
       return
     }
     if (shortage) {
       const product = products.find((item) => item.id === shortage[0])
-      setError(`${product?.name || "পণ্য"} পর্যাপ্ত নেই`)
+      setError(`Not enough ${product?.name || "stock"}`)
       return
     }
     setSaving(true)
@@ -133,7 +133,7 @@ export default function OrderCreate() {
           items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
         },
       })
-      toast.success(`${body.order.number} সেভ হয়েছে`)
+      toast.success(`${body.order.number} saved`)
       go(`/orders/${body.order.id}`)
     } catch (reason) {
       setError(reason.message)
@@ -148,8 +148,8 @@ export default function OrderCreate() {
     <section className="page">
       <div className="page-head">
         <div>
-          <p className="eyebrow">কাস্টমার অর্ডার করলে</p>
-          <h1>নতুন অর্ডার</h1>
+          <p className="eyebrow">When a customer orders</p>
+          <h1>New order</h1>
         </div>
       </div>
       <form className="order-layout order-create" onSubmit={submit}>
@@ -157,19 +157,19 @@ export default function OrderCreate() {
           <Banner message={error} />
           <article className="card">
             <div className="create-grid">
-              <Field label="নাম">
+              <Field label="Name">
                 <input value={form.customerName} onChange={(event) => set("customerName", event.target.value)} required />
               </Field>
-              <Field label="মোবাইল">
+              <Field label="Mobile">
                 <input value={form.mobile} onChange={(event) => set("mobile", event.target.value)} inputMode="tel" placeholder="01XXXXXXXXX" required />
               </Field>
-              <Field label="কুরিয়ার">
+              <Field label="Courier">
                 <select value={form.courier} onChange={(event) => set("courier", event.target.value)} required>
-                  {couriers.length === 0 ? <option value="">কোনো কুরিয়ার চালু নেই</option> : null}
+                  {couriers.length === 0 ? <option value="">No courier is connected</option> : null}
                   {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
                 </select>
               </Field>
-              <Field label="স্ট্যাটাস">
+              <Field label="Status">
                 <select value={form.status} onChange={(event) => set("status", event.target.value)}>
                   {STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
                 </select>
@@ -181,10 +181,10 @@ export default function OrderCreate() {
                 onSources={setSources}
                 required
               />
-              <Field label="অর্ডারের সময়" className="span-2">
+              <Field label="Order time" className="span-2">
                 <input type="datetime-local" value={form.orderedAt} onChange={(event) => set("orderedAt", event.target.value)} required />
               </Field>
-              <Field label="ঠিকানা" className="wide">
+              <Field label="Address" className="wide">
                 <textarea rows={3} value={form.address} onChange={(event) => set("address", event.target.value)} required />
               </Field>
             </div>
@@ -192,25 +192,25 @@ export default function OrderCreate() {
 
           <article className="card">
             <div className="add-line">
-              <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="পণ্য">
-                <option value="">পণ্য বেছে নিন</option>
-                <optgroup label="পণ্য">
+              <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="Product">
+                <option value="">Choose a product</option>
+                <optgroup label="Products">
                   {singles.map((product) => (
-                    <option key={product.id} value={product.id}>{product.name} · আছে {product.stockQty}</option>
+                    <option key={product.id} value={product.id}>{product.name} · in stock {product.stockQty}</option>
                   ))}
                 </optgroup>
                 {combos.length ? (
-                  <optgroup label="কম্বো">
+                  <optgroup label="Combos">
                     {combos.map((product) => (
-                      <option key={product.id} value={product.id}>{product.name} · বানানো যাবে {product.available}</option>
+                      <option key={product.id} value={product.id}>{product.name} · can make {product.available}</option>
                     ))}
                   </optgroup>
                 ) : null}
               </select>
-              <input aria-label="পিস" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
-              <button type="button" className="btn secondary" onClick={addLine}>যোগ</button>
+              <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
+              <button type="button" className="btn secondary" onClick={addLine}>Add</button>
             </div>
-            {lines.length === 0 ? <p className="muted small">পণ্য যোগ করুন।</p> : (
+            {lines.length === 0 ? <p className="muted small">Add a product.</p> : (
               <ul className="lines create-lines">
                 {lines.map((line) => (
                   <li key={line.productId}>
@@ -218,48 +218,48 @@ export default function OrderCreate() {
                       <strong>{line.name}</strong>
                       {line.isCombo ? <small>{line.components.map((part) => `${part.name} ×${part.quantity}`).join(", ")}</small> : null}
                     </div>
-                    <input className="line-qty" aria-label={`${line.name} পিস`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} />
+                    <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} />
                     <b>{taka(line.sellPrice * line.quantity)}</b>
-                    <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))}>বাদ</button>
+                    <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))}>Remove</button>
                   </li>
                 ))}
               </ul>
             )}
-            {shortage ? <p className="banner banner-bad">{products.find((item) => item.id === shortage[0])?.name} পর্যাপ্ত নেই। আছে {products.find((item) => item.id === shortage[0])?.stockQty} পিস, লাগবে {shortage[1]} পিস।</p> : null}
+            {shortage ? <p className="banner banner-bad">{products.find((item) => item.id === shortage[0])?.name} does not have enough stock. Available {products.find((item) => item.id === shortage[0])?.stockQty}, need {shortage[1]}.</p> : null}
           </article>
         </div>
 
         <aside className="card summary">
           <div className="bill-grid">
-            <Field label="ডিসকাউন্ট">
+            <Field label="Discount">
               <input type="number" min="0" step="1" value={form.discount} onChange={(event) => set("discount", event.target.value)} placeholder="0" />
             </Field>
-            <Field label="জমা">
+            <Field label="Paid">
               <input type="number" min="0" step="1" value={form.paidAmount} onChange={(event) => set("paidAmount", event.target.value)} placeholder="0" />
             </Field>
           </div>
-          <Field label="পেমেন্ট">
+          <Field label="Payment">
             <select value={form.paymentMethod} onChange={(event) => set("paymentMethod", event.target.value)}>
               {PAYMENTS.map((payment) => <option key={payment.id} value={payment.id}>{payment.label}</option>)}
             </select>
           </Field>
           <div className="field">
-            <span>ডেলিভারি</span>
+            <span>Delivery</span>
             <div className="cod-row">
-              <button type="button" className={form.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => set("deliveryPaidBy", "free")}>ফ্রি</button>
-              <button type="button" className={form.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => set("deliveryPaidBy", "customer")}>কাস্টমার</button>
-              <input type="number" min="0" step="1" value={form.deliveryCharge} onChange={(event) => set("deliveryCharge", event.target.value)} placeholder="টাকা" aria-label="ডেলিভারি টাকা" />
+              <button type="button" className={form.deliveryPaidBy === "free" ? "pill-btn active" : "pill-btn"} onClick={() => set("deliveryPaidBy", "free")}>Free</button>
+              <button type="button" className={form.deliveryPaidBy === "customer" ? "pill-btn active" : "pill-btn"} onClick={() => set("deliveryPaidBy", "customer")}>Customer</button>
+              <input type="number" min="0" step="1" value={form.deliveryCharge} onChange={(event) => set("deliveryCharge", event.target.value)} placeholder="Amount" aria-label="Delivery amount" />
             </div>
           </div>
-          <Field label="নোট">
-            <input value={form.note} onChange={(event) => set("note", event.target.value)} placeholder="চাইলে লিখুন" />
+          <Field label="Note">
+            <input value={form.note} onChange={(event) => set("note", event.target.value)} placeholder="Optional" />
           </Field>
-          <Row label="পণ্য" value={taka(goods)} />
-          <Row label={delivery > 0 && !customerPaysDelivery ? "ডেলিভারি (আপনি)" : "ডেলিভারি"} value={delivery > 0 ? taka(delivery) : "ফ্রি"} />
-          <Row label="মোট" value={taka(total)} strong />
-          <Row label="বাকি" value={taka(total - paid)} strong />
-          <Row label="লাভ" value={taka(profit)} strong />
-          <button className="btn wide" type="submit" disabled={saving || Boolean(shortage)}>{saving ? "সেভ হচ্ছে…" : "অর্ডার সেভ"}</button>
+          <Row label="Products" value={taka(goods)} />
+          <Row label={delivery > 0 && !customerPaysDelivery ? "Delivery (you)" : "Delivery"} value={delivery > 0 ? taka(delivery) : "Free"} />
+          <Row label="Total" value={taka(total)} strong />
+          <Row label="Due" value={taka(total - paid)} strong />
+          <Row label="Profit" value={taka(profit)} strong />
+          <button className="btn wide" type="submit" disabled={saving || Boolean(shortage)}>{saving ? "Saving…" : "Save order"}</button>
         </aside>
       </form>
     </section>

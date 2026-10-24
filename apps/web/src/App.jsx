@@ -9,11 +9,11 @@ import Orders from "./pages/Orders.jsx"
 import { RouteContext } from "./route.jsx"
 
 const NAV = [
-  { href: "/", label: "ড্যাশবোর্ড", short: "খাতা", icon: "board" },
-  { href: "/orders/new", label: "নতুন অর্ডার", short: "নতুন", icon: "plus" },
-  { href: "/orders", label: "সব অর্ডার", short: "অর্ডার", icon: "list" },
-  { href: "/inventory", label: "ইনভেন্টরি", short: "স্টক", icon: "box" },
-  { href: "/courier", label: "কুরিয়ার", short: "পার্সেল", icon: "truck" },
+  { href: "/", label: "Dashboard", short: "Home", icon: "board" },
+  { href: "/orders/new", label: "New order", short: "New", icon: "plus" },
+  { href: "/orders", label: "All orders", short: "Orders", icon: "list" },
+  { href: "/inventory", label: "Inventory", short: "Stock", icon: "box" },
+  { href: "/courier", label: "Courier", short: "Parcels", icon: "truck" },
 ]
 
 function locationKey() {
@@ -53,10 +53,10 @@ export default function App() {
             <RoseMark />
             <span>
               <strong>Rose Glow</strong>
-              <small>অলংকারের হিসাব</small>
+              <small>Jewelry ledger</small>
             </span>
           </a>
-          <nav className="side-nav" aria-label="প্রধান মেনু">
+          <nav className="side-nav" aria-label="Main menu">
             {NAV.map((item) => (
               <a
                 key={item.href}
@@ -78,13 +78,13 @@ export default function App() {
               <RoseMark />
               <span>
                 <strong>Rose Glow</strong>
-                <small>অলংকারের হিসাব</small>
+                <small>Jewelry ledger</small>
               </span>
             </a>
             <Notifications />
           </header>
           <main>{page}</main>
-          <nav className="tabbar" aria-label="প্রধান মেনু">
+          <nav className="tabbar" aria-label="Main menu">
             {NAV.map((item) => (
               <a
                 key={item.href}
@@ -113,8 +113,8 @@ function Missing({ go }) {
   return (
     <section className="page">
       <div className="card missing">
-        <h1>এই পাতা নেই</h1>
-        <button type="button" className="btn" onClick={() => go("/")}>ড্যাশবোর্ডে যান</button>
+        <h1>This page does not exist</h1>
+        <button type="button" className="btn" onClick={() => go("/")}>Go to dashboard</button>
       </div>
     </section>
   )

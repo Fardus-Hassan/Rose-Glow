@@ -1,16 +1,16 @@
-const MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"]
-const WEEKDAYS = ["রবি", "সোম", "মঙ্গল", "বুধ", "বৃহ", "শুক্র", "শনি"]
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
 
 export const PRESETS = [
-  { id: "today", label: "আজ" },
-  { id: "yesterday", label: "গতকাল" },
-  { id: "7", label: "শেষ ৭ দিন" },
-  { id: "30", label: "শেষ ৩০ দিন" },
-  { id: "month", label: "এই মাস" },
-  { id: "lastMonth", label: "গত মাস" },
-  { id: "year", label: "এই বছর" },
-  { id: "lastYear", label: "গত বছর" },
-  { id: "custom", label: "নিজের তারিখ" },
+  { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "7", label: "Last 7 days" },
+  { id: "30", label: "Last 30 days" },
+  { id: "month", label: "This month" },
+  { id: "lastMonth", label: "Last month" },
+  { id: "year", label: "This year" },
+  { id: "lastYear", label: "Last year" },
+  { id: "custom", label: "Custom dates" },
 ]
 
 export function todayISO() {
@@ -96,7 +96,7 @@ export function formatDay(value) {
 }
 
 export function formatRange(range) {
-  if (!range?.from || !range?.to) return "সব সময়"
+  if (!range?.from || !range?.to) return "All time"
   if (range.from === range.to) return formatDay(range.from)
   return `${formatDay(range.from)} – ${formatDay(range.to)}`
 }

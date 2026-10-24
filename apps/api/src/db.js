@@ -39,7 +39,7 @@ function databaseUrl() {
 
 const connectionString = databaseUrl()
 if (!connectionString) {
-  throw new Error("DATABASE_URL নেই। PostgreSQL ছাড়া অ্যাপ চালু হবে না।")
+  throw new Error("DATABASE_URL is missing. The app cannot start without PostgreSQL.")
 }
 
 const local = /@(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString)

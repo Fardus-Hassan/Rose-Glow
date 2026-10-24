@@ -16,8 +16,8 @@
   --warn: #e7c27a;
   --bad: #f0b4b4;
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
-  --sans: "Noto Sans Bengali", "Nirmala UI", sans-serif;
-  --display: Fraunces, "Noto Sans Bengali", serif;
+  --sans: "Source Sans 3", "Segoe UI", sans-serif;
+  --display: Fraunces, Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -387,11 +387,11 @@ img, svg { display: block; }
   line-height: 1.45;
 }
 .split, .card, .stack { min-width: 0; }
-.list-card td[data-label="অর্ডার"],
-.list-card td[data-label="সোর্স"],
-.list-card td[data-label="সময়"],
-.list-card td[data-label="মোট"],
-.list-card td[data-label="বাকি"] { white-space: nowrap; }
+.list-card td[data-label="Order"],
+.list-card td[data-label="Source"],
+.list-card td[data-label="Time"],
+.list-card td[data-label="Total"],
+.list-card td[data-label="Due"] { white-space: nowrap; }
 td .copy-address {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1197,22 +1197,22 @@ tr.selected { background: var(--rose-soft); }
     text-align: left;
     flex: none;
   }
-  .list-card .table-card td[data-label="কাস্টমার"] {
+  .list-card .table-card td[data-label="Customer"] {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
   }
-  .list-card .table-card td[data-label="কাস্টমার"]::before {
+  .list-card .table-card td[data-label="Customer"]::before {
     grid-row: 1 / span 2;
     align-self: center;
   }
-  .list-card .table-card td[data-label="কাস্টমার"] > .copy-text,
-  .list-card .table-card td[data-label="কাস্টমার"] small {
+  .list-card .table-card td[data-label="Customer"] > .copy-text,
+  .list-card .table-card td[data-label="Customer"] small {
     justify-self: end;
     min-width: 0;
     text-align: right;
   }
-  .list-card .table-card td[data-label="কাস্টমার"] small { display: block; }
+  .list-card .table-card td[data-label="Customer"] small { display: block; }
   .list-card .table-card .copy-address {
     max-width: min(70%, 28ch);
     text-align: right;
@@ -1248,28 +1248,28 @@ tr.selected { background: var(--rose-soft); }
   }
   .inv-table .table-card td::before { content: none; }
   .inv-table .table-card td.num { text-align: left; white-space: normal; }
-  .inv-table .table-card td[data-label="পণ্য"],
-  .inv-table .table-card td[data-label="কম্বো"] { grid-area: name; }
-  .inv-table .table-card td[data-label="পণ্য"] strong,
-  .inv-table .table-card td[data-label="কম্বো"] strong { overflow-wrap: anywhere; }
-  .inv-table .table-card td[data-label="কম্বো"] small { display: block; margin-top: 2px; }
-  .inv-table .table-card td[data-label="স্টক"],
-  .inv-table .table-card td[data-label="সেট"] {
+  .inv-table .table-card td[data-label="Product"],
+  .inv-table .table-card td[data-label="Combo"] { grid-area: name; }
+  .inv-table .table-card td[data-label="Product"] strong,
+  .inv-table .table-card td[data-label="Combo"] strong { overflow-wrap: anywhere; }
+  .inv-table .table-card td[data-label="Combo"] small { display: block; margin-top: 2px; }
+  .inv-table .table-card td[data-label="Stock"],
+  .inv-table .table-card td[data-label="Sets"] {
     grid-area: stock;
     text-align: right;
     font-size: 1.15rem;
   }
-  .inv-table .table-card td[data-label="কেনা"] { grid-area: cost; }
-  .inv-table .table-card td[data-label="বিক্রি"] { grid-area: sell; }
-  .inv-table .table-card td[data-label="লাভ"] { grid-area: profit; }
-  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] { grid-area: adjust; }
-  .inv-table .table-card td[data-label="কাজ"] { grid-area: actions; }
-  .inv-table .table-card td[data-label="স্টক"]::before,
-  .inv-table .table-card td[data-label="সেট"]::before,
-  .inv-table .table-card td[data-label="কেনা"]::before,
-  .inv-table .table-card td[data-label="বিক্রি"]::before,
-  .inv-table .table-card td[data-label="লাভ"]::before,
-  .inv-table .table-card td[data-label="যোগ / বিয়োগ"]::before {
+  .inv-table .table-card td[data-label="Cost"] { grid-area: cost; }
+  .inv-table .table-card td[data-label="Sell"] { grid-area: sell; }
+  .inv-table .table-card td[data-label="Profit"] { grid-area: profit; }
+  .inv-table .table-card td[data-label="Add / remove"] { grid-area: adjust; }
+  .inv-table .table-card td[data-label="Actions"] { grid-area: actions; }
+  .inv-table .table-card td[data-label="Stock"]::before,
+  .inv-table .table-card td[data-label="Sets"]::before,
+  .inv-table .table-card td[data-label="Cost"]::before,
+  .inv-table .table-card td[data-label="Sell"]::before,
+  .inv-table .table-card td[data-label="Profit"]::before,
+  .inv-table .table-card td[data-label="Add / remove"]::before {
     content: attr(data-label);
     display: block;
     color: var(--muted);
@@ -1277,13 +1277,13 @@ tr.selected { background: var(--rose-soft); }
     font-weight: 400;
     text-align: inherit;
   }
-  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] .adjust { flex-wrap: wrap; }
-  .inv-table .table-card td[data-label="যোগ / বিয়োগ"] .adjust input {
+  .inv-table .table-card td[data-label="Add / remove"] .adjust { flex-wrap: wrap; }
+  .inv-table .table-card td[data-label="Add / remove"] .adjust input {
     flex: 1 1 96px;
     width: auto;
     min-width: 0;
   }
-  .inv-table .table-card td[data-label="কাজ"] .row-actions {
+  .inv-table .table-card td[data-label="Actions"] .row-actions {
     justify-content: flex-end;
     flex-wrap: wrap;
   }

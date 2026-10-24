@@ -29,7 +29,7 @@ export function TrendChart({ points, from, to }) {
     }
   }, [ordersMax, amountMax])
   if (!ordersMax && !amountMax) {
-    return <p className="muted chart-empty">এই সময়ে বিক্রির অর্ডার নেই।</p>
+    return <p className="muted chart-empty">No sales in this period.</p>
   }
   const orderScale = orderScaleOf(ordersMax)
   const amountScale = niceMax(amountMax)
@@ -56,7 +56,7 @@ export function TrendChart({ points, from, to }) {
 
   return (
     <div className="trend" ref={host}>
-      <svg viewBox={`0 0 ${width} ${height}`} style={{ fontSize: font }} role="img" aria-label="অর্ডার ও বিক্রির ধারা" onPointerLeave={() => setActive(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ fontSize: font }} role="img" aria-label="Orders and sales trend" onPointerLeave={() => setActive(null)}>
         {Array.from({ length: steps + 1 }, (_, step) => {
           const y = base - (innerH / steps) * step
           const orderLabel = String(Math.round((orderScale / steps) * step))
@@ -134,13 +134,13 @@ export function TrendChart({ points, from, to }) {
       {current ? (
         <div className={`trend-hover ${xAt(active) / width > 0.62 ? "left" : ""}`} style={{ left: `${(xAt(active) / width) * 100}%` }}>
           <strong>{current.full}</strong>
-          <span><i style={{ background: ORDER_COLOR }} />অর্ডার <b>{current.orders}</b></span>
-          <span><i style={{ background: AMOUNT_COLOR }} />বিক্রি <b>{taka(current.amount)}</b></span>
+          <span><i style={{ background: ORDER_COLOR }} />Orders <b>{current.orders}</b></span>
+          <span><i style={{ background: AMOUNT_COLOR }} />Sales <b>{taka(current.amount)}</b></span>
         </div>
       ) : null}
       <div className="trend-legend">
-        <span><i className="bar" />অর্ডার</span>
-        <span><i className="line" />বিক্রি</span>
+        <span><i className="bar" />Orders</span>
+        <span><i className="line" />Sales</span>
       </div>
     </div>
   )
@@ -149,7 +149,7 @@ export function TrendChart({ points, from, to }) {
 const SOURCE_COLORS = ["#e06d78", "#f0c14a", "#3db8c9", "#b794e0", "#7dcaa5", "#e09a5a", "#8f9ad4", "#e7d38a"]
 
 export function SourceChart({ sources }) {
-  if (!sources.length) return <p className="muted chart-empty">এই সময়ে কোনো সোর্স থেকে অর্ডার নেই।</p>
+  if (!sources.length) return <p className="muted chart-empty">No orders from any source in this period.</p>
   const slices = sources.map((source, index) => ({
     id: source.id ?? source.name,
     name: source.name,
@@ -159,7 +159,7 @@ export function SourceChart({ sources }) {
   }))
   return (
     <div className="chart">
-      <ShareDonut slices={slices} label="অর্ডার" />
+      <ShareDonut slices={slices} label="Orders" />
       <HBars rows={slices.map((source) => ({
         id: source.id,
         name: source.name,
@@ -171,10 +171,10 @@ export function SourceChart({ sources }) {
   )
 }
 
-export function ShareDonut({ slices, label = "অর্ডার" }) {
+export function ShareDonut({ slices, label = "Orders" }) {
   const items = slices.filter((slice) => slice.value > 0)
   const total = items.reduce((sum, slice) => sum + slice.value, 0)
-  if (!total) return <p className="muted chart-empty">এই সময়ে কোনো অর্ডার নেই।</p>
+  if (!total) return <p className="muted chart-empty">No orders in this period.</p>
   const radius = 62
   const circ = 2 * Math.PI * radius
   const gap = items.length > 1 ? 4 : 0
@@ -212,7 +212,7 @@ export function StockMix({ cost, sell }) {
   const profit = Math.max(0, sell - cost)
   const costSlice = Math.max(0, Math.min(cost, sell))
   const total = costSlice + profit
-  if (!total) return <p className="muted chart-empty">স্টকে দাম নেই।</p>
+  if (!total) return <p className="muted chart-empty">Stock has no value yet.</p>
   const slices = [
     { id: "cost", value: costSlice, color: "#3db8c9" },
     { id: "profit", value: profit, color: "#e06d78" },
@@ -229,7 +229,7 @@ export function StockMix({ cost, sell }) {
   })
   return (
     <div className="stock-mix">
-      <svg viewBox="0 0 148 148" role="img" aria-label="স্টকের কেনা দাম আর সম্ভাব্য লাভ">
+      <svg viewBox="0 0 148 148" role="img" aria-label="Stock cost and possible profit">
         <circle className="chart-track" cx="74" cy="74" r={radius} fill="none" strokeWidth="14" />
         {segments.map((segment) => (
           <circle
@@ -246,11 +246,11 @@ export function StockMix({ cost, sell }) {
           />
         ))}
         <text x="74" y="70" textAnchor="middle" className="stock-mix-value">{taka(sell)}</text>
-        <text x="74" y="88" textAnchor="middle" className="chart-caption">বিক্রি হলে</text>
+        <text x="74" y="88" textAnchor="middle" className="chart-caption">If sold</text>
       </svg>
       <div className="stock-key">
-        <span><i style={{ background: "#3db8c9" }} />কেনা</span>
-        <span><i style={{ background: "#e06d78" }} />লাভ</span>
+        <span><i style={{ background: "#3db8c9" }} />Cost</span>
+        <span><i style={{ background: "#e06d78" }} />Profit</span>
       </div>
     </div>
   )
@@ -267,7 +267,7 @@ export function HBars({ rows, max }) {
           <div className="bar-track" aria-hidden="true">
             <div className="bar-fill" style={{ width: `${peak ? (row.value / peak) * 100 : 0}%`, background: row.color || undefined }} />
           </div>
-          {row.hint ? <b className="hbar-orders">{row.value}টা</b> : null}
+          {row.hint ? <b className="hbar-orders">{row.value}</b> : null}
           <b className={row.hint ? "hbar-amount" : ""}>{row.hint ?? row.value}</b>
         </li>
       ))}
@@ -321,7 +321,7 @@ function decorate(bucket) {
     const { year, month } = parts(`${bucket.date}-01`)
     return { ...bucket, label: FULL_MONTHS[month - 1], full: `${FULL_MONTHS[month - 1]} ${year}` }
   }
-  return { ...bucket, label: shortDay(bucket.date), full: `${fullDay(bucket.date)} সপ্তাহ` }
+  return { ...bucket, label: shortDay(bucket.date), full: `Week of ${fullDay(bucket.date)}` }
 }
 
 function weekKey(item) {
@@ -331,9 +331,9 @@ function weekKey(item) {
   return iso(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate())
 }
 
-const FULL_MONTHS = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"]
-const MID_MONTHS = ["জানু", "ফেব্রু", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টে", "অক্টো", "নভে", "ডিসে"]
-const TINY_MONTHS = ["জানু", "ফেব", "মার্চ", "এপ্রি", "মে", "জুন", "জুল", "আগ", "সেপ", "অক্টো", "নভে", "ডিসে"]
+const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const MID_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const TINY_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const EN_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 function monthWord(month, slot) {
