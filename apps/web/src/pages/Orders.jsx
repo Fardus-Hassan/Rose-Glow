@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
-import { STATUSES, holdsStock, statusLabel } from "@rose/shared"
+import { STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -141,6 +141,8 @@ export default function Orders() {
                       <CopyText value={order.mobile} label="নম্বর" />
                       <br />
                       {order.courier}
+                      {order.trackingCode ? <><br />{order.trackingCode}</> : null}
+                      {order.courierStatus ? <><br />{courierStatusLabel(order.courierStatus)}</> : null}
                     </small>
                   </td>
                   <td data-label="ঠিকানা"><CopyText value={order.address} label="ঠিকানা" className="copy-address" /></td>
@@ -246,6 +248,11 @@ function StatusMenu({ order, onChanged }) {
         },
       })
       onChanged(body.order)
+      if (body.order.courierError && !body.order.consignmentId) {
+        toast.error(body.order.courierError)
+        setOpen(false)
+        return
+      }
       const restored = !holdsStock(nextStatus) && holdsStock(order.status)
       toast.success(restored ? `${statusLabel(nextStatus)} হয়েছে। স্টক ফিরে এসেছে।` : `স্ট্যাটাস এখন ${statusLabel(nextStatus)}`)
       setOpen(false)

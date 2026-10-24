@@ -38,6 +38,11 @@ function present(row, items = undefined) {
     sourceId: row.source_id,
     sourceName: row.source_name || "",
     stockHeld: row.stock_held,
+    consignmentId: row.consignment_id ? Number(row.consignment_id) : null,
+    trackingCode: row.tracking_code || "",
+    trackingUrl: row.tracking_url || "",
+    courierStatus: row.courier_status || "",
+    courierError: row.courier_error || "",
     goods,
     cost,
     total,
@@ -56,6 +61,7 @@ const ORDER_SELECT = `
          o.cod_paid_by,
          o.paid_amount::float8 AS paid_amount,
          o.payment_method, o.note, o.source_id, MAX(src.name) AS source_name, o.stock_held,
+         o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          COALESCE(SUM(oi.unit_price * oi.quantity), 0)::float8 AS goods,
          COALESCE(SUM(oi.unit_cost * oi.quantity), 0)::float8 AS cost
   FROM orders o
@@ -467,6 +473,32 @@ export async function updateOrder(id, body) {
     client.release()
   }
   return getOrder(id)
+}
+
+export async function setOrderStatus(id, status, allowedFrom) {
+  if (!STATUS_IDS.has(status)) throw fail(400, "স্ট্যাটাস ঠিক নেই")
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const current = await client.query(`SELECT id, status, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
+    if (!current.rows[0]) throw fail(404, "অর্ডার পাওয়া যায়নি")
+    const row = current.rows[0]
+    if (row.status === status || (allowedFrom && !allowedFrom.includes(row.status))) {
+      await client.query("COMMIT")
+      return false
+    }
+    const hold = holdsStock(status)
+    if (hold && !row.stock_held) await moveSavedStock(client, id, -1)
+    if (!hold && row.stock_held) await moveSavedStock(client, id, 1)
+    await client.query(`UPDATE orders SET status = $2, stock_held = $3 WHERE id = $1`, [id, status, hold])
+    await client.query("COMMIT")
+    return true
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export async function deleteOrder(id) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { COURIERS, PAYMENTS, STATUSES, holdsStock, statusLabel } from "@rose/shared"
+import { COURIERS, PAYMENTS, STATUSES, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -21,6 +21,7 @@ export default function OrderDetail({ id }) {
   const [pick, setPick] = useState("")
   const [pickQty, setPickQty] = useState(1)
   const [draft, setDraft] = useState(null)
+  const [steps, setSteps] = useState([])
 
   useEffect(() => {
     let live = true
@@ -133,6 +134,10 @@ export default function OrderDetail({ id }) {
       })
       setOrder(body.order)
       api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
+      if (body.order.courierError && !body.order.consignmentId) {
+        toast.error(body.order.courierError)
+        return
+      }
       const back = !holdsStock(status) && holdsStock(order.status)
       toast.success(back ? `${statusLabel(status)} হয়েছে। স্টক ফিরে এসেছে।` : `স্ট্যাটাস এখন ${statusLabel(status)}`)
     } catch (reason) {
@@ -179,8 +184,55 @@ export default function OrderDetail({ id }) {
       setOrder(body.order)
       setEditing(false)
       setDraft(null)
-      toast.success("আপডেট হয়েছে")
+      if (body.order.courierError && !body.order.consignmentId) toast.error(body.order.courierError)
+      else toast.success("আপডেট হয়েছে")
       api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
+    } catch (reason) {
+      setError(reason.message)
+      toast.error(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function sendParcel() {
+    setSaving(true)
+    setError("")
+    try {
+      const body = await api(`/api/orders/${order.id}/dispatch`, { method: "POST", body: {} })
+      setOrder(body.order)
+      toast.success("পার্সেল বুক হয়েছে")
+    } catch (reason) {
+      setError(reason.message)
+      toast.error(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function refreshTrack() {
+    setSaving(true)
+    setError("")
+    try {
+      const body = await api(`/api/orders/${order.id}/track`, { method: "POST", body: {} })
+      setOrder(body.order)
+      setSteps(body.steps || [])
+      toast.success("স্ট্যাটাস এসেছে")
+    } catch (reason) {
+      setError(reason.message)
+      toast.error(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function askReturn() {
+    setSaving(true)
+    setError("")
+    try {
+      const body = await api(`/api/orders/${order.id}/return`, { method: "POST", body: { reason: "কাস্টমার ফেরত চেয়েছে" } })
+      setOrder(body.order)
+      toast.success("ফেরতের অনুরোধ গেছে")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -396,6 +448,40 @@ export default function OrderDetail({ id }) {
                 </div>
                 {order.note ? <p className="who-note">{order.note}</p> : null}
               </article>
+              {order.courier.trim().toLowerCase() === "steadfast" ? (
+                <article className="card">
+                  <div className="card-head">
+                    <h2>Steadfast</h2>
+                    {order.trackingUrl ? <a className="text-btn" href={order.trackingUrl} target="_blank" rel="noreferrer">ট্র্যাক করুন</a> : null}
+                  </div>
+                  {order.courierError && !order.consignmentId ? <Banner message={order.courierError} /> : null}
+                  {order.consignmentId ? (
+                    <>
+                      <div className="fact-grid">
+                        <p><span>স্ট্যাটাস</span><b>{courierStatusLabel(order.courierStatus) || "অপেক্ষায়"}</b></p>
+                        <p><span>ট্র্যাকিং</span><b>{order.trackingCode || order.consignmentId}</b></p>
+                      </div>
+                      {order.trackingCode ? <CopyText value={order.trackingCode} label="ট্র্যাকিং কোড" /> : null}
+                      <div className="actions">
+                        <button type="button" className="btn secondary" disabled={saving} onClick={refreshTrack}>স্ট্যাটাস আনুন</button>
+                        {order.status === "courier" ? <button type="button" className="btn danger" disabled={saving} onClick={askReturn}>ফেরত চাই</button> : null}
+                      </div>
+                      {steps.length > 0 ? (
+                        <ol className="track-steps">
+                          {steps.map((step, index) => (
+                            <li key={`${step.at}-${index}`}>
+                              <div>{step.text}</div>
+                              {step.at ? <small>{when(step.at)}</small> : null}
+                            </li>
+                          ))}
+                        </ol>
+                      ) : null}
+                    </>
+                  ) : (
+                    <button type="button" className="btn" disabled={saving} onClick={sendParcel}>Steadfast-এ পাঠান</button>
+                  )}
+                </article>
+              ) : null}
               <article className="card">
                 <h2>পণ্য</h2>
                 <ul className="lines detail-lines">

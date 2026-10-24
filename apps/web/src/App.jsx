@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react"
+import Notifications from "./notifications.jsx"
+import Courier from "./pages/Courier.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
 import Inventory from "./pages/Inventory.jsx"
 import OrderCreate from "./pages/OrderCreate.jsx"
@@ -11,6 +13,7 @@ const NAV = [
   { href: "/orders/new", label: "নতুন অর্ডার", short: "নতুন", icon: "plus" },
   { href: "/orders", label: "সব অর্ডার", short: "অর্ডার", icon: "list" },
   { href: "/inventory", label: "ইনভেন্টরি", short: "স্টক", icon: "box" },
+  { href: "/courier", label: "কুরিয়ার", short: "পার্সেল", icon: "truck" },
 ]
 
 function locationKey() {
@@ -39,6 +42,7 @@ export default function App() {
   else if (orderMatch) page = <OrderDetail id={Number(orderMatch[1])} />
   else if (path === "/orders") page = <Orders />
   else if (path === "/inventory") page = <Inventory />
+  else if (path === "/courier") page = <Courier />
   else if (path !== "/") page = <Missing go={go} />
 
   return (
@@ -77,6 +81,7 @@ export default function App() {
                 <small>অলংকারের হিসাব</small>
               </span>
             </a>
+            <Notifications />
           </header>
           <main>{page}</main>
           <nav className="tabbar" aria-label="প্রধান মেনু">
@@ -154,6 +159,14 @@ function Icon({ name }) {
           <path d="M3.8 8.2 12 4.5l8.2 3.7L12 11.8 3.8 8.2z" {...pen} />
           <path d="M3.8 8.2V16L12 19.6 20.2 16V8.2" {...pen} />
           <path d="M12 11.8v7.8" {...pen} />
+        </>
+      ) : null}
+      {name === "truck" ? (
+        <>
+          <path d="M3.5 7.5h10v8h-10z" {...pen} />
+          <path d="M13.5 10.5h4.2L20.5 13v2.5h-7" {...pen} />
+          <circle cx="7.2" cy="17.2" r="1.5" {...pen} />
+          <circle cx="16.8" cy="17.2" r="1.5" {...pen} />
         </>
       ) : null}
     </svg>

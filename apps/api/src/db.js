@@ -116,10 +116,47 @@ CREATE TABLE IF NOT EXISTS order_stock (
 CREATE INDEX IF NOT EXISTS orders_ordered_at_idx ON orders (ordered_at DESC);
 CREATE INDEX IF NOT EXISTS orders_status_idx ON orders (status);
 
+CREATE TABLE IF NOT EXISTS courier_accounts (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  api_key_enc TEXT NOT NULL,
+  secret_key_enc TEXT NOT NULL,
+  key_hint TEXT NOT NULL,
+  webhook_token_enc TEXT,
+  balance NUMERIC(14,2),
+  checked_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS courier_events (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  consignment_id BIGINT,
+  status TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  read_at TIMESTAMPTZ,
+  idempotency_key TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS courier_events_idem ON courier_events (idempotency_key);
+CREATE INDEX IF NOT EXISTS courier_events_recent ON courier_events (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS courier_sync (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01'
+);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_paid_by TEXT NOT NULL DEFAULT 'customer' CHECK (delivery_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS source_id INTEGER REFERENCES order_sources(id);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS consignment_id BIGINT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_url TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_status TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_status_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_error TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS orders_consignment_idx ON orders (consignment_id) WHERE consignment_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS order_sources_name_lower ON order_sources (lower(name));
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position

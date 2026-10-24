@@ -98,7 +98,73 @@ img, svg { display: block; }
   color: var(--ink);
 }
 .icon { width: 20px; height: 20px; flex: none; }
-.topbar, .tabbar { display: none; }
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  padding: 12px 28px;
+  background: rgba(18, 17, 16, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .brand { display: none; }
+.tabbar { display: none; }
+.bell { position: relative; }
+.bell-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--rose);
+}
+.bell-btn svg { width: 22px; height: 22px; }
+.bell-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e4b3ae;
+  color: #2a1819;
+  font-size: 0.72rem;
+  line-height: 18px;
+  text-align: center;
+}
+.bell-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(70vh, 480px);
+  overflow: auto;
+  z-index: 30;
+}
+.bell-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.bell-list button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 12px;
+  padding: 10px;
+}
+.bell-list button.unread { background: var(--rose-soft); }
+.bell-list strong { display: block; font-weight: 600; }
+.bell-list small { color: var(--muted); }
+.track-line { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.track-steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.track-steps li { padding-top: 8px; border-top: 1px solid var(--line); }
+.track-steps small { color: var(--muted); }
 
 .page {
   max-width: none;
@@ -634,20 +700,14 @@ tr.selected { background: var(--rose-soft); }
   .app { display: block; }
   .side { display: none; }
   .topbar {
-    display: flex;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    align-items: center;
+    justify-content: space-between;
     padding: 12px 16px;
     padding-top: calc(12px + env(safe-area-inset-top));
-    background: rgba(18, 17, 16, 0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--line);
   }
+  .topbar .brand { display: flex; }
   .tabbar {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     position: fixed;
     z-index: 6;
     left: 0;

@@ -4,6 +4,20 @@ import { dashboard, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, updateOrder } from "./orders.js"
+import {
+  accountView,
+  bookIfNeeded,
+  bookOrder,
+  disconnectAccount,
+  markNotifications,
+  notificationFeed,
+  parcelList,
+  receiveWebhook,
+  refreshBalance,
+  requestReturn,
+  saveAccount,
+  trackOrder,
+} from "./courier.js"
 
 function idFrom(req) {
   const id = whole(Number(req.params.id))
@@ -90,16 +104,62 @@ export function mount(app) {
     }))
   }))
 
+  app.get("/api/courier/account", wrap(async (req, res) => {
+    res.json(await accountView(req))
+  }))
+
+  app.put("/api/courier/account", wrap(async (req, res) => {
+    res.json(await saveAccount(req.body || {}, req))
+  }))
+
+  app.delete("/api/courier/account", wrap(async (req, res) => {
+    res.json(await disconnectAccount())
+  }))
+
+  app.post("/api/courier/balance", wrap(async (req, res) => {
+    res.json(await refreshBalance())
+  }))
+
+  app.get("/api/courier/parcels", wrap(async (req, res) => {
+    res.json({ parcels: await parcelList() })
+  }))
+
+  app.get("/api/courier/notifications", wrap(async (req, res) => {
+    res.json(await notificationFeed())
+  }))
+
+  app.post("/api/courier/notifications/read", wrap(async (req, res) => {
+    res.json(await markNotifications(req.body?.ids))
+  }))
+
+  app.post("/api/courier/steadfast/webhook", wrap(async (req, res) => {
+    res.json(await receiveWebhook(req))
+  }))
+
   app.post("/api/orders", wrap(async (req, res) => {
-    res.status(201).json({ order: await createOrder(req.body || {}) })
+    const order = await createOrder(req.body || {})
+    res.status(201).json({ order: await bookIfNeeded(order) })
   }))
 
   app.get("/api/orders/:id", wrap(async (req, res) => {
     res.json({ order: await getOrder(idFrom(req)) })
   }))
 
+  app.post("/api/orders/:id/dispatch", wrap(async (req, res) => {
+    res.json({ order: await bookOrder(idFrom(req)) })
+  }))
+
+  app.post("/api/orders/:id/track", wrap(async (req, res) => {
+    res.json(await trackOrder(idFrom(req)))
+  }))
+
+  app.post("/api/orders/:id/return", wrap(async (req, res) => {
+    res.json({ order: await requestReturn(idFrom(req), req.body?.reason) })
+  }))
+
   app.patch("/api/orders/:id", wrap(async (req, res) => {
-    res.json({ order: await updateOrder(idFrom(req), req.body || {}) })
+    const order = await updateOrder(idFrom(req), req.body || {})
+    res.json({ order: await bookIfNeeded(order) })
   }))
 
   app.delete("/api/orders/:id", wrap(async (req, res) => {
