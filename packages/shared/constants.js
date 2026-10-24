@@ -33,8 +33,8 @@ export function paymentLabel(id) {
 }
 
 export const COURIER_STATUSES = {
-  in_review: "In review",
   pending: "Pending",
+  in_review: "In review",
   hold: "On hold",
   delivered_approval_pending: "Delivery being confirmed",
   partial_delivered_approval_pending: "Partial delivery being confirmed",
@@ -45,12 +45,12 @@ export const COURIER_STATUSES = {
   cancelled: "Cancelled, coming back",
   exceptional: "Exception",
   unknown: "Unknown",
-  cancelled_return_processing: "Return in progress",
-  cancelled_return_rider_assigned: "Return with rider",
-  cancelled_return_received: "Return received",
   partial_delivered_return_processing: "Partial return in progress",
   partial_delivered_return_rider_assigned: "Partial return with rider",
   partial_delivered_return_received: "Partial return received",
+  cancelled_return_processing: "Return in progress",
+  cancelled_return_rider_assigned: "Return with rider",
+  cancelled_return_received: "Return received",
 }
 
 export function courierStatusLabel(id) {

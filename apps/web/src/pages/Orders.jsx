@@ -137,8 +137,8 @@ export default function Orders() {
           <div className="filter-pills">
             {FILTERS.map((item) => (
               <button key={item.id} type="button" className={status === item.id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(item.id); setPage(1) }}>
-                <span className="pill-count">{countsReady ? (item.id === "all" ? allCount : statusCount.get(item.id) || 0) : "·"}</span>
                 <span className="pill-label">{item.label}</span>
+                <span className="pill-count">{countsReady ? (item.id === "all" ? allCount : statusCount.get(item.id) || 0) : "·"}</span>
               </button>
             ))}
           </div>
@@ -149,8 +149,8 @@ export default function Orders() {
                 const id = `sf:${item}`
                 return (
                   <button key={id} type="button" className={status === id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(id); setPage(1) }}>
-                    <span className="pill-count">{countsReady ? courierCount.get(item) || 0 : "·"}</span>
                     <span className="pill-label">{courierStatusLabel(item)}</span>
+                    <span className="pill-count">{countsReady ? courierCount.get(item) || 0 : "·"}</span>
                   </button>
                 )
               })}
