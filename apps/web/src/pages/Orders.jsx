@@ -11,6 +11,14 @@ import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 
+function shiftCount(list, from, to) {
+  if (from === to) return list
+  const map = new Map(list.map((item) => [item.id, item.count]))
+  if (from) map.set(from, Math.max(0, (map.get(from) || 0) - 1))
+  if (to) map.set(to, (map.get(to) || 0) + 1)
+  return [...map.entries()].map(([id, count]) => ({ id, count }))
+}
+
 function matchesFilter(order, filter) {
   if (filter === "all") return true
   if (filter.startsWith("sf:")) return order.courierStatus === filter.slice(3)
@@ -27,12 +35,19 @@ export default function Orders() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [data, setData] = useState(null)
+  const [statusCounts, setStatusCounts] = useState([])
   const [courierFilters, setCourierFilters] = useState([])
+  const [hiddenCourier, setHiddenCourier] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
   function replaceOrder(next) {
+    const previous = data?.orders.find((item) => item.id === next.id)
     const dropped = !matchesFilter(next, status)
+    if (previous && previous.status !== next.status) setStatusCounts((current) => shiftCount(current, previous.status, next.status))
+    if (previous && (previous.courierStatus || "") !== (next.courierStatus || "")) {
+      setCourierFilters((current) => shiftCount(current, previous.courierStatus, next.courierStatus))
+    }
     if (dropped && data?.orders.length === 1 && page > 1) {
       setPage(page - 1)
       return
@@ -77,7 +92,9 @@ export default function Orders() {
             return
           }
           setData(body)
+          setStatusCounts(body.statusCounts || [])
           setCourierFilters(body.courierFilters || [])
+          setHiddenCourier(body.hiddenCourierStatuses || [])
         })
         .catch((reason) => { if (live) setError(reason.message) })
         .finally(() => { if (live) setLoading(false) })
@@ -93,12 +110,17 @@ export default function Orders() {
     return () => { live = false }
   }, [])
 
-  const knownIds = Object.keys(COURIER_STATUSES)
-  const extraIds = courierFilters.map((item) => item.id).filter((id) => !COURIER_STATUSES[id])
+  const hidden = new Set(hiddenCourier)
+  const knownIds = Object.keys(COURIER_STATUSES).filter((id) => !hidden.has(id))
+  const extraIds = courierFilters.map((item) => item.id).filter((id) => id && !COURIER_STATUSES[id] && !hidden.has(id))
   const selectedId = status.startsWith("sf:") ? status.slice(3) : ""
   const courierPills = selectedId && !knownIds.includes(selectedId) && !extraIds.includes(selectedId)
     ? [...knownIds, ...extraIds, selectedId]
     : [...knownIds, ...extraIds]
+  const statusCount = new Map(statusCounts.map((item) => [item.id, item.count]))
+  const courierCount = new Map(courierFilters.map((item) => [item.id, item.count]))
+  const allCount = statusCounts.reduce((sum, item) => sum + item.count, 0)
+  const countsReady = data !== null
 
   return (
     <section className="page">
@@ -115,7 +137,8 @@ export default function Orders() {
           <div className="filter-pills">
             {FILTERS.map((item) => (
               <button key={item.id} type="button" className={status === item.id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(item.id); setPage(1) }}>
-                {item.label}
+                <span className="pill-count">{countsReady ? (item.id === "all" ? allCount : statusCount.get(item.id) || 0) : "·"}</span>
+                <span className="pill-label">{item.label}</span>
               </button>
             ))}
           </div>
@@ -126,7 +149,8 @@ export default function Orders() {
                 const id = `sf:${item}`
                 return (
                   <button key={id} type="button" className={status === id ? "pill-btn active" : "pill-btn"} onClick={() => { setStatus(id); setPage(1) }}>
-                    {courierStatusLabel(item)}
+                    <span className="pill-count">{countsReady ? courierCount.get(item) || 0 : "·"}</span>
+                    <span className="pill-label">{courierStatusLabel(item)}</span>
                   </button>
                 )
               })}

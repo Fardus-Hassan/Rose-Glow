@@ -1,6 +1,7 @@
 import { MANUAL_STATUSES, PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, mobile, money, noteText, when, whole } from "./http.js"
+import { hiddenCourierStatuses } from "./settings.js"
 
 const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
 const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
@@ -156,16 +157,27 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     }
   }
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : ""
+  const statusWhere = sharedWhere.length ? `WHERE ${sharedWhere.join(" AND ")}` : ""
   const facetWhere = [...sharedWhere, "o.courier_status IS NOT NULL", "o.courier_status <> ''"]
-  const facets = await pool.query(
-    `SELECT o.courier_status AS id, COUNT(*)::int AS count
-     FROM orders o
-     WHERE ${facetWhere.join(" AND ")}
-     GROUP BY o.courier_status
-     ORDER BY count DESC, o.courier_status`,
-    sharedParams,
-  )
-  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM orders o ${clause}`, params)
+  const [statusFacets, facets, count, hidden] = await Promise.all([
+    pool.query(
+      `SELECT o.status AS id, COUNT(*)::int AS count
+       FROM orders o
+       ${statusWhere}
+       GROUP BY o.status`,
+      sharedParams,
+    ),
+    pool.query(
+      `SELECT o.courier_status AS id, COUNT(*)::int AS count
+       FROM orders o
+       WHERE ${facetWhere.join(" AND ")}
+       GROUP BY o.courier_status
+       ORDER BY count DESC, o.courier_status`,
+      sharedParams,
+    ),
+    pool.query(`SELECT COUNT(*)::int AS total FROM orders o ${clause}`, params),
+    hiddenCourierStatuses(),
+  ])
   params.push(limit, offset)
   const rows = await pool.query(
     `${ORDER_SELECT} ${clause} GROUP BY o.id ORDER BY o.ordered_at DESC, o.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -174,7 +186,9 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   return {
     orders: rows.rows.map((row) => present(row)),
     total: count.rows[0].total,
+    statusCounts: statusFacets.rows,
     courierFilters: facets.rows,
+    hiddenCourierStatuses: hidden,
   }
 }
 

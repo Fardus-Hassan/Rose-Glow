@@ -146,6 +146,11 @@ CREATE TABLE IF NOT EXISTS courier_sync (
   synced_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01'
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL
+);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_paid_by TEXT NOT NULL DEFAULT 'customer' CHECK (delivery_paid_by IN ('free','customer'));

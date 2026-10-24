@@ -19,6 +19,7 @@ import {
   saveAccount,
   trackOrder,
 } from "./courier.js"
+import { courierFilterView, saveCourierFilters } from "./settings.js"
 
 function idFrom(req) {
   const id = whole(Number(req.params.id))
@@ -127,6 +128,14 @@ export function mount(app) {
 
   app.get("/api/courier/parcels", wrap(async (req, res) => {
     res.json({ parcels: await parcelList() })
+  }))
+
+  app.get("/api/courier/filters", wrap(async (req, res) => {
+    res.json(await courierFilterView())
+  }))
+
+  app.put("/api/courier/filters", wrap(async (req, res) => {
+    res.json(await saveCourierFilters(req.body || {}))
   }))
 
   app.get("/api/courier/notifications", wrap(async (req, res) => {
