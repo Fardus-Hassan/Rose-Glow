@@ -6,7 +6,7 @@ import { paymentLabel, taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, CopyText, Field, StatusPill } from "../ui.jsx"
+import { Banner, ContactActions, CopyText, Field, StatusPill } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
   const { go } = useRoute()
@@ -449,7 +449,10 @@ export default function OrderDetail({ id }) {
               <article className="card who-card">
                 <div className="who-head">
                   <h2><CopyText value={order.customerName} label="Name" /></h2>
-                  <CopyText value={order.mobile} label="Number" />
+                  <div className="who-phone">
+                    <CopyText value={order.mobile} label="Number" />
+                    <ContactActions mobile={order.mobile} />
+                  </div>
                 </div>
                 <p className="who-address"><CopyText value={order.address} label="Address" /></p>
                 <div className="fact-grid">

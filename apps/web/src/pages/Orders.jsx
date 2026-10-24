@@ -6,7 +6,7 @@ import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
+import { Banner, ContactActions, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -196,11 +196,15 @@ export default function Orders() {
                   <td data-label="Customer">
                     <CopyText value={order.customerName} label="Name" />
                     <small>
-                      <CopyText value={order.mobile} label="Number" />
-                      <br />
-                      {order.courier}
-                      {order.trackingCode ? <><br />{order.trackingCode}</> : null}
-                      {order.courierStatus ? <><br />{courierStatusLabel(order.courierStatus)}</> : null}
+                      <span className="phone-line">
+                        <CopyText value={order.mobile} label="Number" />
+                        <ContactActions mobile={order.mobile} />
+                      </span>
+                      <span className="customer-meta">
+                        {order.courier}
+                        {order.trackingCode ? <><br />{order.trackingCode}</> : null}
+                        {order.courierStatus ? <><br />{courierStatusLabel(order.courierStatus)}</> : null}
+                      </span>
                     </small>
                   </td>
                   <td data-label="Address"><CopyText value={order.address} label="Address" className="copy-address" /></td>
