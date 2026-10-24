@@ -17,6 +17,13 @@ function kindLabel(id) {
   return EXPENSE_KINDS.find((item) => item.id === id)?.label || id
 }
 
+function periodText(start, end) {
+  if (start && end) return `${dayLabel(start)} – ${dayLabel(end)}`
+  if (start) return `From ${dayLabel(start)}`
+  if (end) return `Up to ${dayLabel(end)}`
+  return ""
+}
+
 export default function Purchases() {
   const { go } = useRoute()
   const [products, setProducts] = useState([])
@@ -34,6 +41,14 @@ export default function Purchases() {
   const [pageSize, setPageSize] = useState(20)
   const [expensePage, setExpensePage] = useState(1)
   const [expensePageSize, setExpensePageSize] = useState(20)
+  const [placePage, setPlacePage] = useState(1)
+  const [placePageSize, setPlacePageSize] = useState(10)
+  const [placeTotal, setPlaceTotal] = useState(0)
+  const [fromDraft, setFromDraft] = useState("")
+  const [toDraft, setToDraft] = useState("")
+  const [from, setFrom] = useState("")
+  const [to, setTo] = useState("")
+  const [match, setMatch] = useState({ lines: 0, pieces: 0, goods: 0 })
   const [ready, setReady] = useState(false)
   const [error, setError] = useState("")
   const [productId, setProductId] = useState("")
@@ -64,23 +79,16 @@ export default function Purchases() {
 
   useEffect(() => {
     let live = true
-    const query = new URLSearchParams({
-      limit: String(pageSize),
-      offset: String((page - 1) * pageSize),
-      expenseLimit: String(expensePageSize),
-      expenseOffset: String((expensePage - 1) * expensePageSize),
-    })
-    api(`/api/purchases?${query}`)
+    api(`/api/purchases?${booksQuery()}`)
       .then((body) => {
         if (!live) return
         const pages = Math.max(1, Math.ceil(body.total / pageSize))
         const expensePages = Math.max(1, Math.ceil(body.expenseTotal / expensePageSize))
-        if (page > pages) {
-          setPage(pages)
-          return
-        }
-        if (expensePage > expensePages) {
-          setExpensePage(expensePages)
+        const placePages = Math.max(1, Math.ceil((body.placeTotal || 0) / placePageSize))
+        if (page > pages || expensePage > expensePages || placePage > placePages) {
+          if (page > pages) setPage(pages)
+          if (expensePage > expensePages) setExpensePage(expensePages)
+          if (placePage > placePages) setPlacePage(placePages)
           return
         }
         applyBooks(body)
@@ -88,7 +96,7 @@ export default function Purchases() {
       })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
-  }, [page, pageSize, expensePage, expensePageSize])
+  }, [page, pageSize, expensePage, expensePageSize, placePage, placePageSize, from, to])
 
   function applyBooks(body) {
     setRows(body.purchases)
@@ -101,15 +109,57 @@ export default function Purchases() {
     setSales(body.sales)
     setProfit(body.profit)
     setPlaces(body.places || [])
+    setPlaceTotal(body.placeTotal || 0)
+    setMatch(body.match || { lines: 0, pieces: 0, goods: 0 })
   }
 
-  function booksQuery(nextPage = page, nextSize = pageSize, nextExpensePage = expensePage, nextExpenseSize = expensePageSize) {
-    return new URLSearchParams({
+  function booksQuery(overrides = {}) {
+    const nextPage = overrides.page ?? page
+    const nextSize = overrides.pageSize ?? pageSize
+    const nextExpensePage = overrides.expensePage ?? expensePage
+    const nextExpenseSize = overrides.expensePageSize ?? expensePageSize
+    const nextPlacePage = overrides.placePage ?? placePage
+    const nextPlaceSize = overrides.placePageSize ?? placePageSize
+    const nextFrom = overrides.from ?? from
+    const nextTo = overrides.to ?? to
+    const query = new URLSearchParams({
       limit: String(nextSize),
       offset: String((nextPage - 1) * nextSize),
       expenseLimit: String(nextExpenseSize),
       expenseOffset: String((nextExpensePage - 1) * nextExpenseSize),
+      placeLimit: String(nextPlaceSize),
+      placeOffset: String((nextPlacePage - 1) * nextPlaceSize),
     })
+    if (nextFrom) query.set("from", nextFrom)
+    if (nextTo) query.set("to", nextTo)
+    return query
+  }
+
+  function lookup(event) {
+    event.preventDefault()
+    let start = fromDraft
+    let end = toDraft
+    if (start && end && start > end) {
+      const swap = start
+      start = end
+      end = swap
+      setFromDraft(start)
+      setToDraft(end)
+    }
+    setFrom(start)
+    setTo(end)
+    setPage(1)
+    setPlacePage(1)
+    document.querySelector(".lookup-results")?.scrollIntoView({ block: "start", behavior: "smooth" })
+  }
+
+  function clearLookup() {
+    setFromDraft("")
+    setToDraft("")
+    setFrom("")
+    setTo("")
+    setPage(1)
+    setPlacePage(1)
   }
 
   function pickProduct(id) {
@@ -131,9 +181,10 @@ export default function Purchases() {
       setNote("")
       setBoughtFrom("")
       setPage(1)
-      const body = await api(`/api/purchases?${booksQuery(1, pageSize)}`)
+      const body = await api(`/api/purchases?${booksQuery({ page: 1 })}`)
       applyBooks(body)
-      toast.success("Purchase saved, stock updated")
+      const outside = (from && boughtOn < from) || (to && boughtOn > to)
+      toast.success(outside ? "Purchase saved. It sits outside these dates." : "Purchase saved, stock updated")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -154,7 +205,7 @@ export default function Purchases() {
       setAmount("")
       setExpenseNote("")
       setExpensePage(1)
-      const body = await api(`/api/purchases?${booksQuery(page, pageSize, 1, expensePageSize)}`)
+      const body = await api(`/api/purchases?${booksQuery({ expensePage: 1 })}`)
       applyBooks(body)
       toast.success("Cost saved")
     } catch (reason) {
@@ -290,12 +341,51 @@ export default function Purchases() {
         </div>
       </form>
 
+      <form className="card books-form lookup-card" onSubmit={lookup}>
+        <h2>Look up buys</h2>
+        <p className="muted small">Pick the dates. The list shows what you bought, what it cost, and where it came from.</p>
+        <div className="books-range">
+          <label className="field">
+            <span>Start</span>
+            <input type="date" value={fromDraft} max={todayISO()} min="2020-01-01" onChange={(event) => setFromDraft(event.target.value)} />
+          </label>
+          <label className="field">
+            <span>End</span>
+            <input type="date" value={toDraft} max={todayISO()} min="2020-01-01" onChange={(event) => setToDraft(event.target.value)} />
+          </label>
+          <button className="btn" type="submit">Search</button>
+          {from || to || fromDraft || toDraft ? <button className="btn secondary" type="button" onClick={clearLookup}>Clear</button> : null}
+        </div>
+        {from || to ? (
+          <div className="stock-kpis range-kpis">
+            <div>
+              <span>{periodText(from, to)}</span>
+              <strong>{match.lines} {match.lines === 1 ? "buy" : "buys"}</strong>
+            </div>
+            <div>
+              <span>Pieces</span>
+              <strong>{match.pieces}</strong>
+            </div>
+            <div>
+              <span>Goods</span>
+              <strong>{taka(match.goods)}</strong>
+            </div>
+            <div>
+              <span>Places</span>
+              <strong>{placeTotal}</strong>
+            </div>
+          </div>
+        ) : null}
+      </form>
+
+      <div className="lookup-results">
       <article className="card">
         <div className="card-head">
           <h2>By day</h2>
+          {from || to ? <p className="muted small">{periodText(from, to)}</p> : null}
         </div>
         {!ready ? <p className="muted">Loading…</p> : null}
-        {ready && days.length === 0 ? <Empty title="Nothing recorded yet" text="A purchase or a bringing-in cost shows here with that day's total." /> : null}
+        {ready && days.length === 0 ? <Empty title="Nothing recorded yet" text={from || to ? "No purchase or bringing-in cost in these dates." : "A purchase or a bringing-in cost shows here with that day's total."} /> : null}
         {days.length > 0 ? (
           <ul className="stock-list day-book">
             {days.map((day) => (
@@ -312,27 +402,55 @@ export default function Purchases() {
         ) : null}
       </article>
 
-      {places.length > 0 ? (
-        <article className="card">
+      {places.length > 0 || from || to ? (
+        <article className="card list-card place-list">
           <div className="card-head">
-            <h2>Places</h2>
+            <div>
+              <h2>Places</h2>
+              {from || to ? <p className="muted small">{periodText(from, to)}</p> : null}
+            </div>
           </div>
-          <ul className="stock-list">
-            {places.map((place) => (
-              <li key={place.place}>
-                <span>{place.place}</span>
-                <small>{place.lines} {place.lines === 1 ? "buy" : "buys"}</small>
-                <b>{taka(place.total)}</b>
-              </li>
-            ))}
-          </ul>
+          {places.length === 0 ? <Empty title="No place written" text="These buys have no shop, market, or person yet." /> : null}
+          {places.length > 0 ? (
+            <ul className="stock-list">
+              {places.map((place) => (
+                <li key={place.place}>
+                  <span>{place.place}</span>
+                  <small>{place.lines} {place.lines === 1 ? "buy" : "buys"}</small>
+                  <b>{taka(place.total)}</b>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {placeTotal > placePageSize ? (
+            <Pager
+              page={placePage}
+              total={placeTotal}
+              pageSize={placePageSize}
+              pageSizes={PAGE_SIZES}
+              onPage={(next) => {
+                setPlacePage(next)
+                document.querySelector(".place-list")?.scrollIntoView({ block: "start", behavior: "smooth" })
+              }}
+              onPageSize={(next) => { setPlacePageSize(next); setPlacePage(1) }}
+            />
+          ) : null}
         </article>
       ) : null}
 
       <article className="card list-card purchase-list">
         <div className="card-head">
-          <h2>Lines</h2>
+          <div>
+            <h2>Lines</h2>
+            {from || to ? <p className="muted small">{periodText(from, to)} · {taka(match.goods)} across every page</p> : null}
+          </div>
         </div>
+        {ready && rows.length === 0 ? (
+          <Empty
+            title={from || to ? "Nothing in these dates" : "No purchases yet"}
+            text={from || to ? "Change the start or end date, or clear the search to see every buy." : "Save a purchase and it will show here."}
+          />
+        ) : null}
         {rows.length > 0 ? (
           <div className="table-card">
             <table>
@@ -379,6 +497,7 @@ export default function Purchases() {
           />
         ) : null}
       </article>
+      </div>
 
       <article className="card list-card expense-list">
         <div className="card-head">

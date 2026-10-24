@@ -900,7 +900,7 @@ tr.selected { background: var(--rose-soft); }
     overflow-x: clip;
   }
   .courier-page form .btn { width: 100%; }
-  .books-line, .books-line.expense { grid-template-columns: 1fr 1fr; }
+  .books-line, .books-line.expense, .books-range { grid-template-columns: 1fr 1fr; }
   .books-line .span-2 { grid-column: 1 / -1; }
   .books-kpis { grid-template-columns: 1fr 1fr; }
   .expense-list { scroll-margin-top: 72px; }
@@ -1024,6 +1024,19 @@ tr.selected { background: var(--rose-soft); }
 .books-line .note-field { grid-column: 1 / -1; }
 .books-line .btn { margin-bottom: 0; }
 .books-line.expense { grid-template-columns: 150px minmax(140px, 0.7fr) 120px minmax(140px, 1fr) auto; }
+.books-range {
+  display: grid;
+  grid-template-columns: 160px 160px auto auto;
+  gap: 8px;
+  align-items: end;
+}
+.books-range .btn { margin-bottom: 0; }
+.lookup-card .small { margin: -4px 0 12px; }
+.range-kpis { margin: 14px 0 0; }
+.lookup-results { display: grid; gap: 16px; scroll-margin-top: 72px; }
+.lookup-results .purchase-list { margin-top: 0; }
+.expense-list { margin-top: 16px; }
+.place-list { scroll-margin-top: 72px; }
 .day-book small { color: var(--muted); }
 .purchase-list { scroll-margin-top: 72px; margin-top: 16px; }
 .stock-kpis div {

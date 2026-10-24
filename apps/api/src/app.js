@@ -98,8 +98,19 @@ export function mount(app) {
     const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
     const expenseLimit = Math.min(Math.max(whole(req.query.expenseLimit, 20) || 20, 1), 200)
     const expenseOffset = Math.max(whole(req.query.expenseOffset, 0) || 0, 0)
+    const placeLimit = Math.min(Math.max(whole(req.query.placeLimit, 10) || 10, 1), 200)
+    const placeOffset = Math.max(whole(req.query.placeOffset, 0) || 0, 0)
     const [page, trade] = await Promise.all([
-      listPurchases({ limit, offset, expenseLimit, expenseOffset }),
+      listPurchases({
+        limit,
+        offset,
+        expenseLimit,
+        expenseOffset,
+        placeLimit,
+        placeOffset,
+        from: req.query.from,
+        to: req.query.to,
+      }),
       orderTotals(),
     ])
     res.json({ ...page, sales: trade.sales, profit: trade.profit - page.expensesTotal })

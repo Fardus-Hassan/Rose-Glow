@@ -20,6 +20,13 @@ function assertDay(value) {
   return day
 }
 
+function optionalDay(value) {
+  const day = String(value || "").trim()
+  return day ? assertDay(day) : null
+}
+
+const IN_RANGE = `($1::date IS NULL OR bought_on >= $1::date) AND ($2::date IS NULL OR bought_on <= $2::date)`
+
 const KINDS = new Set(["vehicle", "courier", "other"])
 
 export async function bookTotals() {
@@ -40,18 +47,31 @@ export async function bookTotals() {
   }
 }
 
-export async function listPurchases({ limit, offset, expenseLimit, expenseOffset }) {
-  const [count, rows, expenseCount, expenseRows, totals, places, days] = await Promise.all([
-    pool.query(`SELECT COUNT(*)::int AS total FROM purchases`),
+export async function listPurchases({ limit, offset, expenseLimit, expenseOffset, placeLimit, placeOffset, from, to }) {
+  const start = optionalDay(from)
+  const end = optionalDay(to)
+  if (start && end && start > end) throw fail(400, "The start date is after the end date")
+  const range = [start, end]
+  const [count, rows, expenseCount, expenseRows, totals, places, placeCount, days] = await Promise.all([
+    pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COALESCE(SUM(quantity), 0)::int AS pieces,
+              COALESCE(SUM(quantity * unit_cost), 0)::float8 AS goods
+       FROM purchases
+       WHERE ${IN_RANGE}`,
+      range,
+    ),
     pool.query(
       `SELECT p.id, p.product_id, pr.name AS product_name, p.bought_on::text AS bought_on,
               p.quantity, p.unit_cost::float8 AS unit_cost, p.note, p.bought_from,
               (p.quantity * p.unit_cost)::float8 AS total
        FROM purchases p
        JOIN products pr ON pr.id = p.product_id
+       WHERE ($1::date IS NULL OR p.bought_on >= $1::date)
+         AND ($2::date IS NULL OR p.bought_on <= $2::date)
        ORDER BY p.bought_on DESC, p.id DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
+       LIMIT $3 OFFSET $4`,
+      [start, end, limit, offset],
     ),
     pool.query(`SELECT COUNT(*)::int AS total FROM buying_expenses`),
     pool.query(
@@ -65,10 +85,19 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
     pool.query(
       `SELECT bought_from AS place, COUNT(*)::int AS lines, COALESCE(SUM(quantity * unit_cost), 0)::float8 AS total
        FROM purchases
-       WHERE bought_from <> ''
+       WHERE bought_from <> '' AND ${IN_RANGE}
        GROUP BY bought_from
        ORDER BY total DESC, place
-       LIMIT 20`,
+       LIMIT $3 OFFSET $4`,
+      [start, end, placeLimit, placeOffset],
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS total FROM (
+         SELECT bought_from FROM purchases
+         WHERE bought_from <> '' AND ${IN_RANGE}
+         GROUP BY bought_from
+       ) places`,
+      range,
     ),
     pool.query(
       `SELECT day::text AS day,
@@ -78,15 +107,19 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
        FROM (
          SELECT bought_on AS day, SUM(quantity) AS pieces, SUM(quantity * unit_cost) AS goods, 0::numeric AS expenses
          FROM purchases
+         WHERE ${IN_RANGE}
          GROUP BY bought_on
          UNION ALL
          SELECT spent_on, 0, 0, SUM(amount)
          FROM buying_expenses
+         WHERE ($1::date IS NULL OR spent_on >= $1::date)
+           AND ($2::date IS NULL OR spent_on <= $2::date)
          GROUP BY spent_on
        ) days
        GROUP BY day
        ORDER BY day DESC
        LIMIT 400`,
+      range,
     ),
   ])
   return {
@@ -102,6 +135,13 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       total: Number(row.total),
     })),
     total: count.rows[0].total,
+    match: {
+      from: start,
+      to: end,
+      lines: count.rows[0].total,
+      pieces: count.rows[0].pieces,
+      goods: Number(count.rows[0].goods),
+    },
     expenses: expenseRows.rows.map((row) => ({
       id: row.id,
       spentOn: row.spent_on,
@@ -125,6 +165,7 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
       lines: row.lines,
       total: Number(row.total),
     })),
+    placeTotal: placeCount.rows[0].total,
   }
 }
 
