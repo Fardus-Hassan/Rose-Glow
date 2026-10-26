@@ -11,6 +11,7 @@ const SUMMARY_SQL = `
     COALESCE(SUM(CASE WHEN delivery_paid_by = 'customer' THEN delivery_charge ELSE 0 END), 0)::float8 AS delivery,
     COALESCE(SUM(discount), 0)::float8 AS discount,
     COALESCE(SUM(cost), 0)::float8 AS cost,
+    COALESCE(SUM(gifts), 0)::float8 AS gifts,
     COALESCE(SUM(paid_amount), 0)::float8 AS paid,
     COALESCE(SUM(CASE WHEN delivery_paid_by = 'free' THEN delivery_charge ELSE 0 END), 0)::float8 AS delivery_expense,
     COALESCE(SUM(CASE WHEN cod_paid_by = 'free' THEN cod_charge ELSE 0 END), 0)::float8 AS cod_expense,
@@ -18,7 +19,8 @@ const SUMMARY_SQL = `
   FROM (
     SELECT o.delivery_charge, o.delivery_paid_by, o.discount, o.paid_amount, o.cod_charge, o.cod_paid_by,
            COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
-           COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost
+           COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost,
+           COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0) AS gifts
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.id
     WHERE o.status NOT IN ('cancelled', 'returned')
@@ -50,6 +52,7 @@ async function summarize(range) {
     delivery: Number(row.delivery),
     discount: Number(row.discount),
     cost: Number(row.cost),
+    gifts: Number(row.gifts),
     paid: Number(row.paid),
     due: Number(row.due),
     profit: Number(row.sales) - Number(row.cost) - Number(row.delivery_expense) - Number(row.cod_expense),

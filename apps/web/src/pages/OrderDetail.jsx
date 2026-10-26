@@ -3,6 +3,7 @@ import toast from "react-hot-toast"
 import { MANUAL_STATUSES, PAYMENTS, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
 import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
+import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
@@ -80,10 +81,11 @@ export default function OrderDetail({ id }) {
         productId: item.productId,
         name: item.name,
         quantity: item.quantity,
-        sellPrice: item.unitPrice,
+        sellPrice: item.gift ? (order.items.find((other) => other.productId === item.productId && !other.gift)?.unitPrice ?? product?.sellPrice ?? 0) : item.unitPrice,
         costPrice: item.unitCost,
         isCombo: Boolean(product?.isCombo),
         components: product?.components || [],
+        gift: Boolean(item.gift),
       }
     }))
     setPick("")
@@ -103,27 +105,24 @@ export default function OrderDetail({ id }) {
       return
     }
     setError("")
-    setLines((current) => {
-      const existing = current.find((line) => line.productId === product.id)
-      if (existing) return current.map((line) => line.productId === product.id ? { ...line, quantity: line.quantity + quantity } : line)
-      return [...current, {
-        productId: product.id,
-        name: product.name,
-        quantity,
-        sellPrice: product.sellPrice,
-        costPrice: product.costPrice,
-        isCombo: product.isCombo,
-        components: product.components,
-      }]
-    })
+    setLines((current) => addTo(current, {
+      productId: product.id,
+      name: product.name,
+      quantity,
+      sellPrice: product.sellPrice,
+      costPrice: product.costPrice,
+      isCombo: product.isCombo,
+      components: product.components,
+      gift: false,
+    }))
     setPick("")
     setPickQty(1)
   }
 
-  function setLineQty(productId, value) {
+  function setLineQty(key, value) {
     const quantity = Number(value)
     if (!Number.isInteger(quantity) || quantity <= 0) return
-    setLines((current) => current.map((line) => line.productId === productId ? { ...line, quantity } : line))
+    setLines((current) => current.map((line) => lineKey(line) === key ? { ...line, quantity } : line))
   }
 
   async function changeStatus(status) {
@@ -181,7 +180,7 @@ export default function OrderDetail({ id }) {
           discount: numberOrZero(draft.discount),
           note: draft.note,
           sourceId: draft.sourceId || null,
-          items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+          items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity, gift: line.gift })),
         }),
       })
       setOrder(body.order)
@@ -269,8 +268,9 @@ export default function OrderDetail({ id }) {
       return have < quantity
     })
     : null
-  const goods = lines.reduce((sum, line) => sum + line.sellPrice * line.quantity, 0)
+  const goods = lines.reduce((sum, line) => sum + (line.gift ? 0 : line.sellPrice * line.quantity), 0)
   const cost = lines.reduce((sum, line) => sum + line.costPrice * line.quantity, 0)
+  const giftCost = lines.reduce((sum, line) => sum + (line.gift ? line.costPrice * line.quantity : 0), 0)
   const discount = numberOrZero(draft?.discount)
   const delivery = numberOrZero(draft?.deliveryCharge)
   const paid = numberOrZero(draft?.paidAmount)
@@ -375,15 +375,20 @@ export default function OrderDetail({ id }) {
                   {lines.map((line) => {
                     const product = products.find((item) => item.id === line.productId)
                     const components = product?.isCombo ? product.components : []
+                    const key = lineKey(line)
                     return (
-                    <li key={line.productId}>
+                    <li key={key} className={line.gift ? "gift-line" : undefined}>
                       <div>
-                        <strong>{line.name}</strong>
+                        <strong>{line.name}{line.gift ? <span className="gift-tag">Gift</span> : null}</strong>
                         {components.length ? <small>{components.map((part) => `${part.name} ×${part.quantity}`).join(", ")}</small> : null}
+                        {line.gift ? <small>Your cost {taka(line.costPrice * line.quantity)}</small> : null}
                       </div>
-                      <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} disabled={Boolean(order.consignmentId)} />
-                      <b>{taka(line.sellPrice * line.quantity)}</b>
-                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))} disabled={Boolean(order.consignmentId)}>Remove</button>
+                      <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(key, event.target.value)} disabled={Boolean(order.consignmentId)} />
+                      <b>{line.gift ? "Free" : taka(line.sellPrice * line.quantity)}</b>
+                      <div className="line-actions">
+                        <button type="button" className={line.gift ? "gift-btn on" : "gift-btn"} aria-pressed={line.gift} onClick={() => setLines((current) => toggleGiftIn(current, key))} disabled={Boolean(order.consignmentId)}>{line.gift ? "Gifted" : "Gift"}</button>
+                        <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => lineKey(item) !== key))} disabled={Boolean(order.consignmentId)}>Remove</button>
+                      </div>
                     </li>
                     )
                   })}
@@ -418,6 +423,7 @@ export default function OrderDetail({ id }) {
               <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="Optional" disabled={Boolean(order.consignmentId)} />
             </Field>
             <p className="sum"><span>Items</span><b>{taka(goods)}</b></p>
+            {giftCost > 0 ? <p className="sum"><span>Gift (your cost)</span><b>{taka(giftCost)}</b></p> : null}
             <p className="sum"><span>{delivery > 0 && !customerPaysDelivery ? "Delivery (you)" : "Delivery"}</span><b>{delivery > 0 ? taka(delivery) : "Free"}</b></p>
             {order.codCharge > 0 ? <p className="sum"><span>{order.codPaidBy === "customer" ? "COD charge" : "COD (you)"}</span><b>{taka(order.codCharge)}</b></p> : null}
             <p className="sum strong"><span>Total</span><b>{taka(total)}</b></p>
@@ -504,10 +510,10 @@ export default function OrderDetail({ id }) {
                 <h2>Items</h2>
                 <ul className="lines detail-lines">
                   {order.items.map((item) => (
-                    <li key={item.id}>
-                      <div><strong>{item.name}</strong></div>
-                      <span>{item.quantity} × {taka(item.unitPrice)}</span>
-                      <b>{taka(item.unitPrice * item.quantity)}</b>
+                    <li key={item.id} className={item.gift ? "gift-line" : undefined}>
+                      <div><strong>{item.name}{item.gift ? <span className="gift-tag">Gift</span> : null}</strong></div>
+                      <span>{item.gift ? `${item.quantity} × free` : `${item.quantity} × ${taka(item.unitPrice)}`}</span>
+                      <b>{item.gift ? "Free" : taka(item.unitPrice * item.quantity)}</b>
                     </li>
                   ))}
                 </ul>
@@ -521,6 +527,7 @@ export default function OrderDetail({ id }) {
               <p className="sum strong"><span>Total</span><b>{taka(order.total)}</b></p>
               <p className="sum"><span>Paid</span><b>{taka(order.paidAmount)}</b></p>
               <p className="sum"><span>Cost</span><b>{taka(order.cost)}</b></p>
+              {order.gifts > 0 ? <p className="sum"><span>Gift (your cost)</span><b>{taka(order.gifts)}</b></p> : null}
               <div className="bill-spots">
                 <p className={order.due > 0 ? "due" : ""}><span>Due</span><b>{taka(order.due)}</b></p>
                 <p className="gain"><span>Profit</span><b>{taka(order.profit)}</b></p>

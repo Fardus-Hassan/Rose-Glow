@@ -3,6 +3,7 @@ import toast from "react-hot-toast"
 import { MANUAL_STATUSES, PAYMENTS } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
 import { taka } from "../format.js"
+import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
 import { Banner, Field } from "../ui.jsx"
@@ -58,8 +59,9 @@ export default function OrderCreate() {
     const product = products.find((item) => item.id === productId)
     return product && product.stockQty < quantity
   })
-  const goods = lines.reduce((sum, line) => sum + line.sellPrice * line.quantity, 0)
+  const goods = lines.reduce((sum, line) => sum + (line.gift ? 0 : line.sellPrice * line.quantity), 0)
   const cost = lines.reduce((sum, line) => sum + line.costPrice * line.quantity, 0)
+  const giftCost = lines.reduce((sum, line) => sum + (line.gift ? line.costPrice * line.quantity : 0), 0)
   const discount = numberOrZero(form.discount)
   const delivery = numberOrZero(form.deliveryCharge)
   const paid = numberOrZero(form.paidAmount)
@@ -80,29 +82,28 @@ export default function OrderCreate() {
       return
     }
     setError("")
-    setLines((current) => {
-      const existing = current.find((line) => line.productId === product.id)
-      if (existing) {
-        return current.map((line) => line.productId === product.id ? { ...line, quantity: line.quantity + quantity } : line)
-      }
-      return [...current, {
-        productId: product.id,
-        name: product.name,
-        quantity,
-        sellPrice: product.sellPrice,
-        costPrice: product.costPrice,
-        isCombo: product.isCombo,
-        components: product.components,
-      }]
-    })
+    setLines((current) => addTo(current, {
+      productId: product.id,
+      name: product.name,
+      quantity,
+      sellPrice: product.sellPrice,
+      costPrice: product.costPrice,
+      isCombo: product.isCombo,
+      components: product.components,
+      gift: false,
+    }))
     setPick("")
     setPickQty(1)
   }
 
-  function setLineQty(productId, value) {
+  function setLineQty(key, value) {
     const quantity = Number(value)
     if (!Number.isInteger(quantity) || quantity <= 0) return
-    setLines((current) => current.map((line) => line.productId === productId ? { ...line, quantity } : line))
+    setLines((current) => current.map((line) => lineKey(line) === key ? { ...line, quantity } : line))
+  }
+
+  function toggleGift(key) {
+    setLines((current) => toggleGiftIn(current, key))
   }
 
   async function submit(event) {
@@ -130,7 +131,7 @@ export default function OrderCreate() {
           paidAmount: paid,
           codPaidBy: "free",
           codCharge: 0,
-          items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity })),
+          items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity, gift: line.gift })),
         },
       })
       toast.success(`${body.order.number} saved`)
@@ -213,14 +214,18 @@ export default function OrderCreate() {
             {lines.length === 0 ? <p className="muted small">Add a product.</p> : (
               <ul className="lines create-lines">
                 {lines.map((line) => (
-                  <li key={line.productId}>
+                  <li key={lineKey(line)} className={line.gift ? "gift-line" : undefined}>
                     <div>
-                      <strong>{line.name}</strong>
+                      <strong>{line.name}{line.gift ? <span className="gift-tag">Gift</span> : null}</strong>
                       {line.isCombo ? <small>{line.components.map((part) => `${part.name} ×${part.quantity}`).join(", ")}</small> : null}
+                      {line.gift ? <small>Your cost {taka(line.costPrice * line.quantity)}</small> : null}
                     </div>
-                    <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(line.productId, event.target.value)} />
-                    <b>{taka(line.sellPrice * line.quantity)}</b>
-                    <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => item.productId !== line.productId))}>Remove</button>
+                    <input className="line-qty" aria-label={`${line.name} quantity`} type="number" min="1" step="1" value={line.quantity} onChange={(event) => setLineQty(lineKey(line), event.target.value)} />
+                    <b>{line.gift ? "Free" : taka(line.sellPrice * line.quantity)}</b>
+                    <div className="line-actions">
+                      <button type="button" className={line.gift ? "gift-btn on" : "gift-btn"} aria-pressed={line.gift} onClick={() => toggleGift(lineKey(line))}>{line.gift ? "Gifted" : "Gift"}</button>
+                      <button type="button" className="text-btn" onClick={() => setLines((current) => current.filter((item) => lineKey(item) !== lineKey(line)))}>Remove</button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -255,6 +260,7 @@ export default function OrderCreate() {
             <input value={form.note} onChange={(event) => set("note", event.target.value)} placeholder="Optional" />
           </Field>
           <Row label="Products" value={taka(goods)} />
+          {giftCost > 0 ? <Row label="Gift (your cost)" value={taka(giftCost)} /> : null}
           <Row label={delivery > 0 && !customerPaysDelivery ? "Delivery (you)" : "Delivery"} value={delivery > 0 ? taka(delivery) : "Free"} />
           <Row label="Total" value={taka(total)} strong />
           <Row label="Due" value={taka(total - paid)} strong />

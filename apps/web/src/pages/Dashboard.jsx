@@ -88,9 +88,9 @@ function Board({ data, go }) {
     <>
       <div className="stats">
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
-        <Stat kicker="Today" label="Profit" value={taka(data.today.profit)} note="Sales minus cost and the delivery you pay" />
+        <Stat kicker="Today" label="Profit" value={taka(data.today.profit)} note={data.today.gifts > 0 ? `Gifts cost ${taka(data.today.gifts)} · already taken out` : "Sales minus cost and the delivery you pay"} />
         <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders`} />
-        <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={`Due to collect ${taka(data.dueAll)}`} />
+        <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={data.month.gifts > 0 ? `Gifts ${taka(data.month.gifts)} · due ${taka(data.dueAll)}` : `Due to collect ${taka(data.dueAll)}`} />
       </div>
 
       <article className="card dash-block">

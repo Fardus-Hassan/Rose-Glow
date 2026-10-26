@@ -208,7 +208,7 @@ export async function receiveWebhook(req) {
 }
 
 async function place(keys, order) {
-  const description = (order.items || []).map((item) => `${item.name} × ${item.quantity}`).join(", ").slice(0, 250)
+  const description = (order.items || []).map((item) => `${item.name} × ${item.quantity}${item.gift ? " (gift)" : ""}`).join(", ").slice(0, 250)
   const body = {
     invoice: order.number,
     recipient_name: order.customerName.slice(0, 100),

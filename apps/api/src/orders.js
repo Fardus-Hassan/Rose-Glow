@@ -18,6 +18,7 @@ function present(row, items = undefined) {
   const delivery = Number(row.delivery_charge)
   const paid = Number(row.paid_amount)
   const cost = Number(row.cost)
+  const gifts = Number(row.gifts || 0)
   const deliveryPaidBy = row.delivery_paid_by === "free" ? "free" : "customer"
   const deliveryOnBill = deliveryPaidBy === "customer" ? delivery : 0
   const deliveryExpense = deliveryPaidBy === "free" ? delivery : 0
@@ -52,6 +53,7 @@ function present(row, items = undefined) {
     courierError: row.courier_error || "",
     goods,
     cost,
+    gifts,
     total,
     due: total - paid,
     profit: goods - discount - cost - deliveryExpense - codExpense,
@@ -70,7 +72,8 @@ const ORDER_SELECT = `
          o.payment_method, o.note, o.source_id, MAX(src.name) AS source_name, o.stock_held,
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          COALESCE(SUM(oi.unit_price * oi.quantity), 0)::float8 AS goods,
-         COALESCE(SUM(oi.unit_cost * oi.quantity), 0)::float8 AS cost
+         COALESCE(SUM(oi.unit_cost * oi.quantity), 0)::float8 AS cost,
+         COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0)::float8 AS gifts
   FROM orders o
   LEFT JOIN order_items oi ON oi.order_id = o.id
   LEFT JOIN order_sources src ON src.id = o.source_id
@@ -78,10 +81,10 @@ const ORDER_SELECT = `
 
 async function itemsFor(client, orderId) {
   const result = await client.query(
-    `SELECT id, product_id, product_name, quantity, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost
+    `SELECT id, product_id, product_name, quantity, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost, is_gift
      FROM order_items
      WHERE order_id = $1
-     ORDER BY id`,
+     ORDER BY is_gift, id`,
     [orderId],
   )
   return result.rows.map((row) => ({
@@ -91,6 +94,7 @@ async function itemsFor(client, orderId) {
     quantity: row.quantity,
     unitPrice: Number(row.unit_price),
     unitCost: Number(row.unit_cost),
+    gift: row.is_gift,
   }))
 }
 
@@ -238,10 +242,10 @@ function readOrderFields(body, { partial = false } = {}) {
   return fields
 }
 
-function linesFrom(merged, byId, parts) {
+function linesFrom(items, byId, parts) {
   const lines = []
   const needs = new Map()
-  for (const [productId, quantity] of merged) {
+  for (const { productId, quantity, gift } of items) {
     const product = byId.get(productId)
     if (!product) throw fail(400, "Product was not found")
     if (quantity <= 0 || quantity > 999) throw fail(400, "Enter a valid quantity")
@@ -258,8 +262,9 @@ function linesFrom(merged, byId, parts) {
       productId: product.id,
       productName: product.name,
       quantity,
-      unitPrice: Number(product.sell_price),
+      unitPrice: gift ? 0 : Number(product.sell_price),
       unitCost,
+      gift,
     })
   }
   return { lines, needs }
@@ -349,11 +354,12 @@ async function assertBookedUnchanged(client, id, row, fields, replacing, body) {
   if (sent) throw fail(400, "This parcel is already booked with Steadfast. Name, phone, address, items, and amounts can no longer be changed.")
   if (!replacing) return
   const saved = await client.query(
-    `SELECT product_id, quantity FROM order_items WHERE order_id = $1 ORDER BY product_id`,
+    `SELECT product_id, quantity, is_gift FROM order_items WHERE order_id = $1`,
     [id],
   )
-  const next = [...mergedItems(body).entries()].sort((a, b) => a[0] - b[0])
-  const same = saved.rows.length === next.length && saved.rows.every((item, index) => item.product_id === next[index][0] && item.quantity === next[index][1])
+  const before = new Map(saved.rows.map((row) => [lineKey(row.product_id, row.is_gift), row.quantity]))
+  const next = mergedItems(body)
+  const same = before.size === next.length && next.every((item) => before.get(lineKey(item.productId, item.gift)) === item.quantity)
   if (!same) throw fail(400, "This parcel is already booked with Steadfast. Name, phone, address, items, and amounts can no longer be changed.")
 }
 
@@ -364,10 +370,17 @@ function mergedItems(body) {
   for (const item of body.items) {
     const productId = whole(item.productId)
     const quantity = whole(item.quantity)
+    const gift = item.gift === true
     if (!productId || !quantity || quantity <= 0) throw fail(400, "Enter a valid quantity")
-    merged.set(productId, (merged.get(productId) || 0) + quantity)
+    const key = lineKey(productId, gift)
+    const found = merged.get(key)
+    merged.set(key, { productId, gift, quantity: (found?.quantity || 0) + quantity })
   }
-  return merged
+  return [...merged.values()]
+}
+
+function lineKey(productId, gift) {
+  return `${productId}:${gift ? "gift" : "sale"}`
 }
 
 export async function createOrder(body) {
@@ -384,7 +397,7 @@ export async function createOrder(body) {
     assertBill(goods, fields)
     await assertSource(client, fields.sourceId, true)
     const hold = holdsStock(fields.status)
-    const lockIds = [...new Set([...merged.keys(), ...needs.keys()])].sort((a, b) => a - b)
+    const lockIds = [...new Set([...merged.map((item) => item.productId), ...needs.keys()])].sort((a, b) => a - b)
     await client.query(`SELECT id FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE`, [lockIds])
     const fresh = await catalogMaps(client)
     const built = linesFrom(merged, fresh.byId, fresh.parts)
@@ -416,9 +429,9 @@ export async function createOrder(body) {
     orderId = inserted.rows[0].id
     for (const line of built.lines) {
       await client.query(
-        `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [orderId, line.productId, line.productName, line.quantity, line.unitPrice, line.unitCost],
+        `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost, is_gift)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [orderId, line.productId, line.productName, line.quantity, line.unitPrice, line.unitCost, line.gift],
       )
     }
     for (const [productId, quantity] of built.needs) {
@@ -442,16 +455,15 @@ async function buildReplacement(client, id, body) {
   const fresh = await catalogMaps(client)
   const built = linesFrom(mergedItems(body), fresh.byId, fresh.parts)
   const previous = await client.query(
-    `SELECT product_id, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost
+    `SELECT product_id, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost, is_gift
      FROM order_items WHERE order_id = $1`,
     [id],
   )
-  const oldPrice = new Map(previous.rows.map((row) => [row.product_id, row]))
+  const oldCost = new Map(previous.rows.map((row) => [row.product_id, Number(row.unit_cost)]))
+  const oldPrice = new Map(previous.rows.filter((row) => !row.is_gift).map((row) => [row.product_id, Number(row.unit_price)]))
   for (const line of built.lines) {
-    const old = oldPrice.get(line.productId)
-    if (!old) continue
-    line.unitPrice = Number(old.unit_price)
-    line.unitCost = Number(old.unit_cost)
+    if (oldCost.has(line.productId)) line.unitCost = oldCost.get(line.productId)
+    if (!line.gift && oldPrice.has(line.productId)) line.unitPrice = oldPrice.get(line.productId)
   }
   const goods = built.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
   return { built, goods }
@@ -464,9 +476,9 @@ async function writeLines(client, id, built, hold, held) {
   await applyNeeds(client, built.needs, hold)
   for (const line of built.lines) {
     await client.query(
-      `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
-      [id, line.productId, line.productName, line.quantity, line.unitPrice, line.unitCost],
+      `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost, is_gift)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [id, line.productId, line.productName, line.quantity, line.unitPrice, line.unitCost, line.gift],
     )
   }
   for (const [productId, quantity] of built.needs) {
