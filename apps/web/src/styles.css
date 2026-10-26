@@ -661,7 +661,7 @@ input:-webkit-autofill {
 .filter-groups { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .filter-pills {
   display: flex;
-  gap: 10px;
+  gap: 12px 18px;
   flex-wrap: wrap;
   align-items: center;
   padding: 12px 10px 0 0;
@@ -675,6 +675,7 @@ input:-webkit-autofill {
   line-height: 1.2;
   padding: 8px 14px;
   min-height: 40px;
+  flex: none;
   overflow: visible;
 }
 .filter-pills .pill-count {
@@ -1178,7 +1179,6 @@ tr.selected { background: var(--rose-soft); }
   align-items: start;
 }
 .books-side:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
-.books-side .stock-list { max-height: 220px; overflow: auto; }
 .books-side .card-head { margin-bottom: 0; }
 .day-book li, .place-list .stock-list li {
   display: grid;
@@ -1568,9 +1568,19 @@ tr.selected { background: var(--rose-soft); }
   .table-card .copy-address { max-width: min(62%, 24ch); text-align: right; -webkit-line-clamp: 3; }
   .books-page .table-card tr {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 16px;
   }
+  .books-page .table-card td {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 2px;
+    min-width: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .books-page .table-card td[data-label=""] { flex-direction: row; }
   .books-page .table-card td[data-label="Product"],
   .books-page .table-card td[data-label="Note"],
   .books-page .table-card td[data-label="What"],
