@@ -41,6 +41,14 @@ export default function App() {
 
   const path = key.split("?")[0]
 
+  useEffect(() => {
+    const bar = document.querySelector(".tabbar")
+    const active = bar?.querySelector("a.active")
+    if (!bar || !active || bar.scrollWidth <= bar.clientWidth) return
+    const left = active.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2
+    bar.scrollTo({ left: Math.max(0, left), behavior: "smooth" })
+  }, [path])
+
   const orderMatch = path.match(/^\/orders\/(\d+)$/)
   let page = <Dashboard />
   if (path === "/orders/new") page = <OrderCreate />
