@@ -233,9 +233,6 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_cod NUMERIC(12,2) CHECK (cou
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_booked NUMERIC(12,2) CHECK (cod_booked >= 0);
 ALTER TABLE courier_events ADD COLUMN IF NOT EXISTS payload JSONB;
 
--- The one place an order's money is worked out. Every report reads from here.
--- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
--- A cancelled or returned order sells nothing, but a courier charge on it is still a loss.
 UPDATE orders SET status = 'cancelled'
 WHERE status = 'courier' AND courier_status IN ('cancelled', 'cancelled_return_processing', 'cancelled_return_rider_assigned');
 UPDATE orders SET status = 'returned'
@@ -246,19 +243,31 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFA
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS private_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_tries INTEGER NOT NULL DEFAULT 0;
 
+-- The one place an order's money is worked out. Every report reads from here.
+-- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
+-- Once Steadfast reports what it collected, its 1% COD charge replaces the typed one:
+-- (collected - delivery charge) x 1%, rounded to the nearest taka, as Steadfast works it out.
+-- A cancelled or returned order sells nothing, but a courier charge on it is still a loss.
 CREATE OR REPLACE VIEW order_money AS
 SELECT o.id, o.status, o.source_id, o.ordered_at, o.paid_amount, o.discount,
        t.goods, t.cost, t.gifts,
        GREATEST(t.goods - o.discount, 0) AS sales,
        CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END AS bill_delivery,
        CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS bill_cod,
-       COALESCE(o.courier_charge, o.delivery_charge) + o.cod_charge AS courier_cost,
+       COALESCE(o.courier_charge, o.delivery_charge) + f.cod_fee AS courier_cost,
        o.status NOT IN ('cancelled', 'returned') AS counted,
        b.total,
        CASE WHEN o.status IN ('cancelled', 'returned') THEN -COALESCE(o.courier_charge, 0)
-            ELSE b.total - t.cost - COALESCE(o.courier_charge, o.delivery_charge) - o.cod_charge
-       END AS profit
+            ELSE b.total - t.cost - COALESCE(o.courier_charge, o.delivery_charge) - f.cod_fee
+       END AS profit,
+       f.cod_fee
 FROM orders o
+CROSS JOIN LATERAL (
+  SELECT CASE WHEN o.courier_cod IS NOT NULL
+              THEN ROUND(GREATEST(o.courier_cod - COALESCE(o.courier_charge, o.delivery_charge), 0) * 0.01)
+              ELSE o.cod_charge
+         END AS cod_fee
+) f
 CROSS JOIN LATERAL (
   SELECT COALESCE(SUM(oi.unit_price * (oi.quantity - oi.returned_qty)), 0) AS goods,
          COALESCE(SUM(oi.unit_cost * (oi.quantity - oi.returned_qty)), 0) AS cost,

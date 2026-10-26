@@ -540,10 +540,16 @@ export default function OrderDetail({ id }) {
               {order.returnSettled ? <p className="sum note-line"><span>Closed at what Steadfast collected</span></p> : null}
               <p className="sum"><span>Paid</span><b>{taka(order.paidAmount)}</b></p>
               <p className="sum"><span>Cost</span><b>{taka(order.cost)}</b></p>
-              {order.courierCost > 0 ? (
+              {order.courierCost - order.codFee > 0 ? (
                 <p className="sum">
                   <span>Courier charge{order.courierCharge === null ? "" : order.courierChargeBy === "manual" ? " · you entered" : " · Steadfast"}</span>
-                  <b>{taka(order.courierCost)}</b>
+                  <b>{taka(order.courierCost - order.codFee)}</b>
+                </p>
+              ) : null}
+              {order.codFee > 0 ? (
+                <p className="sum">
+                  <span>{order.courierCod === null ? "COD charge" : "COD charge · 1% Steadfast"}</span>
+                  <b>{taka(order.codFee)}</b>
                 </p>
               ) : null}
               {order.gifts > 0 ? <p className="sum"><span>Gift (your cost)</span><b>{taka(order.gifts)}</b></p> : null}
@@ -702,7 +708,7 @@ function ChargeBox({ order, onSaved, children }) {
         <p>
           <span>Collected</span>
           <b>{order.courierCod === null ? "—" : taka(order.courierCod)}</b>
-          <small className="muted">{order.courierCod === null ? "Not yet" : "By Steadfast"}</small>
+          <small className="muted">{order.courierCod === null ? "Not yet" : order.codFee > 0 ? `1% COD ${taka(order.codFee)}` : "By Steadfast"}</small>
         </p>
       </div>
       {open ? (

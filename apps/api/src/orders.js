@@ -54,6 +54,7 @@ function present(row, items = undefined) {
     courierChargeBy: row.courier_charge_by || "",
     courierCod: amountOrNull(row.courier_cod),
     courierCost: Number(row.courier_cost),
+    codFee: Number(row.cod_fee || 0),
     returnSettled: row.return_settled === true,
     goods,
     cost,
@@ -77,7 +78,7 @@ const ORDER_SELECT = `
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod, o.return_settled,
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
-         m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.profit::float8 AS profit
+         m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.cod_fee::float8 AS cod_fee, m.profit::float8 AS profit
   FROM orders o
   JOIN order_money m ON m.id = o.id
   LEFT JOIN order_sources src ON src.id = o.source_id
