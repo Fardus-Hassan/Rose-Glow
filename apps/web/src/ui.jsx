@@ -7,7 +7,6 @@ const confirmListeners = new Set()
 // Opens the app's own yes/no box (ConfirmHost must be mounted). Resolves true on yes.
 export function askConfirm({ title, message = "", yes = "Yes", no = "No", danger = false }) {
   return new Promise((resolve) => {
-    if (!confirmListeners.size) return resolve(window.confirm(title))
     confirmListeners.forEach((show) => show({ title, message, yes, no, danger, resolve }))
   })
 }
@@ -23,10 +22,13 @@ export function ConfirmHost() {
   useEffect(() => {
     if (!ask) return undefined
     function onKey(event) {
-      if (event.key === "Escape") finish(false)
+      if (event.key !== "Escape") return
+      event.stopPropagation()
+      finish(false)
     }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
+    // Capture phase, so Escape closes only this box and not a modal underneath.
+    document.addEventListener("keydown", onKey, true)
+    return () => document.removeEventListener("keydown", onKey, true)
   })
 
   function finish(answer) {
@@ -36,7 +38,7 @@ export function ConfirmHost() {
 
   if (!ask) return null
   return (
-    <div className="modal-back" role="presentation" onClick={() => finish(false)}>
+    <div className="modal-back confirm-back" role="presentation" onClick={() => finish(false)}>
       <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(event) => event.stopPropagation()}>
         <h2 id="confirm-title">{ask.title}</h2>
         {ask.message ? <p className="muted">{ask.message}</p> : null}

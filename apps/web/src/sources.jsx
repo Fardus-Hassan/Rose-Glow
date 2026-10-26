@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { api } from "./api.js"
-import { Banner } from "./ui.jsx"
+import { Banner, askConfirm } from "./ui.jsx"
 
 export function SourceField({ value, onChange, sources, onSources, required = false }) {
   const [open, setOpen] = useState(false)
@@ -125,6 +125,13 @@ function SourceRow({ source, onSaved, onDeleted, onError }) {
   }
 
   async function remove() {
+    const sure = await askConfirm({
+      title: `Delete ${source.name}?`,
+      message: "It leaves the source list. A source with orders or ad costs cannot be deleted.",
+      yes: "Yes, delete",
+      danger: true,
+    })
+    if (!sure) return
     setBusy(true)
     onError("")
     try {

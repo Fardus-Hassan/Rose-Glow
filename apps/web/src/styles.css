@@ -545,6 +545,7 @@ td .copy-address {
   place-items: center;
   padding: 20px;
 }
+.modal-back.confirm-back { z-index: 60; }
 .eye-btn {
   width: 36px;
   height: 36px;

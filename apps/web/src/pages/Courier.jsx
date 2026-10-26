@@ -4,7 +4,7 @@ import { COURIER_STATUSES, courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, CopyText, Pager } from "../ui.jsx"
+import { Banner, CopyText, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 
@@ -109,6 +109,13 @@ export default function Courier() {
   }
 
   async function disconnect() {
+    const sure = await askConfirm({
+      title: "Disconnect Steadfast?",
+      message: "New parcels cannot be sent and status updates stop until you connect again. Orders already sent stay as they are.",
+      yes: "Yes, disconnect",
+      danger: true,
+    })
+    if (!sure) return
     setSaving(true)
     setError("")
     try {
