@@ -47,6 +47,8 @@ export async function deleteSource(id) {
   if (!sourceId) throw fail(400, "Source is not valid")
   const used = await pool.query(`SELECT 1 FROM orders WHERE source_id = $1 LIMIT 1`, [sourceId])
   if (used.rows[0]) throw fail(400, "This source has orders, so it cannot be deleted")
+  const spent = await pool.query(`SELECT 1 FROM ad_spends WHERE source_id = $1 LIMIT 1`, [sourceId])
+  if (spent.rows[0]) throw fail(400, "This source has ad costs, so it cannot be deleted")
   const removed = await pool.query(`DELETE FROM order_sources WHERE id = $1 RETURNING id`, [sourceId])
   if (!removed.rows[0]) throw fail(404, "Source was not found")
 }

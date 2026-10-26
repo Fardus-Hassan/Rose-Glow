@@ -4,9 +4,9 @@ export { paymentLabel, statusLabel }
 
 export function taka(value) {
   const amount = Number(value) || 0
-  const rounded = Math.round(amount * 100) / 100
+  const rounded = Math.round(Math.abs(amount) * 100) / 100
   const digits = Number.isInteger(rounded) ? 0 : 2
-  return `৳${new Intl.NumberFormat("en-BD", {
+  return `${amount < 0 && rounded > 0 ? "-" : ""}৳${new Intl.NumberFormat("en-BD", {
     minimumFractionDigits: digits,
     maximumFractionDigits: 2,
   }).format(rounded)}`

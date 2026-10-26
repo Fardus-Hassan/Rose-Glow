@@ -37,6 +37,7 @@ export default function Purchases() {
   const [expenseSum, setExpenseSum] = useState(0)
   const [sales, setSales] = useState(0)
   const [profit, setProfit] = useState(0)
+  const [adSpend, setAdSpend] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [expensePage, setExpensePage] = useState(1)
@@ -115,6 +116,7 @@ export default function Purchases() {
     setExpenseSum(body.expensesTotal)
     setSales(body.sales)
     setProfit(body.profit)
+    setAdSpend(body.ads || 0)
     setPlaces(body.places || [])
     setPlaceTotal(body.placeTotal || 0)
     setDayTotal(body.dayTotal || 0)
@@ -328,6 +330,7 @@ export default function Purchases() {
         <div>
           <span>Profit</span>
           <strong>{taka(profit)}</strong>
+          {adSpend > 0 ? <small className="muted">Ads {taka(adSpend)} taken out</small> : null}
         </div>
       </div>
 

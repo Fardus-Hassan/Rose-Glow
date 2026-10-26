@@ -3,6 +3,7 @@ import { pool } from "./db.js"
 import { inventorySummary } from "./catalog.js"
 import { fail } from "./http.js"
 import { bookTotals } from "./purchases.js"
+import { adSpendTotal } from "./ads.js"
 
 const SUMMARY_SQL = `
   SELECT
@@ -60,7 +61,7 @@ async function summarize(range) {
 }
 
 export async function dashboard() {
-  const [today, month, allDue, statusRows, monthStatusRows, inventory, recent, booksMoney] = await Promise.all([
+  const [today, month, allDue, statusRows, monthStatusRows, inventory, recent, booksMoney, adsAll] = await Promise.all([
     summarize("today"),
     summarize("month"),
     summarize("all"),
@@ -85,6 +86,7 @@ export async function dashboard() {
       LIMIT 10
     `),
     bookTotals(),
+    adSpendTotal(),
   ])
   const open = Object.fromEntries(STATUSES.filter((item) => ["new", "confirmed", "courier"].includes(item.id)).map((item) => [item.id, 0]))
   for (const row of statusRows.rows) open[row.status] = row.count
@@ -102,7 +104,8 @@ export async function dashboard() {
       other: booksMoney.other,
       broughtIn: booksMoney.goods + booksMoney.expenses,
       sales: allDue.sales,
-      profit: allDue.profit - booksMoney.expenses,
+      ads: adsAll,
+      profit: allDue.profit - booksMoney.expenses - adsAll,
     },
     open,
     monthStatuses,

@@ -21,6 +21,7 @@ import {
 } from "./courier.js"
 import { courierFilterView, saveCourierFilters } from "./settings.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
+import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
 
 function feedLimit(value) {
   return Math.min(Math.max(whole(value, 20) || 20, 1), 1000)
@@ -106,7 +107,7 @@ export function mount(app) {
     const placeOffset = Math.max(whole(req.query.placeOffset, 0) || 0, 0)
     const dayLimit = Math.min(Math.max(whole(req.query.dayLimit, 10) || 10, 1), 200)
     const dayOffset = Math.max(whole(req.query.dayOffset, 0) || 0, 0)
-    const [page, trade] = await Promise.all([
+    const [page, trade, ads] = await Promise.all([
       listPurchases({
         limit,
         offset,
@@ -120,8 +121,29 @@ export function mount(app) {
         to: req.query.to,
       }),
       orderTotals(),
+      adSpendTotal(),
     ])
-    res.json({ ...page, sales: trade.sales, profit: trade.profit - page.expensesTotal })
+    res.json({ ...page, sales: trade.sales, ads, profit: trade.profit - page.expensesTotal - ads })
+  }))
+
+  app.get("/api/ads", wrap(async (req, res) => {
+    const limit = Math.min(Math.max(whole(req.query.limit, 10) || 10, 1), 200)
+    const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
+    res.json(await adReport({ from: req.query.from, to: req.query.to, limit, offset }))
+  }))
+
+  app.post("/api/ads", wrap(async (req, res) => {
+    res.status(201).json(await createAd(req.body || {}))
+  }))
+
+  app.patch("/api/ads/:id", wrap(async (req, res) => {
+    await updateAd(idFrom(req), req.body || {})
+    res.json({ ok: true })
+  }))
+
+  app.delete("/api/ads/:id", wrap(async (req, res) => {
+    await deleteAd(idFrom(req))
+    res.json({ ok: true })
   }))
 
   app.post("/api/buying-expenses", wrap(async (req, res) => {

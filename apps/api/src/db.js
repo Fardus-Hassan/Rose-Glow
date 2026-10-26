@@ -197,6 +197,15 @@ WHERE o.courier_sent_at IS NULL
 CREATE INDEX IF NOT EXISTS orders_courier_sent_idx ON orders (courier_sent_at) WHERE courier_sent_at IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS orders_consignment_idx ON orders (consignment_id) WHERE consignment_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS order_sources_name_lower ON order_sources (lower(name));
+CREATE TABLE IF NOT EXISTS ad_spends (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  spent_on DATE NOT NULL,
+  source_id INTEGER NOT NULL REFERENCES order_sources(id) ON DELETE RESTRICT,
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ad_spends_spent_on_idx ON ad_spends (spent_on DESC, id DESC);
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position
 FROM (VALUES ('Facebook', 1), ('TikTok', 2), ('WhatsApp', 3), ('IMO', 4)) AS seed(name, position)

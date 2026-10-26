@@ -7,6 +7,7 @@ import { rangeFor } from "../dates.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { Banner, Empty, Pager, StatusPill } from "../ui.jsx"
+import { AdKpis, backText } from "./Ads.jsx"
 
 const SHORT_PAGE = 6
 
@@ -69,6 +70,62 @@ function useStats(range) {
   }, [range.from, range.to])
   const current = stats && stats.from === range.from && stats.to === range.to ? stats : null
   return { stats: current, error, loading }
+}
+
+function useAds(range) {
+  const [report, setReport] = useState(null)
+  const [error, setError] = useState("")
+  useEffect(() => {
+    let live = true
+    setError("")
+    const query = new URLSearchParams({ from: range.from, to: range.to, limit: "1" })
+    api(`/api/ads?${query}`)
+      .then((body) => { if (live) setReport(body) })
+      .catch((reason) => { if (live) setError(reason.message) })
+    return () => { live = false }
+  }, [range.from, range.to])
+  const current = report && report.from === range.from && report.to === range.to ? report : null
+  return { report: current, error }
+}
+
+function AdsBlock({ go }) {
+  const [range, setRange] = useState(() => rangeFor("month"))
+  const { report, error } = useAds(range)
+  const paid = report?.platforms.filter((item) => item.paid) || []
+  return (
+    <article className="card dash-block ads-block">
+      <div className="card-head">
+        <div>
+          <h2>Ads</h2>
+          <p className="muted small">What the ads cost and what they brought</p>
+        </div>
+        <div className="ads-block-actions">
+          <DateRange value={range} onChange={setRange} />
+          <button type="button" className="text-btn" onClick={() => go("/ads")}>Open ads</button>
+        </div>
+      </div>
+      <Banner message={error} />
+      {!report && !error ? <p className="muted load-line">Loading…</p> : null}
+      {report && report.totals.spend === 0 ? (
+        <p className="muted small">No ad cost in these dates. Add one on the Ads page to see cost per order and profit after ads.</p>
+      ) : null}
+      {report && report.totals.spend > 0 ? (
+        <>
+          <AdKpis totals={report.totals} />
+          {report.totals.back != null ? <p className="muted small ad-back">{backText(report.totals.back)}</p> : null}
+          <ul className="ad-rows">
+            {paid.map((item) => (
+              <li key={item.id}>
+                <strong>{item.name}</strong>
+                <span>{taka(item.spend)} · {item.orders} orders · {item.perOrder == null ? "—" : `${taka(item.perOrder)} each`}</span>
+                <b className={item.afterAds < 0 ? "bad" : "good"}>{taka(item.afterAds)}</b>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </article>
+  )
 }
 
 function ChartSlot({ stats, loading, error, children }) {
@@ -145,6 +202,8 @@ function Board({ data, go }) {
         </article>
       </div>
 
+      <AdsBlock go={go} />
+
       <div className="chart-pair">
         <article className="card stock-band pair-card">
           <div className="card-head">
@@ -199,6 +258,7 @@ function Board({ data, go }) {
               <div>
                 <span>Profit</span>
                 <strong>{taka(data.books.profit)}</strong>
+                {data.books.ads > 0 ? <small className="muted">Ads {taka(data.books.ads)} taken out</small> : null}
               </div>
             </div>
           </div>

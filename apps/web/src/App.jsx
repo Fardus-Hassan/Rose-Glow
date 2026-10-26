@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import BalancePill from "./balance.jsx"
 import Notifications from "./notifications.jsx"
+import Ads from "./pages/Ads.jsx"
 import Courier from "./pages/Courier.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
 import Inventory from "./pages/Inventory.jsx"
@@ -16,6 +17,7 @@ const NAV = [
   { href: "/orders", label: "All orders", short: "Orders", icon: "list" },
   { href: "/inventory", label: "Inventory", short: "Stock", icon: "box" },
   { href: "/purchases", label: "Books", short: "Books", icon: "book" },
+  { href: "/ads", label: "Ads", short: "Ads", icon: "megaphone" },
   { href: "/courier", label: "Courier", short: "Parcels", icon: "truck" },
 ]
 
@@ -46,6 +48,7 @@ export default function App() {
   else if (path === "/orders") page = <Orders />
   else if (path === "/inventory") page = <Inventory />
   else if (path === "/purchases") page = <Purchases />
+  else if (path === "/ads") page = <Ads />
   else if (path === "/courier") page = <Courier />
   else if (path !== "/") page = <Missing go={go} />
 
@@ -172,6 +175,13 @@ function Icon({ name }) {
         <>
           <path d="M6 4.5h9.2A2.3 2.3 0 0 1 17.5 6.8V19.5H8.2A2.2 2.2 0 0 0 6 17.3V4.5z" {...pen} />
           <path d="M6 17.3A2.2 2.2 0 0 1 8.2 15.1H17.5" {...pen} />
+        </>
+      ) : null}
+      {name === "megaphone" ? (
+        <>
+          <path d="M4 10v4a1 1 0 0 0 1 1h2.5L15 19V5L7.5 9H5a1 1 0 0 0-1 1z" {...pen} />
+          <path d="M18 9.5a3.5 3.5 0 0 1 0 5" {...pen} />
+          <path d="M7.5 15l1.2 4" {...pen} />
         </>
       ) : null}
       {name === "truck" ? (
