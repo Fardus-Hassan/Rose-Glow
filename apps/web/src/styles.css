@@ -1207,6 +1207,7 @@ tr.selected { background: var(--rose-soft); }
 .ad-help ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--muted); font-size: 0.88rem; }
 .ad-help b { color: var(--ink); }
 .ads-page .books-entry { margin-bottom: 14px; }
+.ads-page > .card + .card { margin-top: 14px; }
 .ad-platforms {
   list-style: none;
   margin: 0;
