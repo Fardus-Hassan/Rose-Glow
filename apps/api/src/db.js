@@ -236,31 +236,36 @@ ALTER TABLE courier_events ADD COLUMN IF NOT EXISTS payload JSONB;
 -- The one place an order's money is worked out. Every report reads from here.
 -- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
 -- A cancelled or returned order sells nothing, but a courier charge on it is still a loss.
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS returned_qty INTEGER NOT NULL DEFAULT 0 CHECK (returned_qty >= 0);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFAULT false;
+
 CREATE OR REPLACE VIEW order_money AS
 SELECT o.id, o.status, o.source_id, o.ordered_at, o.paid_amount, o.discount,
        t.goods, t.cost, t.gifts,
-       t.goods - o.discount AS sales,
+       GREATEST(t.goods - o.discount, 0) AS sales,
        CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END AS bill_delivery,
        CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS bill_cod,
        COALESCE(o.courier_charge, o.delivery_charge) + o.cod_charge AS courier_cost,
        o.status NOT IN ('cancelled', 'returned') AS counted,
-       t.goods - o.discount
-         + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
-         + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS total,
+       b.total,
        CASE WHEN o.status IN ('cancelled', 'returned') THEN -COALESCE(o.courier_charge, 0)
-            ELSE t.goods - o.discount - t.cost
-              + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
-              + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END
-              - COALESCE(o.courier_charge, o.delivery_charge) - o.cod_charge
+            ELSE b.total - t.cost - COALESCE(o.courier_charge, o.delivery_charge) - o.cod_charge
        END AS profit
 FROM orders o
 CROSS JOIN LATERAL (
-  SELECT COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
-         COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost,
-         COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0) AS gifts
+  SELECT COALESCE(SUM(oi.unit_price * (oi.quantity - oi.returned_qty)), 0) AS goods,
+         COALESCE(SUM(oi.unit_cost * (oi.quantity - oi.returned_qty)), 0) AS cost,
+         COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * (oi.quantity - oi.returned_qty) ELSE 0 END), 0) AS gifts
   FROM order_items oi
   WHERE oi.order_id = o.id
-) t;
+) t
+CROSS JOIN LATERAL (
+  SELECT CASE WHEN o.return_settled THEN o.paid_amount
+              ELSE t.goods - o.discount
+                + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
+                + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END
+         END AS total
+) b;
 
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position

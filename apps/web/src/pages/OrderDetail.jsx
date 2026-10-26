@@ -501,18 +501,7 @@ export default function OrderDetail({ id }) {
                   )}
                 </article>
               ) : null}
-              <article className="card">
-                <h2>Items</h2>
-                <ul className="lines detail-lines">
-                  {order.items.map((item) => (
-                    <li key={item.id} className={item.gift ? "gift-line" : undefined}>
-                      <div><strong>{item.name}{item.gift ? <span className="gift-tag">Gift</span> : null}</strong></div>
-                      <span>{item.gift ? `${item.quantity} × free` : `${item.quantity} × ${taka(item.unitPrice)}`}</span>
-                      <b>{item.gift ? "Free" : taka(item.unitPrice * item.quantity)}</b>
-                    </li>
-                  ))}
-                </ul>
-              </article>
+              <ItemsCard order={order} onSaved={setOrder} />
             </div>
             <aside className="card summary bill">
               <h2>Totals</h2>
@@ -520,6 +509,7 @@ export default function OrderDetail({ id }) {
               <p className="sum"><span>Discount</span><b>{taka(order.discount)}</b></p>
               <p className="sum"><span>{order.deliveryPaidBy === "free" && order.deliveryCharge > 0 ? "Delivery (you)" : "Delivery"}</span><b>{order.deliveryCharge > 0 ? taka(order.deliveryCharge) : "Free"}</b></p>
               <p className="sum strong"><span>Total</span><b>{taka(order.total)}</b></p>
+              {order.returnSettled ? <p className="sum note-line"><span>Closed at what Steadfast collected</span></p> : null}
               <p className="sum"><span>Paid</span><b>{taka(order.paidAmount)}</b></p>
               <p className="sum"><span>Cost</span><b>{taka(order.cost)}</b></p>
               {order.courierCost > 0 ? (
@@ -551,6 +541,87 @@ export default function OrderDetail({ id }) {
         </div>
       ) : null}
     </section>
+  )
+}
+
+function ItemsCard({ order, onSaved }) {
+  const [counts, setCounts] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const partial = order.status === "delivered" && String(order.courierStatus || "").startsWith("partial_delivered")
+  const editing = counts !== null
+
+  function start() {
+    setCounts(Object.fromEntries(order.items.map((item) => [item.id, item.returned || 0])))
+  }
+
+  async function save(undo = false) {
+    setBusy(true)
+    try {
+      const items = order.items.map((item) => ({ id: item.id, returned: Number(counts?.[item.id] || 0) }))
+      const body = await api(`/api/orders/${order.id}/returned`, { method: "PUT", body: undo ? { undo: true } : { items } })
+      onSaved(body.order)
+      setCounts(null)
+      toast.success(undo ? "Return undone" : "Saved. Stock, due and profit are fixed.")
+    } catch (reason) {
+      toast.error(reason.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <article className="card">
+      <div className="card-head">
+        <h2>Items</h2>
+        {partial && !editing ? (
+          <span className="actions">
+            <button type="button" className="text-btn" onClick={start}>{order.returnSettled ? "Change came back" : "Pieces came back"}</button>
+            {order.returnSettled ? <button type="button" className="text-btn" disabled={busy} onClick={() => save(true)}>Undo</button> : null}
+          </span>
+        ) : null}
+      </div>
+      {partial && !order.returnSettled && !editing ? (
+        <p className="return-hint">Partly delivered. Mark the pieces that came back so stock, due and profit are right.</p>
+      ) : null}
+      <ul className="lines detail-lines">
+        {order.items.map((item) => {
+          const kept = item.quantity - (item.returned || 0)
+          return (
+            <li key={item.id} className={item.gift ? "gift-line" : undefined}>
+              <div>
+                <strong>{item.name}{item.gift ? <span className="gift-tag">Gift</span> : null}</strong>
+                {!editing && item.returned > 0 ? <span className="back-tag">{item.returned} came back</span> : null}
+              </div>
+              {editing ? (
+                <label className="back-input">
+                  <span>Came back</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={item.quantity}
+                    step="1"
+                    inputMode="numeric"
+                    value={counts[item.id]}
+                    onChange={(event) => setCounts({ ...counts, [item.id]: event.target.value })}
+                  />
+                  <small className="muted">of {item.quantity}</small>
+                </label>
+              ) : (
+                <span>{item.gift ? `${kept} × free` : `${kept} × ${taka(item.unitPrice)}`}</span>
+              )}
+              <b>{item.gift ? "Free" : taka(item.unitPrice * (editing ? item.quantity : kept))}</b>
+            </li>
+          )
+        })}
+      </ul>
+      {editing ? (
+        <div className="return-actions">
+          <button type="button" className="btn small-btn" disabled={busy} onClick={() => save(false)}>{busy ? "Saving…" : "Save"}</button>
+          <button type="button" className="btn secondary small-btn" disabled={busy} onClick={() => setCounts(null)}>Cancel</button>
+          <small className="muted">The pieces go back to stock. The order closes at what Steadfast collected.</small>
+        </div>
+      ) : null}
+    </article>
   )
 }
 

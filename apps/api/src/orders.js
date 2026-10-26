@@ -52,6 +52,7 @@ function present(row, items = undefined) {
     courierChargeBy: row.courier_charge_by || "",
     courierCod: amountOrNull(row.courier_cod),
     courierCost: Number(row.courier_cost),
+    returnSettled: row.return_settled === true,
     goods,
     cost,
     gifts,
@@ -72,7 +73,7 @@ const ORDER_SELECT = `
          o.paid_amount::float8 AS paid_amount,
          o.payment_method, o.note, o.source_id, src.name AS source_name, o.stock_held,
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
-         o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod,
+         o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod, o.return_settled,
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
          m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.profit::float8 AS profit
   FROM orders o
@@ -82,7 +83,7 @@ const ORDER_SELECT = `
 
 async function itemsFor(client, orderId) {
   const result = await client.query(
-    `SELECT id, product_id, product_name, quantity, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost, is_gift
+    `SELECT id, product_id, product_name, quantity, returned_qty, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost, is_gift
      FROM order_items
      WHERE order_id = $1
      ORDER BY is_gift, id`,
@@ -93,6 +94,7 @@ async function itemsFor(client, orderId) {
     productId: row.product_id,
     name: row.product_name,
     quantity: row.quantity,
+    returned: row.returned_qty,
     unitPrice: Number(row.unit_price),
     unitCost: Number(row.unit_cost),
     gift: row.is_gift,
@@ -591,6 +593,86 @@ export async function setCourierCharge(id, body) {
       [id, charge],
     )
   if (!updated.rows[0]) throw fail(404, "Order was not found")
+  return getOrder(id)
+}
+
+export function isPartial(courierStatus) {
+  return String(courierStatus || "").startsWith("partial_delivered")
+}
+
+// Steadfast does not say which pieces came back, so the owner records them here.
+// Once saved, the order is settled at what Steadfast collected.
+export async function setReturnedPieces(id, body) {
+  const wanted = Array.isArray(body?.items) ? body.items : null
+  const undo = body?.undo === true
+  if (!wanted && !undo) throw fail(400, "Choose the pieces that came back")
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const found = await client.query(`SELECT id, status, courier_status FROM orders WHERE id = $1 FOR UPDATE`, [id])
+    const order = found.rows[0]
+    if (!order) throw fail(404, "Order was not found")
+    if (order.status !== "delivered" || !isPartial(order.courier_status)) {
+      throw fail(400, "Only a partly delivered order can have pieces come back")
+    }
+    const lines = await client.query(
+      `SELECT id, product_id, quantity, returned_qty FROM order_items WHERE order_id = $1 ORDER BY id FOR UPDATE`,
+      [id],
+    )
+    const next = new Map()
+    for (const line of lines.rows) next.set(line.id, undo ? 0 : line.returned_qty)
+    if (!undo) {
+      for (const item of wanted) {
+        const lineId = whole(item.id)
+        const back = whole(item.returned)
+        const line = lines.rows.find((row) => row.id === lineId)
+        if (!line) throw fail(400, "That item is not on this order")
+        if (back === null || back < 0 || back > line.quantity) throw fail(400, "Enter how many pieces came back")
+        next.set(lineId, back)
+      }
+      const kept = lines.rows.reduce((sum, line) => sum + line.quantity - next.get(line.id), 0)
+      if (kept <= 0) throw fail(400, "If every piece came back, the parcel is a return. Leave at least one piece kept.")
+    }
+    const { parts } = await catalogMaps(client)
+    const products = await client.query(`SELECT id, is_combo FROM products WHERE id = ANY($1::int[])`, [lines.rows.map((row) => row.product_id)])
+    const combo = new Map(products.rows.map((row) => [row.id, row.is_combo]))
+    const moves = new Map()
+    for (const line of lines.rows) {
+      const delta = next.get(line.id) - line.returned_qty
+      if (!delta) continue
+      const recipe = combo.get(line.product_id) ? parts.get(line.product_id) || [] : [{ productId: line.product_id, quantity: 1 }]
+      for (const part of recipe) moves.set(part.productId, (moves.get(part.productId) || 0) + part.quantity * delta)
+    }
+    const ids = [...moves.keys()].sort((a, b) => a - b)
+    if (ids.length) {
+      const locked = await client.query(`SELECT id, name, stock_qty FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE`, [ids])
+      const stock = new Map(locked.rows.map((row) => [row.id, row]))
+      for (const productId of ids) {
+        const pieces = moves.get(productId)
+        const product = stock.get(productId)
+        if (!product) throw fail(400, "A stocked product no longer exists")
+        if (pieces < 0 && product.stock_qty < -pieces) {
+          throw fail(400, `${product.name} has only ${product.stock_qty} in stock, so those pieces cannot be taken back out.`)
+        }
+        await client.query(`UPDATE products SET stock_qty = stock_qty + $2 WHERE id = $1`, [productId, pieces])
+        const held = await client.query(`SELECT quantity FROM order_stock WHERE order_id = $1 AND product_id = $2`, [id, productId])
+        const left = (held.rows[0]?.quantity || 0) - pieces
+        if (left <= 0) await client.query(`DELETE FROM order_stock WHERE order_id = $1 AND product_id = $2`, [id, productId])
+        else if (held.rows[0]) await client.query(`UPDATE order_stock SET quantity = $3 WHERE order_id = $1 AND product_id = $2`, [id, productId, left])
+        else await client.query(`INSERT INTO order_stock (order_id, product_id, quantity) VALUES ($1, $2, $3)`, [id, productId, left])
+      }
+    }
+    for (const line of lines.rows) {
+      await client.query(`UPDATE order_items SET returned_qty = $2 WHERE id = $1`, [line.id, next.get(line.id)])
+    }
+    await client.query(`UPDATE orders SET return_settled = $2 WHERE id = $1`, [id, !undo])
+    await client.query("COMMIT")
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    throw error
+  } finally {
+    client.release()
+  }
   return getOrder(id)
 }
 
