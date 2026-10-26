@@ -108,6 +108,7 @@ function Board({ data, go }) {
               <div className="trend-kpis">
                 <span><i className="bar" />Orders <b>{stats.orders}</b></span>
                 <span><i className="line" />Sales <b>{taka(stats.amount)}</b></span>
+                <span><i className="courier" />Courier <b>{stats.courier ?? 0}</b></span>
               </div>
               <TrendChart points={stats.points} from={trendRange.from} to={trendRange.to} />
             </>

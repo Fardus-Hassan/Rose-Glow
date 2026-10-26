@@ -185,6 +185,16 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_url TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_status TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_status_at TIMESTAMPTZ;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_error TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_sent_at TIMESTAMPTZ;
+UPDATE orders o
+SET courier_sent_at = COALESCE(
+  (SELECT MIN(e.created_at) FROM courier_events e WHERE e.order_id = o.id),
+  o.courier_status_at,
+  o.ordered_at
+)
+WHERE o.courier_sent_at IS NULL
+  AND (o.consignment_id IS NOT NULL OR o.status IN ('courier', 'delivered'));
+CREATE INDEX IF NOT EXISTS orders_courier_sent_idx ON orders (courier_sent_at) WHERE courier_sent_at IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS orders_consignment_idx ON orders (consignment_id) WHERE consignment_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS order_sources_name_lower ON order_sources (lower(name));
 INSERT INTO order_sources (name, position)

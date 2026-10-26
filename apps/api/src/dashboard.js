@@ -134,7 +134,7 @@ export async function rangeStats(from, to) {
   if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
   if (daySpan(from, to) > 800) throw fail(400, "Keep the date range within 800 days")
   const countable = `o.status NOT IN ('cancelled', 'returned') AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
-  const [pointRows, sourceRows, statusRows] = await Promise.all([
+  const [pointRows, sourceRows, statusRows, courierRows] = await Promise.all([
     pool.query(
       `SELECT to_char(day, 'YYYY-MM-DD') AS date, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
        FROM (
@@ -171,8 +171,23 @@ export async function rangeStats(from, to) {
        GROUP BY status`,
       [from, to],
     ),
+    pool.query(
+      `SELECT to_char((courier_sent_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS courier
+       FROM orders
+       WHERE courier_sent_at IS NOT NULL
+         AND (courier_sent_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+       GROUP BY 1
+       ORDER BY 1`,
+      [from, to],
+    ),
   ])
-  const points = pointRows.rows.map((row) => ({ date: row.date, orders: row.orders, amount: Number(row.amount) }))
+  const byDate = new Map(pointRows.rows.map((row) => [row.date, { date: row.date, orders: row.orders, amount: Number(row.amount), courier: 0 }]))
+  for (const row of courierRows.rows) {
+    const point = byDate.get(row.date) || { date: row.date, orders: 0, amount: 0, courier: 0 }
+    point.courier = row.courier
+    byDate.set(row.date, point)
+  }
+  const points = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
   const statuses = Object.fromEntries(STATUSES.map((item) => [item.id, 0]))
   for (const row of statusRows.rows) statuses[row.status] = row.count
   return {
@@ -180,6 +195,7 @@ export async function rangeStats(from, to) {
     to,
     orders: points.reduce((sum, point) => sum + point.orders, 0),
     amount: points.reduce((sum, point) => sum + point.amount, 0),
+    courier: points.reduce((sum, point) => sum + point.courier, 0),
     points,
     sources: sourceRows.rows.map((row) => ({
       id: row.source_id,

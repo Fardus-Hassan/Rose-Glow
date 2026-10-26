@@ -36,7 +36,8 @@ export async function bookOrder(id) {
   await pool.query(
     `UPDATE orders
      SET consignment_id = $2, tracking_code = NULLIF($3, ''), tracking_url = NULLIF($4, ''),
-         courier_status = $5, courier_status_at = now(), courier_error = NULL
+         courier_status = $5, courier_status_at = now(), courier_error = NULL,
+         courier_sent_at = COALESCE(courier_sent_at, now())
      WHERE id = $1 AND consignment_id IS NULL`,
     [order.id, parcel.id, parcel.code, parcel.link, parcel.status || "in_review"],
   )

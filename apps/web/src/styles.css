@@ -1086,12 +1086,13 @@ tr.selected { background: var(--rose-soft); }
   overflow: auto;
 }
 .source-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
-.trend-kpis { display: flex; gap: 16px; margin: 0 0 4px; color: var(--muted); font-size: 0.86rem; align-items: center; }
+.trend-kpis { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 4px; color: var(--muted); font-size: 0.86rem; align-items: center; }
 .trend-kpis span { display: inline-flex; align-items: center; gap: 6px; }
 .trend-kpis b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .trend-kpis i { display: inline-block; }
 .trend-kpis i.bar { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(#f4b3b6, #d45362); }
 .trend-kpis i.line { width: 16px; height: 3px; border-radius: 99px; background: #3db8c9; }
+.trend-kpis i.courier { width: 16px; height: 0; border-top: 2px dashed #f0c14a; }
 .trend-month { font-weight: 650; fill: var(--ink); }
 .dash .page-head, .dash .card-head { margin-bottom: 8px; }
 .dash .stats { gap: 8px; margin-bottom: 10px; }

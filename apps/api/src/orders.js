@@ -404,8 +404,8 @@ export async function createOrder(body) {
     await applyNeeds(client, built.needs, hold)
     const inserted = await client.query(
       `INSERT INTO orders
-        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $5 = 'courier' THEN now() END)
        RETURNING id`,
       [
         fields.customerName,
@@ -532,7 +532,8 @@ export async function updateOrder(id, body) {
       `UPDATE orders SET
         customer_name = $2, mobile = $3, address = $4, courier = $5, status = $6, ordered_at = $7,
         delivery_charge = $8, delivery_paid_by = $9, discount = $10, paid_amount = $11, payment_method = $12, note = $13, stock_held = $14,
-        cod_charge = $15, cod_paid_by = $16, source_id = $17
+        cod_charge = $15, cod_paid_by = $16, source_id = $17,
+        courier_sent_at = CASE WHEN $6 = 'courier' THEN COALESCE(courier_sent_at, now()) ELSE courier_sent_at END
        WHERE id = $1`,
       [
         id,
@@ -579,7 +580,12 @@ export async function setOrderStatus(id, status, allowedFrom) {
     const hold = holdsStock(status)
     if (hold && !row.stock_held) await moveSavedStock(client, id, -1)
     if (!hold && row.stock_held) await moveSavedStock(client, id, 1)
-    await client.query(`UPDATE orders SET status = $2, stock_held = $3 WHERE id = $1`, [id, status, hold])
+    await client.query(
+      `UPDATE orders SET status = $2, stock_held = $3,
+         courier_sent_at = CASE WHEN $2 = 'courier' THEN COALESCE(courier_sent_at, now()) ELSE courier_sent_at END
+       WHERE id = $1`,
+      [id, status, hold],
+    )
     await client.query("COMMIT")
     return true
   } catch (error) {

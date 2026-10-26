@@ -4,13 +4,14 @@ import { addDays, iso, parts } from "./dates.js"
 
 const ORDER_COLOR = "#e06d78"
 const AMOUNT_COLOR = "#3db8c9"
+const COURIER_COLOR = "#f0c14a"
 
 export function TrendChart({ points, from, to }) {
   const host = useRef(null)
   const [px, setPx] = useState(720)
   const buckets = bucketPoints(points, from, to)
   const [active, setActive] = useState(null)
-  const ordersMax = Math.max(0, ...buckets.map((item) => item.orders))
+  const ordersMax = Math.max(0, ...buckets.map((item) => Math.max(item.orders, item.courier)))
   const amountMax = Math.max(0, ...buckets.map((item) => item.amount))
   useLayoutEffect(() => {
     const node = host.current
@@ -52,6 +53,12 @@ export function TrendChart({ points, from, to }) {
   const current = active == null ? null : buckets[active]
   const ticks = tickIndexes(buckets, slot)
   const steps = 4
+  const amountPoints = buckets.map((item, index) => ({ x: xAt(index), y: yAt(item.amount, amountScale) }))
+  const courierPoints = buckets.map((item, index) => ({ x: xAt(index), y: yAt(item.courier, orderScale) }))
+  const amountPath = smoothPath(amountPoints)
+  const courierPath = smoothPath(courierPoints)
+  const hasCourier = buckets.some((item) => item.courier > 0)
+  const dots = buckets.length <= 62
   let lastOrderLabel = ""
 
   return (
@@ -80,9 +87,9 @@ export function TrendChart({ points, from, to }) {
             <stop offset="1" stopColor="#3db8c9" stopOpacity="0" />
           </linearGradient>
         </defs>
-        {lineRuns(buckets, xAt, (item) => yAt(item.amount, amountScale)).map((run, index) => run.length > 1 ? (
-          <polygon key={`area-${index}`} points={`${run[0].x},${base} ${run.map((point) => `${point.x},${point.y}`).join(" ")} ${run[run.length - 1].x},${base}`} fill="url(#trend-area)" />
-        ) : null)}
+        {amountPoints.length > 1 ? (
+          <path d={`${amountPath} L${amountPoints.at(-1).x},${base} L${amountPoints[0].x},${base} Z`} fill="url(#trend-area)" />
+        ) : null}
         {buckets.map((item, index) => {
           const heightOf = Math.max(item.orders ? 2 : 0, (item.orders / orderScale) * innerH)
           return (
@@ -97,14 +104,20 @@ export function TrendChart({ points, from, to }) {
             />
           )
         })}
-        {lineRuns(buckets, xAt, (item) => yAt(item.amount, amountScale)).map((run, index) => run.length > 1 ? (
-          <g key={`line-${index}`}>
-            <polyline points={run.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={AMOUNT_COLOR} strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" opacity="0.2" />
-            <polyline points={run.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={AMOUNT_COLOR} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+        {amountPoints.length > 1 ? (
+          <g>
+            <path d={amountPath} fill="none" stroke={AMOUNT_COLOR} strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" opacity="0.2" />
+            <path d={amountPath} fill="none" stroke={AMOUNT_COLOR} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
           </g>
-        ) : null)}
-        {buckets.length <= 62 ? buckets.map((item, index) => item.amount > 0 ? (
-          <circle key={`dot-${item.date}`} cx={xAt(index)} cy={yAt(item.amount, amountScale)} r={index === active ? 4.4 : 3.1} fill={AMOUNT_COLOR} stroke="#1e1c1a" strokeWidth="1.6" />
+        ) : null}
+        {hasCourier && courierPoints.length > 1 ? (
+          <path d={courierPath} fill="none" stroke={COURIER_COLOR} strokeWidth="2" strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" />
+        ) : null}
+        {dots ? amountPoints.map((point, index) => (
+          <circle key={`dot-${buckets[index].date}`} cx={point.x} cy={point.y} r={index === active ? 4.4 : 3.1} fill={AMOUNT_COLOR} stroke="#1e1c1a" strokeWidth="1.6" />
+        )) : null}
+        {dots && hasCourier ? courierPoints.map((point, index) => buckets[index].courier > 0 ? (
+          <circle key={`courier-${buckets[index].date}`} cx={point.x} cy={point.y} r={index === active ? 3.8 : 2.6} fill={COURIER_COLOR} stroke="#1e1c1a" strokeWidth="1.4" />
         ) : null) : null}
         {monthly ? ticks.map((index) => (
           <text key={buckets[index].date} x={xAt(index)} y={stacked && index % 2 ? height - 4 : height - (stacked ? font + 14 : 8)} textAnchor="middle" className="trend-label">{monthWord(parts(`${buckets[index].date}-01`).month, stacked ? 24 : slot)}</text>
@@ -135,6 +148,7 @@ export function TrendChart({ points, from, to }) {
         <div className={`trend-hover ${xAt(active) / width > 0.62 ? "left" : ""}`} style={{ left: `${(xAt(active) / width) * 100}%` }}>
           <strong>{current.full}</strong>
           <span><i style={{ background: ORDER_COLOR }} />Orders <b>{current.orders}</b></span>
+          <span><i style={{ background: COURIER_COLOR }} />Courier <b>{current.courier}</b></span>
           <span><i style={{ background: AMOUNT_COLOR }} />Sales <b>{taka(current.amount)}</b></span>
         </div>
       ) : null}
@@ -322,18 +336,45 @@ export function HBars({ rows, max }) {
   )
 }
 
-function lineRuns(buckets, xAt, yOf) {
-  const runs = []
-  let run = []
-  buckets.forEach((item, index) => {
-    if (item.amount > 0) run.push({ x: xAt(index), y: yOf(item) })
-    else if (run.length) {
-      runs.push(run)
-      run = []
+// Monotone cubic curve: waves through every point without dipping below a zero day.
+function smoothPath(points) {
+  if (!points.length) return ""
+  if (points.length < 3) return points.map((point, index) => `${index ? "L" : "M"}${point.x},${point.y}`).join(" ")
+  const count = points.length
+  const slopes = []
+  for (let index = 0; index < count - 1; index += 1) {
+    slopes.push((points[index + 1].y - points[index].y) / (points[index + 1].x - points[index].x))
+  }
+  const tangents = [slopes[0]]
+  for (let index = 1; index < count - 1; index += 1) {
+    const before = slopes[index - 1]
+    const after = slopes[index]
+    tangents.push(before * after <= 0 ? 0 : (before + after) / 2)
+  }
+  tangents.push(slopes[count - 2])
+  for (let index = 0; index < count - 1; index += 1) {
+    if (slopes[index] === 0) {
+      tangents[index] = 0
+      tangents[index + 1] = 0
+      continue
     }
-  })
-  if (run.length) runs.push(run)
-  return runs
+    const a = tangents[index] / slopes[index]
+    const b = tangents[index + 1] / slopes[index]
+    const size = a * a + b * b
+    if (size > 9) {
+      const scale = 3 / Math.sqrt(size)
+      tangents[index] = scale * a * slopes[index]
+      tangents[index + 1] = scale * b * slopes[index]
+    }
+  }
+  let path = `M${points[0].x},${points[0].y}`
+  for (let index = 0; index < count - 1; index += 1) {
+    const from = points[index]
+    const to = points[index + 1]
+    const step = (to.x - from.x) / 3
+    path += ` C${from.x + step},${from.y + tangents[index] * step} ${to.x - step},${to.y - tangents[index + 1] * step} ${to.x},${to.y}`
+  }
+  return path
 }
 
 function bucketPoints(points, from, to) {
@@ -341,7 +382,7 @@ function bucketPoints(points, from, to) {
   const days = []
   for (let day = from; day <= to; day = addDays(day, 1)) {
     const point = byDate.get(day)
-    days.push({ date: day, orders: point?.orders || 0, amount: point?.amount || 0 })
+    days.push({ date: day, orders: point?.orders || 0, amount: point?.amount || 0, courier: point?.courier || 0 })
     if (days.length > 800) break
   }
   const span = days.length
@@ -355,10 +396,11 @@ function group(days, keyOf) {
   for (const day of days) {
     const key = keyOf(day)
     const last = groups[groups.length - 1]
-    if (!last || last.date !== key) groups.push({ date: key, orders: 0, amount: 0 })
+    if (!last || last.date !== key) groups.push({ date: key, orders: 0, amount: 0, courier: 0 })
     const bucket = groups[groups.length - 1]
     bucket.orders += day.orders
     bucket.amount += day.amount
+    bucket.courier += day.courier
   }
   return groups
 }
@@ -395,7 +437,11 @@ function tickIndexes(buckets, slot) {
   const step = Math.max(1, Math.ceil(16 / slot))
   const indexes = []
   for (let index = 0; index < buckets.length; index += step) indexes.push(index)
-  if (indexes.at(-1) !== buckets.length - 1) indexes.push(buckets.length - 1)
+  const last = buckets.length - 1
+  if (indexes.at(-1) !== last) {
+    if (last - indexes.at(-1) < step) indexes.pop()
+    indexes.push(last)
+  }
   return indexes
 }
 
