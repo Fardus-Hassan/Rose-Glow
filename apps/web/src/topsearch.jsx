@@ -43,7 +43,7 @@ export default function TopSearch() {
   useEffect(() => {
     function onKey(event) {
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.isContentEditable
-      if ((event.key === "k" && (event.ctrlKey || event.metaKey)) || (event.key === "/" && !typing)) {
+      if (event.key === "/" && !typing) {
         event.preventDefault()
         setShown(true)
         input.current?.focus()
@@ -130,7 +130,7 @@ export default function TopSearch() {
         />
         {text ? (
           <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setText(""); input.current?.focus() }}>×</button>
-        ) : <kbd className="search-key">Ctrl K</kbd>}
+        ) : null}
       </label>
       {open && term.length >= 2 ? (
         <div className="card top-search-panel">
