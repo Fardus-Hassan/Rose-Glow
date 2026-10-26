@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { courierStatusLabel } from "@rose/shared"
 import { api } from "./api.js"
 import { taka, when } from "./format.js"
@@ -18,7 +19,7 @@ export function ParcelEye({ orderId }) {
       <button type="button" className="eye-btn" aria-label="Parcel details" onClick={(event) => { event.stopPropagation(); setOpen(true) }}>
         <EyeIcon />
       </button>
-      {open ? <ParcelModal orderId={orderId} onClose={() => setOpen(false)} /> : null}
+      {open ? createPortal(<ParcelModal orderId={orderId} onClose={() => setOpen(false)} />, document.body) : null}
     </>
   )
 }
@@ -58,7 +59,7 @@ function ParcelModal({ orderId, onClose }) {
   const panelUrl = order?.trackingUrl || (order?.trackingCode ? `https://steadfast.com.bd/t/${order.trackingCode}` : "")
 
   return (
-    <div className="modal-back" role="presentation" onClick={onClose}>
+    <div className="modal-back" role="presentation" onClick={(event) => { event.stopPropagation(); onClose() }}>
       <div className="modal parcel-modal" role="dialog" aria-modal="true" aria-labelledby="parcel-title" onClick={(event) => event.stopPropagation()}>
         <div className="card-head">
           <div>
