@@ -65,7 +65,7 @@ export async function adReport({ from, to, limit, offset }) {
   if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
   const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000
   if (span > 800) throw fail(400, "Keep the date range within 800 days")
-  const [spendRows, orderRows, entryRows, countRow] = await Promise.all([
+  const [spendRows, orderRows, entryRows, countRow, daySpendRows, dayOrderRows] = await Promise.all([
     pool.query(
       `SELECT source_id, SUM(amount)::float8 AS spend
        FROM ad_spends
@@ -107,7 +107,44 @@ export async function adReport({ from, to, limit, offset }) {
       `SELECT COUNT(*)::int AS total FROM ad_spends WHERE spent_on BETWEEN $1::date AND $2::date`,
       [from, to],
     ),
+    pool.query(
+      `SELECT to_char(spent_on, 'YYYY-MM-DD') AS date, SUM(amount)::float8 AS spend
+       FROM ad_spends
+       WHERE spent_on BETWEEN $1::date AND $2::date
+       GROUP BY spent_on`,
+      [from, to],
+    ),
+    pool.query(
+      `SELECT to_char(day, 'YYYY-MM-DD') AS date, COUNT(*)::int AS orders,
+              SUM(goods - discount)::float8 AS sales,
+              SUM(goods - discount - cost
+                  - CASE WHEN delivery_paid_by = 'free' THEN delivery_charge ELSE 0 END
+                  - CASE WHEN cod_paid_by = 'free' THEN cod_charge ELSE 0 END)::float8 AS profit
+       FROM (
+         SELECT (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date AS day, o.discount, o.delivery_charge, o.delivery_paid_by, o.cod_charge, o.cod_paid_by,
+                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
+                COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost
+         FROM orders o
+         JOIN order_items oi ON oi.order_id = o.id
+         WHERE o.status NOT IN ('cancelled', 'returned')
+           AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+           AND o.source_id IN (SELECT source_id FROM ad_spends WHERE spent_on BETWEEN $1::date AND $2::date)
+         GROUP BY o.id
+       ) t
+       GROUP BY day`,
+      [from, to],
+    ),
   ])
+  const dayMap = new Map()
+  const dayOf = (date) => dayMap.get(date) || dayMap.set(date, { date, spend: 0, orders: 0, sales: 0, profit: 0 }).get(date)
+  for (const row of daySpendRows.rows) dayOf(row.date).spend = Number(row.spend)
+  for (const row of dayOrderRows.rows) {
+    const day = dayOf(row.date)
+    day.orders = row.orders
+    day.sales = Number(row.sales)
+    day.profit = Number(row.profit)
+  }
+  const days = [...dayMap.values()].sort((a, b) => a.date.localeCompare(b.date))
 
   const names = await pool.query(`SELECT id, name, position FROM order_sources ORDER BY position, id`)
   const platforms = new Map()
@@ -156,6 +193,7 @@ export async function adReport({ from, to, limit, offset }) {
       back: rate(sales, spend),
     },
     platforms: list.map(({ position, ...item }) => item),
+    days,
     entries: entryRows.rows.map((row) => ({
       id: row.id,
       spentOn: row.spent_on,

@@ -61,7 +61,7 @@ async function summarize(range) {
 }
 
 export async function dashboard() {
-  const [today, month, allDue, statusRows, monthStatusRows, inventory, recent, booksMoney, adsAll] = await Promise.all([
+  const [today, month, allDue, statusRows, monthStatusRows, inventory, booksMoney, adsAll] = await Promise.all([
     summarize("today"),
     summarize("month"),
     summarize("all"),
@@ -73,18 +73,6 @@ export async function dashboard() {
       GROUP BY status
     `),
     inventorySummary(),
-    pool.query(`
-      SELECT o.id, o.customer_name, o.mobile, o.courier, o.status, o.ordered_at,
-             o.paid_amount::float8 AS paid_amount,
-             MAX(src.name) AS source_name,
-             (COALESCE(SUM(oi.unit_price * oi.quantity), 0) - o.discount + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END)::float8 AS total
-      FROM orders o
-      LEFT JOIN order_items oi ON oi.order_id = o.id
-      LEFT JOIN order_sources src ON src.id = o.source_id
-      GROUP BY o.id
-      ORDER BY o.ordered_at DESC, o.id DESC
-      LIMIT 10
-    `),
     bookTotals(),
     adSpendTotal(),
   ])
@@ -110,18 +98,6 @@ export async function dashboard() {
     open,
     monthStatuses,
     inventory,
-    recent: recent.rows.map((row) => ({
-      id: row.id,
-      number: `RG-${String(row.id).padStart(4, "0")}`,
-      customerName: row.customer_name,
-      mobile: row.mobile,
-      courier: row.courier,
-      sourceName: row.source_name || "",
-      status: row.status,
-      orderedAt: row.ordered_at,
-      total: Number(row.total),
-      due: Number(row.total) - Number(row.paid_amount),
-    })),
   }
 }
 

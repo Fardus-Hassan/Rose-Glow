@@ -249,7 +249,11 @@ export async function inventorySummary() {
       .map((item) => ({ id: item.id, name: item.name, stockQty: item.stockQty })),
     combos: catalog
       .filter((item) => item.isCombo)
-      .map((item) => ({ id: item.id, name: item.name, available: item.available })),
+      .sort((a, b) => a.available - b.available || a.name.localeCompare(b.name))
+      .map((item) => {
+        const short = [...item.components].sort((a, b) => a.stockQty / a.quantity - b.stockQty / b.quantity)[0]
+        return { id: item.id, name: item.name, available: item.available, heldBy: short?.name || "" }
+      }),
     lowAt: LOW_STOCK_AT,
   }
 }

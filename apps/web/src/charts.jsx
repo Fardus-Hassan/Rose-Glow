@@ -6,13 +6,9 @@ const ORDER_COLOR = "#e06d78"
 const AMOUNT_COLOR = "#3db8c9"
 const COURIER_COLOR = "#f0c14a"
 
-export function TrendChart({ points, from, to }) {
+function useWidth(deps) {
   const host = useRef(null)
   const [px, setPx] = useState(720)
-  const buckets = bucketPoints(points, from, to)
-  const [active, setActive] = useState(null)
-  const ordersMax = Math.max(0, ...buckets.map((item) => Math.max(item.orders, item.courier)))
-  const amountMax = Math.max(0, ...buckets.map((item) => item.amount))
   useLayoutEffect(() => {
     const node = host.current
     if (!node) return undefined
@@ -28,7 +24,35 @@ export function TrendChart({ points, from, to }) {
       watch.disconnect()
       window.removeEventListener("resize", measure)
     }
-  }, [ordersMax, amountMax])
+  }, deps)
+  return [host, px]
+}
+
+function DayLabels({ buckets, xAt, slot, height, font, monthly, stacked }) {
+  const ticks = tickIndexes(buckets, slot)
+  if (monthly) {
+    return ticks.map((index) => (
+      <text key={buckets[index].date} x={xAt(index)} y={stacked && index % 2 ? height - 4 : height - (stacked ? font + 14 : 8)} textAnchor="middle" className="trend-label">{monthWord(parts(`${buckets[index].date}-01`).month, stacked ? 24 : slot)}</text>
+    ))
+  }
+  return (
+    <>
+      {monthSpans(buckets).map((span) => (
+        <text key={`m-${span.month}`} x={xAt(span.start) - slot / 2 + 2} y={height - font - 8} textAnchor="start" className="trend-label trend-month">{monthWord(span.month, (span.end - span.start + 1) * slot)}</text>
+      ))}
+      {ticks.map((index) => (
+        <text key={buckets[index].date} x={xAt(index)} y={height - 2} textAnchor="middle" className="trend-label">{parts(buckets[index].date).day}</text>
+      ))}
+    </>
+  )
+}
+
+export function TrendChart({ points, from, to }) {
+  const buckets = bucketPoints(points, from, to)
+  const [active, setActive] = useState(null)
+  const ordersMax = Math.max(0, ...buckets.map((item) => Math.max(item.orders, item.courier)))
+  const amountMax = Math.max(0, ...buckets.map((item) => item.amount))
+  const [host, px] = useWidth([ordersMax, amountMax])
   if (!ordersMax && !amountMax) {
     return <p className="muted chart-empty">No sales in this period.</p>
   }
@@ -51,7 +75,6 @@ export function TrendChart({ points, from, to }) {
   const xAt = (index) => left + slot * index + slot / 2
   const yAt = (value, max) => base - (max ? (value / max) * innerH : 0)
   const current = active == null ? null : buckets[active]
-  const ticks = tickIndexes(buckets, slot)
   const steps = 4
   const amountPoints = buckets.map((item, index) => ({ x: xAt(index), y: yAt(item.amount, amountScale) }))
   const courierPoints = buckets.map((item, index) => ({ x: xAt(index), y: yAt(item.courier, orderScale) }))
@@ -119,18 +142,7 @@ export function TrendChart({ points, from, to }) {
         {dots && hasCourier ? courierPoints.map((point, index) => buckets[index].courier > 0 ? (
           <circle key={`courier-${buckets[index].date}`} cx={point.x} cy={point.y} r={index === active ? 3.8 : 2.6} fill={COURIER_COLOR} stroke="#1e1c1a" strokeWidth="1.4" />
         ) : null) : null}
-        {monthly ? ticks.map((index) => (
-          <text key={buckets[index].date} x={xAt(index)} y={stacked && index % 2 ? height - 4 : height - (stacked ? font + 14 : 8)} textAnchor="middle" className="trend-label">{monthWord(parts(`${buckets[index].date}-01`).month, stacked ? 24 : slot)}</text>
-        )) : (
-          <>
-            {monthSpans(buckets).map((span) => (
-              <text key={`m-${span.month}`} x={xAt(span.start) - slot / 2 + 2} y={height - font - 8} textAnchor="start" className="trend-label trend-month">{monthWord(span.month, (span.end - span.start + 1) * slot)}</text>
-            ))}
-            {ticks.map((index) => (
-              <text key={buckets[index].date} x={xAt(index)} y={height - 2} textAnchor="middle" className="trend-label">{parts(buckets[index].date).day}</text>
-            ))}
-          </>
-        )}
+        <DayLabels buckets={buckets} xAt={xAt} slot={slot} height={height} font={font} monthly={monthly} stacked={stacked} />
         {buckets.map((item, index) => (
           <rect
             key={`hit-${item.date}`}
@@ -153,6 +165,123 @@ export function TrendChart({ points, from, to }) {
         </div>
       ) : null}
     </div>
+  )
+}
+
+const SPEND_COLOR = "#e7c08a"
+
+export function AdTrend({ days, from, to }) {
+  const buckets = bucketPoints(days, from, to, ["spend", "orders", "sales"])
+  const [active, setActive] = useState(null)
+  const peak = Math.max(0, ...buckets.map((item) => Math.max(item.spend, item.sales)))
+  const [host, px] = useWidth([peak])
+  if (!peak) return <p className="muted chart-empty">No ad cost in these dates.</p>
+  const scale = niceMax(peak)
+  const width = px
+  const height = 200
+  const font = width < 520 ? 12 : 13
+  const left = Math.max(44, axisAmount(scale).length * (font * 0.62) + 14)
+  const right = 12
+  const monthly = /^\d{4}-\d{2}$/.test(buckets[0]?.date || "")
+  const innerW = width - left - right
+  const slot = innerW / buckets.length
+  const stacked = monthly && slot < 48
+  const top = 14
+  const bottom = monthly ? (stacked ? font + 28 : font + 16) : font + 28
+  const innerH = height - top - bottom
+  const base = height - bottom
+  const barW = Math.max(4, Math.min(26, slot * 0.46))
+  const xAt = (index) => left + slot * index + slot / 2
+  const yAt = (value) => base - (value / scale) * innerH
+  const steps = 4
+  const salesPoints = buckets.map((item, index) => ({ x: xAt(index), y: yAt(item.sales) }))
+  const salesPath = smoothPath(salesPoints)
+  const current = active == null ? null : buckets[active]
+  const dots = buckets.length <= 62
+
+  return (
+    <div className="trend" ref={host}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ fontSize: font }} role="img" aria-label="Ad cost and the sales it brought" onPointerLeave={() => setActive(null)}>
+        {Array.from({ length: steps + 1 }, (_, step) => {
+          const y = base - (innerH / steps) * step
+          return (
+            <g key={step}>
+              <line x1={left} x2={width - right} y1={y} y2={y} className="trend-grid" />
+              <text x={left - 8} y={y} textAnchor="end" dominantBaseline="middle" className="trend-axis">{axisAmount((scale / steps) * step)}</text>
+            </g>
+          )
+        })}
+        <defs>
+          <linearGradient id="ad-bar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f3d9a8" />
+            <stop offset="1" stopColor="#c99a52" />
+          </linearGradient>
+          <linearGradient id="ad-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#3db8c9" stopOpacity="0.26" />
+            <stop offset="1" stopColor="#3db8c9" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {salesPoints.length > 1 ? (
+          <path d={`${salesPath} L${salesPoints.at(-1).x},${base} L${salesPoints[0].x},${base} Z`} fill="url(#ad-area)" />
+        ) : null}
+        {buckets.map((item, index) => {
+          const tall = Math.max(item.spend ? 2 : 0, (item.spend / scale) * innerH)
+          return <rect key={item.date} x={xAt(index) - barW / 2} y={base - tall} width={barW} height={tall} rx="3" fill={index === active ? "#f8e6c4" : "url(#ad-bar)"} />
+        })}
+        {salesPoints.length > 1 ? (
+          <g>
+            <path d={salesPath} fill="none" stroke={AMOUNT_COLOR} strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" opacity="0.2" />
+            <path d={salesPath} fill="none" stroke={AMOUNT_COLOR} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        ) : null}
+        {dots ? salesPoints.map((point, index) => (
+          <circle key={`dot-${buckets[index].date}`} cx={point.x} cy={point.y} r={index === active ? 4.4 : 3.1} fill={AMOUNT_COLOR} stroke="#1e1c1a" strokeWidth="1.6" />
+        )) : null}
+        <DayLabels buckets={buckets} xAt={xAt} slot={slot} height={height} font={font} monthly={monthly} stacked={stacked} />
+        {buckets.map((item, index) => (
+          <rect key={`hit-${item.date}`} x={left + slot * index} y={top} width={slot} height={innerH} fill="transparent" onPointerEnter={() => setActive(index)} />
+        ))}
+        {current ? <line x1={xAt(active)} x2={xAt(active)} y1={top} y2={base} className="trend-cursor" /> : null}
+      </svg>
+      {current ? (
+        <div className={`trend-hover ${xAt(active) / width > 0.62 ? "left" : ""}`} style={{ left: `${(xAt(active) / width) * 100}%` }}>
+          <strong>{current.full}</strong>
+          <span><i style={{ background: SPEND_COLOR }} />Spent <b>{taka(current.spend)}</b></span>
+          <span><i style={{ background: AMOUNT_COLOR }} />Sales <b>{taka(current.sales)}</b></span>
+          <span><i style={{ background: ORDER_COLOR }} />Orders <b>{current.orders}</b></span>
+          <span>Each order <b>{current.spend && current.orders ? taka(Math.round(current.spend / current.orders)) : "—"}</b></span>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function AdPlatformBars({ platforms }) {
+  const paid = platforms.filter((item) => item.paid)
+  if (!paid.length) return null
+  const peak = Math.max(1, ...paid.map((item) => Math.max(item.spend, Math.abs(item.afterAds))))
+  const width = (value) => `${Math.max(value ? 2 : 0, (Math.abs(value) / peak) * 100)}%`
+  return (
+    <ul className="ad-bars">
+      {paid.map((item) => (
+        <li key={item.id}>
+          <div className="ad-bars-head">
+            <strong>{item.name}</strong>
+            <span className="muted small">{item.orders} orders · {item.perOrder == null ? "—" : `${taka(item.perOrder)} each`}</span>
+          </div>
+          <div className="ad-bars-row">
+            <span>Spent</span>
+            <div className="bar-track"><div className="bar-fill spend" style={{ width: width(item.spend) }} /></div>
+            <b>{taka(item.spend)}</b>
+          </div>
+          <div className="ad-bars-row">
+            <span>After ads</span>
+            <div className="bar-track"><div className={`bar-fill ${item.afterAds < 0 ? "loss" : "gain"}`} style={{ width: width(item.afterAds) }} /></div>
+            <b className={item.afterAds < 0 ? "bad" : "good"}>{taka(item.afterAds)}</b>
+          </div>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -377,30 +506,28 @@ function smoothPath(points) {
   return path
 }
 
-function bucketPoints(points, from, to) {
+function bucketPoints(points, from, to, keys = ["orders", "amount", "courier"]) {
   const byDate = new Map(points.map((point) => [point.date, point]))
   const days = []
   for (let day = from; day <= to; day = addDays(day, 1)) {
     const point = byDate.get(day)
-    days.push({ date: day, orders: point?.orders || 0, amount: point?.amount || 0, courier: point?.courier || 0 })
+    days.push(Object.fromEntries([["date", day], ...keys.map((key) => [key, point?.[key] || 0])]))
     if (days.length > 800) break
   }
   const span = days.length
   if (span <= 42) return days.map((item) => ({ ...item, label: shortDay(item.date), full: shortDay(item.date) }))
-  if (span <= 140) return group(days, weekKey).map(decorate)
-  return group(days, (item) => item.date.slice(0, 7)).map(decorate)
+  if (span <= 140) return group(days, weekKey, keys).map(decorate)
+  return group(days, (item) => item.date.slice(0, 7), keys).map(decorate)
 }
 
-function group(days, keyOf) {
+function group(days, keyOf, keys) {
   const groups = []
   for (const day of days) {
     const key = keyOf(day)
     const last = groups[groups.length - 1]
-    if (!last || last.date !== key) groups.push({ date: key, orders: 0, amount: 0, courier: 0 })
+    if (!last || last.date !== key) groups.push(Object.fromEntries([["date", key], ...keys.map((name) => [name, 0])]))
     const bucket = groups[groups.length - 1]
-    bucket.orders += day.orders
-    bucket.amount += day.amount
-    bucket.courier += day.courier
+    for (const name of keys) bucket[name] += day[name]
   }
   return groups
 }

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
 import { STATUSES, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
-import { BooksMix, ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
+import { AdPlatformBars, AdTrend, BooksMix, ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
 import DateRange from "../DateRange.jsx"
 import { rangeFor } from "../dates.js"
-import { taka, when } from "../format.js"
+import { taka } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, Empty, Pager, StatusPill } from "../ui.jsx"
+import { Banner, Pager } from "../ui.jsx"
 import { AdKpis, backText } from "./Ads.jsx"
 
 const SHORT_PAGE = 6
@@ -113,15 +113,21 @@ function AdsBlock({ go }) {
         <>
           <AdKpis totals={report.totals} />
           {report.totals.back != null ? <p className="muted small ad-back">{backText(report.totals.back)}</p> : null}
-          <ul className="ad-rows">
-            {paid.map((item) => (
-              <li key={item.id}>
-                <strong>{item.name}</strong>
-                <span>{taka(item.spend)} · {item.orders} orders · {item.perOrder == null ? "—" : `${taka(item.perOrder)} each`}</span>
-                <b className={item.afterAds < 0 ? "bad" : "good"}>{taka(item.afterAds)}</b>
-              </li>
-            ))}
-          </ul>
+          <div className="ad-charts">
+            <div>
+              <h3>Spent and sales by day</h3>
+              <div className="trend-kpis">
+                <span><i className="spend" />Ad cost</span>
+                <span><i className="line" />Sales from ad platforms</span>
+              </div>
+              <AdTrend days={report.days} from={range.from} to={range.to} />
+            </div>
+            <div>
+              <h3>Each platform</h3>
+              <p className="muted small">{paid.length} with ads · red is a loss</p>
+              <AdPlatformBars platforms={report.platforms} />
+            </div>
+          </div>
         </>
       ) : null}
     </article>
@@ -265,83 +271,66 @@ function Board({ data, go }) {
         </article>
       </div>
 
-      <article className="card stock-band">
-        <div className="stock-cols">
-          <div>
-            <h3>Running low</h3>
-            {data.inventory.low.length === 0 ? (
-              <p className="muted small">Nothing at {data.inventory.lowAt} or below.</p>
-            ) : (
-              <ShortList
-                items={data.inventory.low}
-                render={(item) => (
-                  <li key={item.id}>
-                    <span>{item.name}</span>
-                    <b className={item.stockQty === 0 ? "bad" : "warn"}>{item.stockQty}</b>
-                  </li>
-                )}
-              />
-            )}
-          </div>
-          <div>
-            <h3>Combos</h3>
-            {data.inventory.combos.length === 0 ? <p className="muted small">No combos.</p> : (
-              <ShortList
-                items={data.inventory.combos}
-                render={(item) => (
-                  <li key={item.id}>
-                    <span>{item.name}</span>
-                    <b className={item.available === 0 ? "bad" : ""}>{item.available} sets</b>
-                  </li>
-                )}
-              />
-            )}
-          </div>
-        </div>
-      </article>
-
-      <article className="card">
-        <div className="card-head">
-          <h2>Recent orders <span className="muted small">Last 10</span></h2>
-          <button type="button" className="text-btn" onClick={() => go("/orders")}>See all</button>
-        </div>
-        {data.recent.length === 0 ? (
-          <Empty title="No orders yet" text="The first order will show up here." />
-        ) : (
-          <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Source</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                  <th>Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recent.map((order) => (
-                  <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
-                    <td data-label="Order"><strong>{order.number}</strong></td>
-                    <td data-label="Customer">
-                      {order.customerName}
-                      <small>{order.mobile}<br />{order.courier}</small>
-                    </td>
-                    <td data-label="Source">{order.sourceName || "—"}</td>
-                    <td data-label="Time">{when(order.orderedAt)}</td>
-                    <td data-label="Status"><StatusPill status={order.status} /></td>
-                    <td data-label="Total">{taka(order.total)}</td>
-                    <td data-label="Due" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </article>
+      <StockAlerts inventory={data.inventory} go={go} />
     </>
+  )
+}
+
+function StockAlerts({ inventory, go }) {
+  const { low, combos, lowAt } = inventory
+  const out = low.filter((item) => item.stockQty === 0).length
+  const comboOut = combos.filter((item) => item.available === 0).length
+  const summary = low.length === 0 && comboOut === 0
+    ? "All stock looks fine"
+    : [out ? `${out} out of stock` : "", low.length - out ? `${low.length - out} running low` : "", comboOut ? `${comboOut} combo${comboOut === 1 ? "" : "s"} cannot be made` : ""].filter(Boolean).join(" · ")
+  return (
+    <article className="card stock-alerts">
+      <div className="card-head">
+        <div>
+          <h2>Stock alerts</h2>
+          <p className="muted small">{summary}</p>
+        </div>
+        <button type="button" className="text-btn" onClick={() => go("/inventory")}>Inventory</button>
+      </div>
+      <div className="alert-cols">
+        <section>
+          <h3>Running low <span className="alert-count">{low.length}</span></h3>
+          <p className="muted small">Products with {lowAt} or fewer pieces left</p>
+          {low.length === 0 ? <p className="alert-ok">Nothing is running low.</p> : (
+            <ShortList
+              items={low}
+              render={(item) => (
+                <li key={item.id} className="alert-row">
+                  <div className="alert-name">
+                    <span>{item.name}</span>
+                    <div className="bar-track"><div className={`bar-fill ${item.stockQty === 0 ? "loss" : "warn"}`} style={{ width: `${Math.max(4, (item.stockQty / (lowAt * 2)) * 100)}%` }} /></div>
+                  </div>
+                  <b className={item.stockQty === 0 ? "alert-pill bad" : "alert-pill warn"}>{item.stockQty === 0 ? "Out" : `${item.stockQty} left`}</b>
+                </li>
+              )}
+            />
+          )}
+        </section>
+        <section>
+          <h3>Combos <span className="alert-count">{combos.length}</span></h3>
+          <p className="muted small">Sets you can make from the pieces in stock</p>
+          {combos.length === 0 ? <p className="muted small">No combos yet.</p> : (
+            <ShortList
+              items={combos}
+              render={(item) => (
+                <li key={item.id} className="alert-row">
+                  <div className="alert-name">
+                    <span>{item.name}</span>
+                    {item.heldBy && item.available <= lowAt ? <small className="muted">Short on {item.heldBy}</small> : null}
+                  </div>
+                  <b className={`alert-pill ${item.available === 0 ? "bad" : item.available <= lowAt ? "warn" : "ok"}`}>{item.available === 0 ? "None" : `${item.available} ${item.available === 1 ? "set" : "sets"}`}</b>
+                </li>
+              )}
+            />
+          )}
+        </section>
+      </div>
+    </article>
   )
 }
 
