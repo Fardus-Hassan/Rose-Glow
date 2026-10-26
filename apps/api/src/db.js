@@ -185,6 +185,16 @@ BEGIN
   END IF;
 END $$;
 
+CREATE TABLE IF NOT EXISTS owner_withdrawals (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  taken_on DATE NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('personal', 'family', 'home', 'loan', 'savings', 'other')),
+  amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+  note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS owner_withdrawals_taken_on_idx ON owner_withdrawals (taken_on DESC, id DESC);
+
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_paid_by TEXT NOT NULL DEFAULT 'customer' CHECK (delivery_paid_by IN ('free','customer'));

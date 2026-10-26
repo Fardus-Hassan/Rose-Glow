@@ -22,6 +22,7 @@ import {
 import { courierFilterView, saveCourierFilters } from "./settings.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
+import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
 
 function feedLimit(value) {
   return Math.min(Math.max(whole(value, 20) || 20, 1), 1000)
@@ -157,6 +158,26 @@ export function mount(app) {
 
   app.delete("/api/buying-expenses/:id", wrap(async (req, res) => {
     await deleteExpense(idFrom(req))
+    res.json({ ok: true })
+  }))
+
+  app.get("/api/withdrawals", wrap(async (req, res) => {
+    const limit = Math.min(Math.max(whole(req.query.limit, 10) || 10, 1), 200)
+    const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
+    res.json(await listWithdrawals({ limit, offset, from: req.query.from, to: req.query.to }))
+  }))
+
+  app.post("/api/withdrawals", wrap(async (req, res) => {
+    res.status(201).json(await createWithdrawal(req.body || {}))
+  }))
+
+  app.patch("/api/withdrawals/:id", wrap(async (req, res) => {
+    await updateWithdrawal(idFrom(req), req.body || {})
+    res.json({ ok: true })
+  }))
+
+  app.delete("/api/withdrawals/:id", wrap(async (req, res) => {
+    await deleteWithdrawal(idFrom(req))
     res.json({ ok: true })
   }))
 

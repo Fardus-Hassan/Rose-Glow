@@ -4,6 +4,7 @@ import { inventorySummary } from "./catalog.js"
 import { fail } from "./http.js"
 import { bookTotals } from "./purchases.js"
 import { adSpendTotal } from "./ads.js"
+import { withdrawnTotals } from "./withdrawals.js"
 
 const SUMMARY_SQL = `
   SELECT
@@ -72,7 +73,7 @@ async function summarize(range) {
 }
 
 export async function dashboard() {
-  const [today, month, allDue, statusRows, monthStatusRows, inventory, booksMoney, adsAll] = await Promise.all([
+  const [today, month, allDue, statusRows, monthStatusRows, inventory, booksMoney, adsAll, withdrawn] = await Promise.all([
     summarize("today"),
     summarize("month"),
     summarize("all"),
@@ -86,14 +87,16 @@ export async function dashboard() {
     inventorySummary(),
     bookTotals(),
     adSpendTotal(),
+    withdrawnTotals(),
   ])
+  const booksProfit = allDue.profit - booksMoney.expenses - adsAll
   const open = Object.fromEntries(STATUSES.filter((item) => ["new", "confirmed", "courier"].includes(item.id)).map((item) => [item.id, 0]))
   for (const row of statusRows.rows) open[row.status] = row.count
   const monthStatuses = Object.fromEntries(STATUSES.map((item) => [item.id, 0]))
   for (const row of monthStatusRows.rows) monthStatuses[row.status] = row.count
   return {
-    today,
-    month,
+    today: { ...today, withdrawn: withdrawn.today },
+    month: { ...month, withdrawn: withdrawn.month, kept: month.net - withdrawn.month },
     dueAll: allDue.due,
     books: {
       goods: booksMoney.goods,
@@ -106,7 +109,9 @@ export async function dashboard() {
       broughtIn: booksMoney.goods + booksMoney.bringing,
       sales: allDue.sales,
       ads: adsAll,
-      profit: allDue.profit - booksMoney.expenses - adsAll,
+      profit: booksProfit,
+      withdrawn: withdrawn.all,
+      kept: booksProfit - withdrawn.all,
     },
     open,
     monthStatuses,

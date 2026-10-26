@@ -153,7 +153,7 @@ function Board({ data, go }) {
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
         <Stat kicker="Today" label="Net profit" value={taka(data.today.net)} note={netNote(data.today)} tone={data.today.net < 0 ? "bad" : ""} />
         <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders · due ${taka(data.dueAll)}`} />
-        <Stat kicker="This month" label="Net profit" value={taka(data.month.net)} note={netNote(data.month)} tone={data.month.net < 0 ? "bad" : ""} />
+        <Stat kicker="This month" label="Net profit" value={taka(data.month.net)} note={netNote(data.month)} extra={data.month.withdrawn > 0 ? `You took ${taka(data.month.withdrawn)} · ${taka(data.month.kept)} stays in` : ""} tone={data.month.net < 0 ? "bad" : ""} />
       </div>
 
       <article className="card dash-block">
@@ -268,6 +268,10 @@ function Board({ data, go }) {
               </div>
             </div>
           </div>
+          <div className="kept-strip">
+            <span>You took out <b>{taka(data.books.withdrawn)}</b></span>
+            <span>Left in business <b className={data.books.kept < 0 ? "bad" : "good"}>{taka(data.books.kept)}</b></span>
+          </div>
         </article>
       </div>
 
@@ -335,9 +339,9 @@ function StockAlerts({ inventory, go }) {
 }
 
 function TakenOut({ ads, salary }) {
-  const parts = [ads > 0 ? `Ads ${taka(ads)}` : "", salary > 0 ? `salary ${taka(salary)}` : ""].filter(Boolean)
+  const parts = [ads > 0 ? `ads ${taka(ads)}` : "", salary > 0 ? `salary ${taka(salary)}` : ""].filter(Boolean)
   if (!parts.length) return null
-  return <small className="muted">{parts.join(" · ")} taken out</small>
+  return <small className="muted">After {parts.join(" · ")}</small>
 }
 
 function netNote(period) {
@@ -345,13 +349,14 @@ function netNote(period) {
   return `Orders ${taka(period.profit)} − ads ${taka(period.ads)} − costs ${taka(period.expenses)}${salary}`
 }
 
-function Stat({ kicker, label, value, note, tone = "" }) {
+function Stat({ kicker, label, value, note, extra, tone = "" }) {
   return (
     <article className="stat">
       <span>{kicker}</span>
       <p>{label}</p>
       <strong className={tone}>{value}</strong>
       <small>{note}</small>
+      {extra ? <small className="stat-extra">{extra}</small> : null}
     </article>
   )
 }

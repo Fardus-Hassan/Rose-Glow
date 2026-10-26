@@ -5,6 +5,7 @@ import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { Banner, Empty, Pager } from "../ui.jsx"
+import Withdrawals from "./Withdrawals.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 const EXPENSE_KINDS = [
@@ -336,7 +337,7 @@ export default function Purchases() {
           <span>Profit</span>
           <strong>{taka(profit)}</strong>
           {adSpend > 0 || salarySum > 0 ? (
-            <small className="muted">{[adSpend > 0 ? `Ads ${taka(adSpend)}` : "", salarySum > 0 ? `salary ${taka(salarySum)}` : ""].filter(Boolean).join(" · ")} taken out</small>
+            <small className="muted">After {[adSpend > 0 ? `ads ${taka(adSpend)}` : "", salarySum > 0 ? `salary ${taka(salarySum)}` : ""].filter(Boolean).join(" · ")}</small>
           ) : null}
         </div>
       </div>
@@ -638,6 +639,8 @@ export default function Purchases() {
           />
         ) : null}
       </article>
+
+      {ready ? <Withdrawals profit={profit} /> : null}
     </section>
   )
 }

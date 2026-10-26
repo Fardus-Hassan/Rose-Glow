@@ -1298,6 +1298,52 @@ tr.selected { background: var(--rose-soft); }
 .ad-bars-row b { font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
 .ad-bars-row b.good { color: var(--good); }
 .ad-bars-row b.bad { color: var(--bad); }
+.stat small.stat-extra { margin-top: 4px; color: var(--gold); }
+.kept-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--card-2);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.kept-strip b { margin-left: 4px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.kept-strip b.good { color: var(--good); }
+.kept-strip b.bad { color: var(--bad); }
+.withdraw-card { margin-top: 12px; scroll-margin-top: 72px; }
+.withdraw-card .card-head p { max-width: 62ch; }
+.withdraw-kpis { margin: 4px 0 14px; }
+.withdraw-kpis small { display: block; margin-top: 2px; font-size: 0.72rem; }
+.withdraw-form { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.4fr) auto; }
+.withdraw-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 72px;
+}
+.withdraw-head h3 { margin: 0; font-size: 0.95rem; }
+.withdraw-body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.withdraw-reasons > p { margin: 0 0 8px; }
+.reason-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.reason-bars li { padding: 10px 12px; background: var(--card-2); border-radius: 12px; display: grid; gap: 6px; }
+.reason-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.withdraw-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.withdraw-bar b { font-variant-numeric: tabular-nums; font-size: 0.86rem; }
+@media (max-width: 860px) {
+  .withdraw-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .withdraw-form .form-actions { grid-column: 1 / -1; }
+  .withdraw-body { grid-template-columns: minmax(0, 1fr); }
+  .withdraw-head .range, .withdraw-head .range-trigger { width: 100%; }
+}
 .bar-fill.spend { background: linear-gradient(90deg, #f3d9a8, #c99a52); }
 .bar-fill.gain { background: linear-gradient(90deg, #a6e3c4, #5fbf8f); }
 .bar-fill.loss { background: linear-gradient(90deg, #f3b4b4, #d9606a); }
