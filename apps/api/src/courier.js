@@ -6,6 +6,7 @@ import { getOrder, setOrderStatus } from "./orders.js"
 import { open, sameText, seal } from "./secret.js"
 import { isDuplicate, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
 
+const EARLY = new Set(["in_review", "pending"])
 const CANCELLED = new Set(["cancelled", "cancelled_return_processing", "cancelled_return_rider_assigned"])
 const FINAL = new Set(["delivered", "partial_delivered", "cancelled_return_received", "partial_delivered_return_received"])
 
@@ -42,7 +43,7 @@ export async function bookOrder(id) {
      WHERE id = $1 AND consignment_id IS NULL`,
     [order.id, parcel.id, parcel.code, parcel.link, parcel.status || "in_review", codFor(order)],
   )
-  await remember(order, parcel.status || "in_review", parcel.id, `${order.number} booked with Steadfast${parcel.code ? `. Tracking ${parcel.code}` : ""}`, `book:${order.id}`)
+  await remember(order, parcel.status || "in_review", parcel.id, `${order.number} booked with Steadfast${parcel.code ? `. Tracking ${parcel.code}` : ""}`, `book:${order.id}:${parcel.id}`)
   if (order.status === "new" || order.status === "confirmed") {
     await setOrderStatus(order.id, "courier", ["new", "confirmed"])
   }
@@ -58,7 +59,7 @@ export async function trackOrder(id) {
   if (status) await applyRemote(order, status, "")
   let steps = []
   try {
-    steps = readSteps(await steadfast(keys, `/trackings_by_invoice/${encodeURIComponent(order.number)}`))
+    steps = readSteps(await steadfast(keys, `/trackings_by_invoice/${encodeURIComponent(invoiceFor(order))}`))
   } catch {
     steps = []
   }
@@ -75,6 +76,29 @@ export async function requestReturn(id, reason) {
     body: { consignment_id: order.consignmentId, reason: note },
   })
   await applyRemote(order, "cancelled_return_processing", "Return requested")
+  return getOrder(id)
+}
+
+// Steadfast's API cannot remove a parcel. After the owner removes it in the Steadfast panel,
+// this unlinks it here so the order can be fixed and sent again.
+export async function forgetParcel(id) {
+  const order = await getOrder(id)
+  if (!order.consignmentId) throw fail(400, "This order has not been sent to Steadfast yet")
+  if (order.courierStatus && !EARLY.has(order.courierStatus)) {
+    throw fail(400, "Steadfast has already taken this parcel. Only a parcel still in review can be removed.")
+  }
+  const cleared = await pool.query(
+    `UPDATE orders
+     SET consignment_id = NULL, tracking_code = NULL, tracking_url = NULL,
+         courier_status = NULL, courier_status_at = NULL, courier_error = NULL, courier_sent_at = NULL,
+         courier_charge = NULL, courier_charge_by = NULL, courier_cod = NULL, cod_booked = NULL,
+         courier_tries = courier_tries + 1
+     WHERE id = $1 AND consignment_id = $2
+     RETURNING id`,
+    [order.id, order.consignmentId],
+  )
+  if (!cleared.rows[0]) return getOrder(id)
+  await setOrderStatus(order.id, "confirmed", ["courier"])
   return getOrder(id)
 }
 
@@ -261,10 +285,15 @@ function amount(value) {
   return Number.isFinite(n) && n >= 0 && n < 10000000 ? Math.round(n * 100) / 100 : null
 }
 
+// A parcel removed in Steadfast keeps its invoice there, so each new booking gets a fresh one.
+function invoiceFor(order) {
+  return order.courierTries > 0 ? `${order.number}-${order.courierTries + 1}` : order.number
+}
+
 async function place(keys, order) {
   const description = (order.items || []).map((item) => `${item.name} × ${item.quantity}${item.gift ? " (gift)" : ""}`).join(", ").slice(0, 250)
   const body = {
-    invoice: order.number,
+    invoice: invoiceFor(order),
     recipient_name: order.customerName.slice(0, 100),
     recipient_phone: order.mobile,
     recipient_address: order.address.slice(0, 250),
@@ -278,8 +307,8 @@ async function place(keys, order) {
     return readConsignment(await steadfast(keys, "/create_order", { method: "POST", body }))
   } catch (error) {
     if (!isDuplicate(error)) throw error
-    const statusData = await steadfast(keys, `/status_by_invoice/${encodeURIComponent(order.number)}`)
-    const tracks = await steadfast(keys, `/trackings_by_invoice/${encodeURIComponent(order.number)}`).catch(() => ({}))
+    const statusData = await steadfast(keys, `/status_by_invoice/${encodeURIComponent(invoiceFor(order))}`)
+    const tracks = await steadfast(keys, `/trackings_by_invoice/${encodeURIComponent(invoiceFor(order))}`).catch(() => ({}))
     const steps = readSteps(tracks)
     const id = steps.find((step) => step.consignmentId)?.consignmentId
     if (!id) throw error
@@ -408,13 +437,16 @@ async function findOrder(consignmentId, invoice) {
     )
     if (byCid.rows[0]) return shapeOrder(byCid.rows[0])
   }
-  const match = String(invoice || "").match(/^RG-(\d+)$/i)
+  const match = String(invoice || "").match(/^RG-(\d+)(?:-\d+)?$/i)
   if (!match) return null
   const byInvoice = await pool.query(
     `SELECT id, customer_name, consignment_id, courier_status, status FROM orders WHERE id = $1`,
     [Number(match[1])],
   )
-  return byInvoice.rows[0] ? shapeOrder(byInvoice.rows[0]) : null
+  const row = byInvoice.rows[0]
+  if (!row) return null
+  if (Number.isInteger(consignmentId) && consignmentId > 0 && Number(row.consignment_id) !== consignmentId) return null
+  return shapeOrder(row)
 }
 
 function shapeOrder(row) {

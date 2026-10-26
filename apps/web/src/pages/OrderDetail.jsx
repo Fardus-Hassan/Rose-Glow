@@ -17,6 +17,7 @@ export default function OrderDetail({ id }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
   const [sources, setSources] = useState([])
   const [couriers, setCouriers] = useState([])
   const [products, setProducts] = useState([])
@@ -237,6 +238,23 @@ export default function OrderDetail({ id }) {
       const body = await api(`/api/orders/${order.id}/return`, { method: "POST", body: { reason: "Customer asked for a return" } })
       setOrder(body.order)
       toast.success("Return requested")
+    } catch (reason) {
+      setError(reason.message)
+      toast.error(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function forgetParcel() {
+    setSaving(true)
+    setError("")
+    try {
+      const body = await api(`/api/orders/${order.id}/courier/removed`, { method: "POST", body: {} })
+      setOrder(body.order)
+      setSteps([])
+      setConfirmUnlink(false)
+      toast.success("Unlinked from Steadfast. Fix the order and send it again.")
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -489,7 +507,11 @@ export default function OrderDetail({ id }) {
                     <>
                       <ChargeBox order={order} onSaved={setOrder}>
                         <button type="button" className="btn secondary small-btn" disabled={saving} onClick={refreshTrack}>Refresh status</button>
-                        {order.status === "courier" ? <button type="button" className="btn danger small-btn" disabled={saving} onClick={askReturn}>Request return</button> : null}
+                        {order.status === "courier" && ["in_review", "pending"].includes(order.courierStatus) ? (
+                          <button type="button" className="btn secondary small-btn" disabled={saving} onClick={() => setConfirmUnlink(true)}>Removed in Steadfast</button>
+                        ) : order.status === "courier" ? (
+                          <button type="button" className="btn danger small-btn" disabled={saving} onClick={askReturn}>Request return</button>
+                        ) : null}
                       </ChargeBox>
                       {steps.length > 0 ? (
                         <ol className="track-steps">
@@ -533,6 +555,19 @@ export default function OrderDetail({ id }) {
           </div>
         </>
       )}
+
+      {confirmUnlink ? (
+        <div className="modal-back" role="presentation" onClick={() => { if (!saving) setConfirmUnlink(false) }}>
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="unlink-title" onClick={(event) => event.stopPropagation()}>
+            <h2 id="unlink-title">Removed in Steadfast?</h2>
+            <p className="muted">First press "Remove parcel" in the Steadfast panel. Then this order goes back to Confirmed, and you can fix it and send it again.</p>
+            <div className="actions">
+              <button type="button" className="btn secondary" disabled={saving} onClick={() => setConfirmUnlink(false)}>No</button>
+              <button type="button" className="btn" disabled={saving} onClick={forgetParcel}>{saving ? "Saving…" : "Yes, I removed it"}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {confirmDelete ? (
         <div className="modal-back" role="presentation" onClick={() => { if (!saving) setConfirmDelete(false) }}>

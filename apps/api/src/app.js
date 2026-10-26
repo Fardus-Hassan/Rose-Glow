@@ -10,6 +10,7 @@ import {
   bookIfNeeded,
   bookOrder,
   disconnectAccount,
+  forgetParcel,
   markNotifications,
   notificationFeed,
   parcelList,
@@ -274,6 +275,10 @@ export function mount(app) {
 
   app.post("/api/orders/:id/return", wrap(async (req, res) => {
     res.json({ order: await requestReturn(idFrom(req), req.body?.reason) })
+  }))
+
+  app.post("/api/orders/:id/courier/removed", wrap(async (req, res) => {
+    res.json({ order: await forgetParcel(idFrom(req)) })
   }))
 
   app.put("/api/orders/:id/returned", wrap(async (req, res) => {
