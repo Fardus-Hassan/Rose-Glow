@@ -3,7 +3,7 @@ import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, up
 import { dashboard, orderTotals, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { fail, whole, wrap } from "./http.js"
-import { createOrder, deleteOrder, getOrder, listOrders, updateOrder } from "./orders.js"
+import { createOrder, deleteOrder, getOrder, listOrders, setCourierCharge, updateOrder } from "./orders.js"
 import {
   accountView,
   activeCouriers,
@@ -253,6 +253,10 @@ export function mount(app) {
 
   app.post("/api/orders/:id/return", wrap(async (req, res) => {
     res.json({ order: await requestReturn(idFrom(req), req.body?.reason) })
+  }))
+
+  app.put("/api/orders/:id/courier-charge", wrap(async (req, res) => {
+    res.json({ order: await setCourierCharge(idFrom(req), req.body || {}) })
   }))
 
   app.patch("/api/orders/:id", wrap(async (req, res) => {

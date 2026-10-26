@@ -20,12 +20,9 @@ function present(row, items = undefined) {
   const cost = Number(row.cost)
   const gifts = Number(row.gifts || 0)
   const deliveryPaidBy = row.delivery_paid_by === "free" ? "free" : "customer"
-  const deliveryOnBill = deliveryPaidBy === "customer" ? delivery : 0
-  const deliveryExpense = deliveryPaidBy === "free" ? delivery : 0
   const codCharge = Number(row.cod_charge)
-  const codOnBill = row.cod_paid_by === "customer" ? codCharge : 0
-  const codExpense = row.cod_paid_by === "customer" ? 0 : codCharge
-  const total = goods - discount + deliveryOnBill + codOnBill
+  const total = Number(row.total)
+  const amountOrNull = (value) => (value === null || value === undefined ? null : Number(value))
   return {
     id: row.id,
     number: `RG-${String(row.id).padStart(4, "0")}`,
@@ -51,12 +48,16 @@ function present(row, items = undefined) {
     trackingUrl: row.tracking_url || "",
     courierStatus: row.courier_status || "",
     courierError: row.courier_error || "",
+    courierCharge: amountOrNull(row.courier_charge),
+    courierChargeBy: row.courier_charge_by || "",
+    courierCod: amountOrNull(row.courier_cod),
+    courierCost: Number(row.courier_cost),
     goods,
     cost,
     gifts,
     total,
     due: total - paid,
-    profit: goods - discount - cost - deliveryExpense - codExpense,
+    profit: Number(row.profit),
     ...(items ? { items } : {}),
   }
 }
@@ -69,13 +70,13 @@ const ORDER_SELECT = `
          o.cod_charge::float8 AS cod_charge,
          o.cod_paid_by,
          o.paid_amount::float8 AS paid_amount,
-         o.payment_method, o.note, o.source_id, MAX(src.name) AS source_name, o.stock_held,
+         o.payment_method, o.note, o.source_id, src.name AS source_name, o.stock_held,
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
-         COALESCE(SUM(oi.unit_price * oi.quantity), 0)::float8 AS goods,
-         COALESCE(SUM(oi.unit_cost * oi.quantity), 0)::float8 AS cost,
-         COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0)::float8 AS gifts
+         o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod,
+         m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
+         m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.profit::float8 AS profit
   FROM orders o
-  LEFT JOIN order_items oi ON oi.order_id = o.id
+  JOIN order_money m ON m.id = o.id
   LEFT JOIN order_sources src ON src.id = o.source_id
 `
 
@@ -99,7 +100,7 @@ async function itemsFor(client, orderId) {
 }
 
 export async function getOrder(id) {
-  const result = await pool.query(`${ORDER_SELECT} WHERE o.id = $1 GROUP BY o.id`, [id])
+  const result = await pool.query(`${ORDER_SELECT} WHERE o.id = $1`, [id])
   if (!result.rows[0]) throw fail(404, "Order was not found")
   const items = await itemsFor(pool, id)
   return present(result.rows[0], items)
@@ -184,7 +185,7 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   ])
   params.push(limit, offset)
   const rows = await pool.query(
-    `${ORDER_SELECT} ${clause} GROUP BY o.id ORDER BY o.ordered_at DESC, o.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    `${ORDER_SELECT} ${clause} ORDER BY o.ordered_at DESC, o.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   )
   return {
@@ -562,6 +563,34 @@ export async function updateOrder(id, body) {
   } finally {
     client.release()
   }
+  return getOrder(id)
+}
+
+export async function setCourierCharge(id, body) {
+  const raw = body?.charge
+  const blank = raw === null || raw === "" || raw === undefined
+  const charge = blank ? null : money(raw)
+  if (!blank && (charge === null || charge > 100000)) throw fail(400, "Enter what Steadfast charged")
+  const updated = charge === null
+    ? await pool.query(
+      `WITH last AS (
+         SELECT (payload->>'delivery_charge')::numeric AS charge
+         FROM courier_events
+         WHERE order_id = $1 AND payload->>'delivery_charge' ~ '^[0-9]+(\\.[0-9]+)?$'
+         ORDER BY id DESC
+         LIMIT 1
+       )
+       UPDATE orders
+       SET courier_charge = (SELECT charge FROM last),
+           courier_charge_by = CASE WHEN EXISTS (SELECT 1 FROM last) THEN 'steadfast' END
+       WHERE id = $1 RETURNING id`,
+      [id],
+    )
+    : await pool.query(
+      `UPDATE orders SET courier_charge = $2, courier_charge_by = 'manual' WHERE id = $1 RETURNING id`,
+      [id, charge],
+    )
+  if (!updated.rows[0]) throw fail(404, "Order was not found")
   return getOrder(id)
 }
 

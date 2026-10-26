@@ -37,9 +37,9 @@ export async function bookOrder(id) {
     `UPDATE orders
      SET consignment_id = $2, tracking_code = NULLIF($3, ''), tracking_url = NULLIF($4, ''),
          courier_status = $5, courier_status_at = now(), courier_error = NULL,
-         courier_sent_at = COALESCE(courier_sent_at, now())
+         courier_sent_at = COALESCE(courier_sent_at, now()), cod_booked = $6
      WHERE id = $1 AND consignment_id IS NULL`,
-    [order.id, parcel.id, parcel.code, parcel.link, parcel.status || "in_review"],
+    [order.id, parcel.id, parcel.code, parcel.link, parcel.status || "in_review", codFor(order)],
   )
   await remember(order, parcel.status || "in_review", parcel.id, `${order.number} booked with Steadfast${parcel.code ? `. Tracking ${parcel.code}` : ""}`, `book:${order.id}`)
   if (order.status === "new" || order.status === "confirmed") {
@@ -126,17 +126,32 @@ export async function disconnectAccount() {
 }
 
 export async function parcelList({ limit, offset }) {
-  const where = "WHERE consignment_id IS NOT NULL"
-  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM orders ${where}`)
+  const where = "WHERE o.consignment_id IS NOT NULL"
+  const count = await pool.query(
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE o.courier_charge IS NOT NULL)::int AS known,
+            COALESCE(SUM(o.courier_charge), 0)::float8 AS charged,
+            COALESCE(SUM(o.courier_cod), 0)::float8 AS collected
+     FROM orders o ${where}`,
+  )
   const result = await pool.query(
-    `SELECT id, customer_name, mobile, status, consignment_id, tracking_code, tracking_url, courier_status, courier_error, courier_status_at
-     FROM orders
+    `SELECT o.id, o.customer_name, o.mobile, o.status, o.consignment_id, o.tracking_code, o.tracking_url,
+            o.courier_status, o.courier_error, o.courier_status_at,
+            o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod,
+            m.courier_cost::float8 AS courier_cost
+     FROM orders o
+     JOIN order_money m ON m.id = o.id
      ${where}
-     ORDER BY courier_status_at DESC NULLS LAST, id DESC
+     ORDER BY o.courier_status_at DESC NULLS LAST, o.id DESC
      LIMIT $1 OFFSET $2`,
     [limit, offset],
   )
-  return { parcels: result.rows.map(parcelRow), total: count.rows[0].total }
+  const totals = count.rows[0]
+  return {
+    parcels: result.rows.map(parcelRow),
+    total: totals.total,
+    money: { known: totals.known, charged: Number(totals.charged), collected: Number(totals.collected) },
+  }
 }
 
 export async function notificationFeed(limit) {
@@ -204,8 +219,45 @@ export async function receiveWebhook(req) {
     return { ok: true }
   }
   const status = String(event.status || "").trim().toLowerCase()
-  if (status) await applyRemote(order, status, note, idem)
+  if (!status) return { ok: true }
+  await recordMoney(order.id, status, { charge: amount(event.delivery_charge), cod: amount(event.cod_amount) })
+  await applyRemote(order, status, note, idem)
+  await keepPayload(order.id, status, event)
   return { ok: true }
+}
+
+// Steadfast's delivery_status webhook carries delivery_charge and cod_amount.
+// A zero charge before the parcel settles is a placeholder, so only a final status or a real charge is kept.
+// A charge typed in by hand stays until it is cleared.
+async function recordMoney(orderId, status, { charge, cod }) {
+  const settled = FINAL.has(status) || status === "cancelled"
+  if (charge !== null && (settled || charge > 0)) {
+    await pool.query(
+      `UPDATE orders SET courier_charge = $2, courier_charge_by = 'steadfast'
+       WHERE id = $1 AND courier_charge_by IS DISTINCT FROM 'manual' AND courier_charge IS DISTINCT FROM $2`,
+      [orderId, charge],
+    )
+  }
+  if (cod === null || (status !== "delivered" && status !== "partial_delivered")) return
+  await pool.query(
+    `UPDATE orders o
+     SET cod_booked = COALESCE(o.cod_booked, GREATEST(m.total - o.paid_amount, 0)),
+         courier_cod = $2,
+         paid_amount = LEAST(m.total, GREATEST(0, m.total - COALESCE(o.cod_booked, GREATEST(m.total - o.paid_amount, 0)) + $2))
+     FROM order_money m
+     WHERE m.id = o.id AND o.id = $1 AND o.courier_cod IS DISTINCT FROM $2`,
+    [orderId, cod],
+  )
+}
+
+function codFor(order) {
+  return Math.max(0, Math.round(Number(order.due) || 0))
+}
+
+function amount(value) {
+  if (value === null || value === undefined || value === "") return null
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 && n < 10000000 ? Math.round(n * 100) / 100 : null
 }
 
 async function place(keys, order) {
@@ -215,7 +267,7 @@ async function place(keys, order) {
     recipient_name: order.customerName.slice(0, 100),
     recipient_phone: order.mobile,
     recipient_address: order.address.slice(0, 250),
-    cod_amount: Math.max(0, Math.round(Number(order.due) || 0)),
+    cod_amount: codFor(order),
     note: (order.note || order.number).slice(0, 400),
     item_description: description || "Rose Glow",
     total_lot: Math.max(1, (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0)),
@@ -290,6 +342,15 @@ async function claimSync() {
   }
 }
 
+async function keepPayload(orderId, status, payload) {
+  await pool.query(
+    `UPDATE courier_events SET payload = $3::jsonb
+     WHERE id = (SELECT id FROM courier_events WHERE order_id = $1 AND status = $2 ORDER BY created_at DESC, id DESC LIMIT 1)
+       AND payload IS NULL`,
+    [orderId, status, JSON.stringify(payload)],
+  )
+}
+
 async function applyRemote(order, status, note, idempotencyKey) {
   const updated = await pool.query(
     `UPDATE orders
@@ -314,18 +375,9 @@ async function applyRemote(order, status, note, idempotencyKey) {
 async function markPaid(orderId) {
   await pool.query(
     `UPDATE orders o
-     SET paid_amount = t.total
-     FROM (
-       SELECT o2.id,
-              COALESCE(SUM(oi.unit_price * oi.quantity), 0) - o2.discount
-                + CASE WHEN o2.delivery_paid_by = 'customer' THEN o2.delivery_charge ELSE 0 END
-                + CASE WHEN o2.cod_paid_by = 'customer' THEN o2.cod_charge ELSE 0 END AS total
-       FROM orders o2
-       LEFT JOIN order_items oi ON oi.order_id = o2.id
-       WHERE o2.id = $1
-       GROUP BY o2.id
-     ) t
-     WHERE o.id = t.id AND o.paid_amount < t.total`,
+     SET paid_amount = m.total
+     FROM order_money m
+     WHERE m.id = o.id AND o.id = $1 AND o.courier_cod IS NULL AND o.paid_amount < m.total`,
     [orderId],
   )
 }
@@ -438,5 +490,9 @@ function parcelRow(row) {
     courierStatus: row.courier_status || "",
     courierError: row.courier_error || "",
     courierStatusAt: row.courier_status_at,
+    courierCharge: row.courier_charge === null ? null : Number(row.courier_charge),
+    courierChargeBy: row.courier_charge_by || "",
+    courierCod: row.courier_cod === null ? null : Number(row.courier_cod),
+    courierCost: Number(row.courier_cost),
   }
 }

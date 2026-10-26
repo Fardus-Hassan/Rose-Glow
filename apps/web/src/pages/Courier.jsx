@@ -17,6 +17,7 @@ export default function Courier() {
   const [parcelPageSize, setParcelPageSize] = useState(10)
   const [parcelsReady, setParcelsReady] = useState(false)
   const [parcelTick, setParcelTick] = useState(0)
+  const [parcelMoney, setParcelMoney] = useState(null)
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [apiKey, setApiKey] = useState("")
@@ -62,6 +63,7 @@ export default function Courier() {
         }
         setParcels(body.parcels)
         setParcelTotal(body.total)
+        setParcelMoney(body.money || null)
         setParcelsReady(true)
       })
       .catch((reason) => { if (live) setError(reason.message) })
@@ -241,7 +243,14 @@ export default function Courier() {
 
       <article className="card list-card parcel-card">
         <div className="card-head">
-          <h2>Parcels</h2>
+          <div>
+            <h2>Parcels</h2>
+            {parcelMoney && parcelTotal > 0 ? (
+              <p className="muted small">
+                Steadfast's charge known on {parcelMoney.known} of {parcelTotal} · charged {taka(parcelMoney.charged)} · collected {taka(parcelMoney.collected)}
+              </p>
+            ) : null}
+          </div>
         </div>
         {!parcelsReady ? <p className="muted">Loading…</p> : null}
         {parcelsReady && parcelTotal === 0 ? <p className="muted">No parcels booked yet. Mark an order as In courier and it will be booked.</p> : null}
@@ -255,6 +264,8 @@ export default function Courier() {
                   <th>Tracking</th>
                   <th>Steadfast</th>
                   <th>Order status</th>
+                  <th>Charge</th>
+                  <th>Collected</th>
                 </tr>
               </thead>
               <tbody>
@@ -265,6 +276,11 @@ export default function Courier() {
                     <td data-label="Tracking">{parcel.trackingCode || parcel.consignmentId}</td>
                     <td data-label="Steadfast">{courierStatusLabel(parcel.courierStatus) || "Pending"}</td>
                     <td data-label="Order status">{statusLabel(parcel.status)}</td>
+                    <td data-label="Charge">
+                      {taka(parcel.courierCost)}
+                      <small>{parcel.courierCharge === null ? "Estimate" : parcel.courierChargeBy === "manual" ? "You entered" : "Steadfast"}</small>
+                    </td>
+                    <td data-label="Collected">{parcel.courierCod === null ? "—" : taka(parcel.courierCod)}</td>
                   </tr>
                 ))}
               </tbody>

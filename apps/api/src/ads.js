@@ -74,23 +74,15 @@ export async function adReport({ from, to, limit, offset }) {
       [from, to],
     ),
     pool.query(
-      `SELECT t.source_id, COALESCE(MAX(src.name), 'Not set') AS name, COUNT(*)::int AS orders,
-              SUM(goods - discount)::float8 AS sales,
-              SUM(goods - discount - cost
-                  - CASE WHEN delivery_paid_by = 'free' THEN delivery_charge ELSE 0 END
-                  - CASE WHEN cod_paid_by = 'free' THEN cod_charge ELSE 0 END)::float8 AS profit
-       FROM (
-         SELECT o.id, o.source_id, o.discount, o.delivery_charge, o.delivery_paid_by, o.cod_charge, o.cod_paid_by,
-                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
-                COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         WHERE o.status NOT IN ('cancelled', 'returned')
-           AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
-         GROUP BY o.id
-       ) t
-       LEFT JOIN order_sources src ON src.id = t.source_id
-       GROUP BY t.source_id`,
+      `SELECT o.source_id, COALESCE(MAX(src.name), 'Not set') AS name,
+              COUNT(*) FILTER (WHERE o.counted)::int AS orders,
+              COALESCE(SUM(o.sales) FILTER (WHERE o.counted), 0)::float8 AS sales,
+              COALESCE(SUM(o.profit), 0)::float8 AS profit
+       FROM order_money o
+       LEFT JOIN order_sources src ON src.id = o.source_id
+       WHERE (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+       GROUP BY o.source_id
+       HAVING COUNT(*) FILTER (WHERE o.counted) > 0 OR COALESCE(SUM(o.profit), 0) <> 0`,
       [from, to],
     ),
     pool.query(
@@ -115,23 +107,14 @@ export async function adReport({ from, to, limit, offset }) {
       [from, to],
     ),
     pool.query(
-      `SELECT to_char(day, 'YYYY-MM-DD') AS date, COUNT(*)::int AS orders,
-              SUM(goods - discount)::float8 AS sales,
-              SUM(goods - discount - cost
-                  - CASE WHEN delivery_paid_by = 'free' THEN delivery_charge ELSE 0 END
-                  - CASE WHEN cod_paid_by = 'free' THEN cod_charge ELSE 0 END)::float8 AS profit
-       FROM (
-         SELECT (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date AS day, o.discount, o.delivery_charge, o.delivery_paid_by, o.cod_charge, o.cod_paid_by,
-                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
-                COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         WHERE o.status NOT IN ('cancelled', 'returned')
-           AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
-           AND o.source_id IN (SELECT source_id FROM ad_spends WHERE spent_on BETWEEN $1::date AND $2::date)
-         GROUP BY o.id
-       ) t
-       GROUP BY day`,
+      `SELECT to_char((o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date,
+              COUNT(*) FILTER (WHERE o.counted)::int AS orders,
+              COALESCE(SUM(o.sales) FILTER (WHERE o.counted), 0)::float8 AS sales,
+              COALESCE(SUM(o.profit), 0)::float8 AS profit
+       FROM order_money o
+       WHERE (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+         AND o.source_id IN (SELECT source_id FROM ad_spends WHERE spent_on BETWEEN $1::date AND $2::date)
+       GROUP BY 1`,
       [from, to],
     ),
   ])

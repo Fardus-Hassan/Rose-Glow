@@ -7,27 +7,17 @@ import { adSpendTotal } from "./ads.js"
 
 const SUMMARY_SQL = `
   SELECT
-    COUNT(*)::int AS orders,
-    COALESCE(SUM(goods - discount), 0)::float8 AS sales,
-    COALESCE(SUM(CASE WHEN delivery_paid_by = 'customer' THEN delivery_charge ELSE 0 END), 0)::float8 AS delivery,
-    COALESCE(SUM(discount), 0)::float8 AS discount,
-    COALESCE(SUM(cost), 0)::float8 AS cost,
-    COALESCE(SUM(gifts), 0)::float8 AS gifts,
-    COALESCE(SUM(paid_amount), 0)::float8 AS paid,
-    COALESCE(SUM(CASE WHEN delivery_paid_by = 'free' THEN delivery_charge ELSE 0 END), 0)::float8 AS delivery_expense,
-    COALESCE(SUM(CASE WHEN cod_paid_by = 'free' THEN cod_charge ELSE 0 END), 0)::float8 AS cod_expense,
-    COALESCE(SUM(GREATEST(goods - discount + CASE WHEN delivery_paid_by = 'customer' THEN delivery_charge ELSE 0 END + CASE WHEN cod_paid_by = 'customer' THEN cod_charge ELSE 0 END - paid_amount, 0)), 0)::float8 AS due
-  FROM (
-    SELECT o.delivery_charge, o.delivery_paid_by, o.discount, o.paid_amount, o.cod_charge, o.cod_paid_by,
-           COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
-           COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost,
-           COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0) AS gifts
-    FROM orders o
-    JOIN order_items oi ON oi.order_id = o.id
-    WHERE o.status NOT IN ('cancelled', 'returned')
-      AND __RANGE__
-    GROUP BY o.id
-  ) t
+    COUNT(*) FILTER (WHERE counted)::int AS orders,
+    COALESCE(SUM(sales) FILTER (WHERE counted), 0)::float8 AS sales,
+    COALESCE(SUM(bill_delivery) FILTER (WHERE counted), 0)::float8 AS delivery,
+    COALESCE(SUM(discount) FILTER (WHERE counted), 0)::float8 AS discount,
+    COALESCE(SUM(cost) FILTER (WHERE counted), 0)::float8 AS cost,
+    COALESCE(SUM(gifts) FILTER (WHERE counted), 0)::float8 AS gifts,
+    COALESCE(SUM(paid_amount) FILTER (WHERE counted), 0)::float8 AS paid,
+    COALESCE(SUM(GREATEST(total - paid_amount, 0)) FILTER (WHERE counted), 0)::float8 AS due,
+    COALESCE(SUM(profit), 0)::float8 AS profit
+  FROM order_money o
+  WHERE __RANGE__
 `
 
 function rangeSql(range) {
@@ -60,7 +50,7 @@ async function summarize(range) {
     `),
   ])
   const row = result.rows[0]
-  const profit = Number(row.sales) - Number(row.cost) - Number(row.delivery_expense) - Number(row.cod_expense)
+  const profit = Number(row.profit)
   const ads = Number(spent.rows[0].ads)
   const expenses = Number(spent.rows[0].expenses)
   const salary = Number(spent.rows[0].salary)
@@ -135,34 +125,23 @@ function daySpan(from, to) {
 export async function rangeStats(from, to) {
   if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
   if (daySpan(from, to) > 800) throw fail(400, "Keep the date range within 800 days")
-  const countable = `o.status NOT IN ('cancelled', 'returned') AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
+  const countable = `o.counted AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
   const [pointRows, sourceRows, statusRows, courierRows] = await Promise.all([
     pool.query(
-      `SELECT to_char(day, 'YYYY-MM-DD') AS date, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
-       FROM (
-         SELECT (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date AS day, o.discount,
-                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         WHERE ${countable}
-         GROUP BY o.id
-       ) t
-       GROUP BY day
-       ORDER BY day`,
+      `SELECT to_char((o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date,
+              COUNT(*)::int AS orders, COALESCE(SUM(o.sales), 0)::float8 AS amount
+       FROM order_money o
+       WHERE ${countable}
+       GROUP BY 1
+       ORDER BY 1`,
       [from, to],
     ),
     pool.query(
-      `SELECT source_id, name, COUNT(*)::int AS orders, COALESCE(SUM(goods - discount), 0)::float8 AS amount
-       FROM (
-         SELECT o.source_id, COALESCE(src.name, 'Not set') AS name, o.discount,
-                COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods
-         FROM orders o
-         JOIN order_items oi ON oi.order_id = o.id
-         LEFT JOIN order_sources src ON src.id = o.source_id
-         WHERE ${countable}
-         GROUP BY o.id, src.name
-       ) t
-       GROUP BY source_id, name
+      `SELECT o.source_id, COALESCE(MAX(src.name), 'Not set') AS name, COUNT(*)::int AS orders, COALESCE(SUM(o.sales), 0)::float8 AS amount
+       FROM order_money o
+       LEFT JOIN order_sources src ON src.id = o.source_id
+       WHERE ${countable}
+       GROUP BY o.source_id
        ORDER BY orders DESC, name`,
       [from, to],
     ),

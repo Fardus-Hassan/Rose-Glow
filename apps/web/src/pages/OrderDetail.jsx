@@ -485,6 +485,7 @@ export default function OrderDetail({ id }) {
                         <p><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
                         <p><span>Tracking</span><b>{order.trackingCode || order.consignmentId}</b></p>
                       </div>
+                      <ChargeBox order={order} onSaved={setOrder} />
                       {order.trackingCode ? <CopyText value={order.trackingCode} label="Tracking code" /> : null}
                       <div className="actions">
                         <button type="button" className="btn secondary" disabled={saving} onClick={refreshTrack}>Refresh status</button>
@@ -527,6 +528,12 @@ export default function OrderDetail({ id }) {
               <p className="sum strong"><span>Total</span><b>{taka(order.total)}</b></p>
               <p className="sum"><span>Paid</span><b>{taka(order.paidAmount)}</b></p>
               <p className="sum"><span>Cost</span><b>{taka(order.cost)}</b></p>
+              {order.courierCost > 0 ? (
+                <p className="sum">
+                  <span>Courier charge{order.courierCharge === null ? "" : order.courierChargeBy === "manual" ? " · you entered" : " · Steadfast"}</span>
+                  <b>{taka(order.courierCost)}</b>
+                </p>
+              ) : null}
               {order.gifts > 0 ? <p className="sum"><span>Gift (your cost)</span><b>{taka(order.gifts)}</b></p> : null}
               <div className="bill-spots">
                 <p className={order.due > 0 ? "due" : ""}><span>Due</span><b>{taka(order.due)}</b></p>
@@ -550,6 +557,57 @@ export default function OrderDetail({ id }) {
         </div>
       ) : null}
     </section>
+  )
+}
+
+function ChargeBox({ order, onSaved }) {
+  const [value, setValue] = useState("")
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  async function save(charge) {
+    setBusy(true)
+    try {
+      const body = await api(`/api/orders/${order.id}/courier-charge`, { method: "PUT", body: { charge } })
+      onSaved(body.order)
+      setOpen(false)
+      toast.success(charge === null ? "Back to the estimate" : "Charge saved")
+    } catch (reason) {
+      toast.error(reason.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const known = order.courierCharge !== null
+  return (
+    <div className="charge-box">
+      <div className="fact-grid">
+        <p>
+          <span>Steadfast charge</span>
+          <b>{known ? taka(order.courierCharge) : "Not known yet"}</b>
+          <small className="muted">{known ? (order.courierChargeBy === "manual" ? "You entered" : "From Steadfast") : `Using ${taka(order.deliveryCharge)} from the order`}</small>
+        </p>
+        <p>
+          <span>Collected</span>
+          <b>{order.courierCod === null ? "—" : taka(order.courierCod)}</b>
+        </p>
+      </div>
+      {open ? (
+        <form className="charge-form" onSubmit={(event) => { event.preventDefault(); save(value) }}>
+          <input type="number" min="0" step="1" inputMode="numeric" value={value} onChange={(event) => setValue(event.target.value)} placeholder="What Steadfast charged" required autoFocus />
+          <button type="submit" className="btn" disabled={busy}>Save</button>
+          <button type="button" className="btn secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+        </form>
+      ) : (
+        <div className="actions">
+          <button type="button" className="text-btn" onClick={() => { setValue(known ? String(order.courierCharge) : ""); setOpen(true) }}>
+            {known ? "Change charge" : "Enter charge"}
+          </button>
+          {order.courierChargeBy === "manual" ? <button type="button" className="text-btn" disabled={busy} onClick={() => save(null)}>Clear</button> : null}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -216,6 +216,42 @@ CREATE TABLE IF NOT EXISTS ad_spends (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ad_spends_spent_on_idx ON ad_spends (spent_on DESC, id DESC);
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_charge NUMERIC(12,2) CHECK (courier_charge >= 0);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_charge_by TEXT CHECK (courier_charge_by IN ('steadfast', 'manual'));
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_cod NUMERIC(12,2) CHECK (courier_cod >= 0);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_booked NUMERIC(12,2) CHECK (cod_booked >= 0);
+ALTER TABLE courier_events ADD COLUMN IF NOT EXISTS payload JSONB;
+
+-- The one place an order's money is worked out. Every report reads from here.
+-- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
+-- A cancelled or returned order sells nothing, but a courier charge on it is still a loss.
+CREATE OR REPLACE VIEW order_money AS
+SELECT o.id, o.status, o.source_id, o.ordered_at, o.paid_amount, o.discount,
+       t.goods, t.cost, t.gifts,
+       t.goods - o.discount AS sales,
+       CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END AS bill_delivery,
+       CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS bill_cod,
+       COALESCE(o.courier_charge, o.delivery_charge) + o.cod_charge AS courier_cost,
+       o.status NOT IN ('cancelled', 'returned') AS counted,
+       t.goods - o.discount
+         + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
+         + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS total,
+       CASE WHEN o.status IN ('cancelled', 'returned') THEN -COALESCE(o.courier_charge, 0)
+            ELSE t.goods - o.discount - t.cost
+              + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
+              + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END
+              - COALESCE(o.courier_charge, o.delivery_charge) - o.cod_charge
+       END AS profit
+FROM orders o
+CROSS JOIN LATERAL (
+  SELECT COALESCE(SUM(oi.unit_price * oi.quantity), 0) AS goods,
+         COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cost,
+         COALESCE(SUM(CASE WHEN oi.is_gift THEN oi.unit_cost * oi.quantity ELSE 0 END), 0) AS gifts
+  FROM order_items oi
+  WHERE oi.order_id = o.id
+) t;
+
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position
 FROM (VALUES ('Facebook', 1), ('TikTok', 2), ('WhatsApp', 3), ('IMO', 4)) AS seed(name, position)

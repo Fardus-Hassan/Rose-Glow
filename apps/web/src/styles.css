@@ -499,6 +499,11 @@ td .copy-address {
 .fact-grid p { margin: 0; background: var(--card-2); border-radius: 12px; padding: 8px 10px; }
 .fact-grid span { display: block; color: var(--muted); font-size: 0.75rem; }
 .fact-grid b { font-weight: 600; }
+.fact-grid small { display: block; font-size: 0.72rem; margin-top: 2px; }
+.charge-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.charge-box .actions { margin: 0; }
+.charge-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+.charge-form input { min-height: 40px; }
 .who-note { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
 .detail-lines li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; }
 .detail-form { display: grid; gap: 10px; }
