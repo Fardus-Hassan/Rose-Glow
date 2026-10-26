@@ -580,19 +580,26 @@ td .copy-address {
 .parcel-stages li.done { color: var(--good); }
 .parcel-grid {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr 1fr;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
   gap: 12px;
 }
 .parcel-grid section, .parcel-modal > section {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
+  overflow-wrap: anywhere;
 }
 .parcel-grid h3, .parcel-modal h3 { margin: 0 0 8px; }
 .parcel-grid p { margin: 0 0 4px; }
 @media (max-width: 860px) {
-  .parcel-grid { grid-template-columns: 1fr; }
-  .parcel-stages { grid-template-columns: repeat(5, minmax(72px, 1fr)); }
+  .parcel-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .parcel-grid section:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .parcel-stages { gap: 4px; }
+  .parcel-stages b { font-size: 0.7rem; }
+  .parcel-stages small { font-size: 0.62rem; }
 }
 .modal {
   width: min(420px, 100%);
@@ -603,10 +610,12 @@ td .copy-address {
   display: grid;
   gap: 12px;
 }
+.modal > * { min-width: 0; }
 .modal.parcel-modal {
   width: min(720px, 100%);
   max-height: min(88vh, 860px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 .btn.wide { width: 100%; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
