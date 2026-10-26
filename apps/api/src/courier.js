@@ -302,12 +302,32 @@ async function applyRemote(order, status, note, idempotencyKey) {
   const label = courierStatusLabel(status)
   const text = note ? `${order.number}: ${note}` : `${order.number} · ${order.customerName}: ${label}`
   await remember(order, status, order.consignmentId, text, idempotencyKey || `status:${order.id}:${status}`)
+  if (status === "delivered") await markPaid(order.id)
   const local = localStatusFor(status)
   if (!local || local === order.status) return
   const allowed = local === "returned"
     ? ["new", "confirmed", "courier", "delivered"]
     : ["new", "confirmed", "courier"]
   await setOrderStatus(order.id, local, allowed)
+}
+
+async function markPaid(orderId) {
+  await pool.query(
+    `UPDATE orders o
+     SET paid_amount = t.total
+     FROM (
+       SELECT o2.id,
+              COALESCE(SUM(oi.unit_price * oi.quantity), 0) - o2.discount
+                + CASE WHEN o2.delivery_paid_by = 'customer' THEN o2.delivery_charge ELSE 0 END
+                + CASE WHEN o2.cod_paid_by = 'customer' THEN o2.cod_charge ELSE 0 END AS total
+       FROM orders o2
+       LEFT JOIN order_items oi ON oi.order_id = o2.id
+       WHERE o2.id = $1
+       GROUP BY o2.id
+     ) t
+     WHERE o.id = t.id AND o.paid_amount < t.total`,
+    [orderId],
+  )
 }
 
 function localStatusFor(status) {
