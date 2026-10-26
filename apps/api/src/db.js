@@ -236,6 +236,11 @@ ALTER TABLE courier_events ADD COLUMN IF NOT EXISTS payload JSONB;
 -- The one place an order's money is worked out. Every report reads from here.
 -- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
 -- A cancelled or returned order sells nothing, but a courier charge on it is still a loss.
+UPDATE orders SET status = 'cancelled'
+WHERE status = 'courier' AND courier_status IN ('cancelled', 'cancelled_return_processing', 'cancelled_return_rider_assigned');
+UPDATE orders SET status = 'returned'
+WHERE status = 'cancelled' AND courier_status = 'cancelled_return_received' AND NOT stock_held;
+
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS returned_qty INTEGER NOT NULL DEFAULT 0 CHECK (returned_qty >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFAULT false;
 

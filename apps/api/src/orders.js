@@ -510,7 +510,7 @@ export async function updateOrder(id, body) {
     assertHandStatus(fields.status, current.rows[0].status)
     if (current.rows[0].consignment_id) await assertBookedUnchanged(client, id, current.rows[0], fields, replacing, body)
     const held = current.rows[0].stock_held
-    const hold = holdsStock(fields.status)
+    const hold = fields.status === current.rows[0].status ? held : holdsStock(fields.status)
     let goods
     let built = null
     if (replacing) {
@@ -676,7 +676,7 @@ export async function setReturnedPieces(id, body) {
   return getOrder(id)
 }
 
-export async function setOrderStatus(id, status, allowedFrom) {
+export async function setOrderStatus(id, status, allowedFrom, { keepStock = false } = {}) {
   if (!STATUS_IDS.has(status)) throw fail(400, "Status is not valid")
   const client = await pool.connect()
   try {
@@ -688,7 +688,7 @@ export async function setOrderStatus(id, status, allowedFrom) {
       await client.query("COMMIT")
       return false
     }
-    const hold = holdsStock(status)
+    const hold = keepStock ? row.stock_held : holdsStock(status)
     if (hold && !row.stock_held) await moveSavedStock(client, id, -1)
     if (!hold && row.stock_held) await moveSavedStock(client, id, 1)
     await client.query(

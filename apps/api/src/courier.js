@@ -6,6 +6,7 @@ import { getOrder, setOrderStatus } from "./orders.js"
 import { open, sameText, seal } from "./secret.js"
 import { isDuplicate, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
 
+const CANCELLED = new Set(["cancelled", "cancelled_return_processing", "cancelled_return_rider_assigned"])
 const FINAL = new Set(["delivered", "partial_delivered", "cancelled_return_received", "partial_delivered_return_received"])
 
 export function isSteadfast(name) {
@@ -367,9 +368,10 @@ async function applyRemote(order, status, note, idempotencyKey) {
   const local = localStatusFor(status)
   if (!local || local === order.status) return
   const allowed = local === "returned"
-    ? ["new", "confirmed", "courier", "delivered"]
-    : ["new", "confirmed", "courier"]
-  await setOrderStatus(order.id, local, allowed)
+    ? ["new", "confirmed", "courier", "delivered", "cancelled"]
+    : ["new", "confirmed", "courier", "cancelled"]
+  // A cancelled parcel is still on its way back, so its pieces stay held until the return is received.
+  await setOrderStatus(order.id, local, allowed, { keepStock: local === "cancelled" })
 }
 
 async function markPaid(orderId) {
@@ -385,6 +387,7 @@ async function markPaid(orderId) {
 function localStatusFor(status) {
   if (status === "delivered" || status === "partial_delivered") return "delivered"
   if (status === "cancelled_return_received") return "returned"
+  if (CANCELLED.has(status)) return "cancelled"
   return ""
 }
 
