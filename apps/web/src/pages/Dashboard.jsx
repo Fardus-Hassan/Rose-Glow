@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { STATUSES, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
-import { AdPlatformBars, AdTrend, BooksMix, ShareDonut, SourceChart, StockMix, TrendChart } from "../charts.jsx"
+import { AdPlatformBars, AdTrend, BooksMix, CourierSuccessChart, ShareDonut, SourceChart, StockMix, TrendChart, successRate } from "../charts.jsx"
 import DateRange from "../DateRange.jsx"
 import { rangeFor } from "../dates.js"
 import { taka } from "../format.js"
@@ -146,6 +146,8 @@ function Board({ data, go }) {
   const trend = useStats(trendRange)
   const sources = useStats(sourceRange)
   const statuses = useStats(statusRange)
+  const [courierRange, setCourierRange] = useState(() => rangeFor("30"))
+  const parcels = useStats(courierRange)
   const openCount = data.open.new + data.open.confirmed + data.open.courier
   return (
     <>
@@ -176,6 +178,20 @@ function Board({ data, go }) {
               <TrendChart points={stats.points} from={trendRange.from} to={trendRange.to} />
             </>
           )}
+        </ChartSlot>
+      </article>
+
+      <article className="card dash-block">
+        <div className="card-head">
+          <div>
+            <h2>Courier success</h2>
+            <p className="muted small">Parcels by the day they went to courier</p>
+          </div>
+          <DateRange value={courierRange} onChange={setCourierRange} />
+        </div>
+        <Banner message={parcels.loading ? "" : parcels.error} />
+        <ChartSlot stats={parcels.stats} loading={parcels.loading} error={parcels.error}>
+          {(stats) => <CourierSuccess parcels={stats.parcels} range={courierRange} />}
         </ChartSlot>
       </article>
 
@@ -358,6 +374,24 @@ function Stat({ kicker, label, value, note, extra, tone = "" }) {
       <small>{note}</small>
       {extra ? <small className="stat-extra">{extra}</small> : null}
     </article>
+  )
+}
+
+function CourierSuccess({ parcels, range }) {
+  const delivered = parcels.reduce((sum, day) => sum + day.delivered, 0)
+  const failed = parcels.reduce((sum, day) => sum + day.failed, 0)
+  const moving = parcels.reduce((sum, day) => sum + day.moving, 0)
+  const rate = successRate(delivered, failed)
+  return (
+    <>
+      <div className="trend-kpis">
+        <span><i className="rate" />Success <b>{rate == null ? "—" : `${rate}%`}</b></span>
+        <span><i className="delivered" />Delivered <b>{delivered}</b></span>
+        <span><i className="failed" />Returned or cancelled <b>{failed}</b></span>
+        <span><i className="moving" />Still on the way <b>{moving}</b></span>
+      </div>
+      <CourierSuccessChart parcels={parcels} from={range.from} to={range.to} />
+    </>
   )
 }
 

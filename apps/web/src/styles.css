@@ -1217,6 +1217,11 @@ tr.selected { background: var(--rose-soft); }
 .trend-kpis i.bar { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(#f4b3b6, #d45362); }
 .trend-kpis i.line { width: 16px; height: 3px; border-radius: 99px; background: #3db8c9; }
 .trend-kpis i.courier { width: 16px; height: 0; border-top: 2px dashed #f0c14a; }
+.trend-kpis i.rate { width: 16px; height: 3px; border-radius: 99px; background: #f0c14a; }
+.trend-kpis i.delivered, .trend-kpis i.failed, .trend-kpis i.moving { width: 10px; height: 10px; border-radius: 3px; }
+.trend-kpis i.delivered { background: #7dcaa5; }
+.trend-kpis i.failed { background: #e06d78; }
+.trend-kpis i.moving { background: #6b625e; }
 .trend-month { font-weight: 650; fill: var(--ink); }
 .dash .page-head, .dash .card-head { margin-bottom: 8px; }
 .dash .stats { gap: 8px; margin-bottom: 10px; }

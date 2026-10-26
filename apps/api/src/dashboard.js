@@ -158,7 +158,10 @@ export async function rangeStats(from, to) {
       [from, to],
     ),
     pool.query(
-      `SELECT to_char((courier_sent_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS courier
+      `SELECT to_char((courier_sent_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date, COUNT(*)::int AS courier,
+              COUNT(*) FILTER (WHERE status = 'delivered')::int AS delivered,
+              COUNT(*) FILTER (WHERE status IN ('returned', 'cancelled'))::int AS failed,
+              COUNT(*) FILTER (WHERE status = 'courier')::int AS moving
        FROM orders
        WHERE courier_sent_at IS NOT NULL
          AND (courier_sent_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
@@ -183,6 +186,7 @@ export async function rangeStats(from, to) {
     amount: points.reduce((sum, point) => sum + point.amount, 0),
     courier: points.reduce((sum, point) => sum + point.courier, 0),
     points,
+    parcels: courierRows.rows.map((row) => ({ date: row.date, delivered: row.delivered, failed: row.failed, moving: row.moving })),
     sources: sourceRows.rows.map((row) => ({
       id: row.source_id,
       name: row.name,

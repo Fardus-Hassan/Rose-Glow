@@ -168,6 +168,104 @@ export function TrendChart({ points, from, to }) {
   )
 }
 
+const DELIVERED_COLOR = "#7dcaa5"
+const FAILED_COLOR = "#e06d78"
+const MOVING_COLOR = "#6b625e"
+const RATE_COLOR = "#f0c14a"
+
+export function successRate(delivered, failed) {
+  return delivered + failed ? Math.round((delivered / (delivered + failed)) * 100) : null
+}
+
+export function CourierSuccessChart({ parcels, from, to }) {
+  const buckets = bucketPoints(parcels, from, to, ["delivered", "failed", "moving"])
+  const [active, setActive] = useState(null)
+  const peak = Math.max(0, ...buckets.map((item) => item.delivered + item.failed + item.moving))
+  const [host, px] = useWidth([peak])
+  if (!peak) return <p className="muted chart-empty">No parcels went to courier in these dates.</p>
+  const scale = orderScaleOf(peak)
+  const width = px
+  const height = 220
+  const font = width < 520 ? 12 : 13
+  const left = Math.max(28, String(scale).length * (font * 0.7) + 16)
+  const right = Math.max(40, font * 3)
+  const monthly = /^\d{4}-\d{2}$/.test(buckets[0]?.date || "")
+  const innerW = width - left - right
+  const slot = innerW / buckets.length
+  const stacked = monthly && slot < 48
+  const top = 16
+  const bottom = monthly ? (stacked ? font + 28 : font + 16) : font + 28
+  const innerH = height - top - bottom
+  const base = height - bottom
+  const barW = Math.max(4, Math.min(28, slot * 0.46))
+  const xAt = (index) => left + slot * index + slot / 2
+  const tall = (value) => (value / scale) * innerH
+  const steps = 4
+  const ratePoints = buckets
+    .map((item, index) => ({ index, rate: successRate(item.delivered, item.failed) }))
+    .filter((item) => item.rate != null)
+    .map((item) => ({ index: item.index, x: xAt(item.index), y: base - (item.rate / 100) * innerH }))
+  const ratePath = smoothPath(ratePoints)
+  const current = active == null ? null : buckets[active]
+  const currentRate = current ? successRate(current.delivered, current.failed) : null
+  const dots = buckets.length <= 62
+  let lastLabel = ""
+
+  return (
+    <div className="trend" ref={host}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ fontSize: font }} role="img" aria-label="Courier success rate" onPointerLeave={() => setActive(null)}>
+        {Array.from({ length: steps + 1 }, (_, step) => {
+          const y = base - (innerH / steps) * step
+          const label = String(Math.round((scale / steps) * step))
+          const show = label !== lastLabel
+          if (show) lastLabel = label
+          return (
+            <g key={step}>
+              <line x1={left} x2={width - right} y1={y} y2={y} className="trend-grid" />
+              {show ? <text x={left - 8} y={y} textAnchor="end" dominantBaseline="middle" className="trend-axis">{label}</text> : null}
+              <text x={width - right + 8} y={y} textAnchor="start" dominantBaseline="middle" className="trend-axis">{(100 / steps) * step}%</text>
+            </g>
+          )
+        })}
+        {buckets.map((item, index) => {
+          const x = xAt(index) - barW / 2
+          const dim = active != null && index !== active ? 0.55 : 1
+          const delivered = tall(item.delivered)
+          const failed = tall(item.failed)
+          const moving = tall(item.moving)
+          return (
+            <g key={item.date} opacity={dim}>
+              {item.delivered ? <rect x={x} y={base - delivered} width={barW} height={delivered} fill={DELIVERED_COLOR} /> : null}
+              {item.failed ? <rect x={x} y={base - delivered - failed} width={barW} height={failed} fill={FAILED_COLOR} /> : null}
+              {item.moving ? <rect x={x} y={base - delivered - failed - moving} width={barW} height={moving} fill={MOVING_COLOR} /> : null}
+            </g>
+          )
+        })}
+        {ratePoints.length > 1 ? (
+          <path d={ratePath} fill="none" stroke={RATE_COLOR} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+        ) : null}
+        {dots || ratePoints.length === 1 ? ratePoints.map((point) => (
+          <circle key={`rate-${point.index}`} cx={point.x} cy={point.y} r={point.index === active ? 4.4 : 3.1} fill={RATE_COLOR} stroke="#1e1c1a" strokeWidth="1.6" />
+        )) : null}
+        <DayLabels buckets={buckets} xAt={xAt} slot={slot} height={height} font={font} monthly={monthly} stacked={stacked} />
+        {buckets.map((item, index) => (
+          <rect key={`hit-${item.date}`} x={left + slot * index} y={top} width={slot} height={innerH} fill="transparent" onPointerEnter={() => setActive(index)} />
+        ))}
+        {current ? <line x1={xAt(active)} x2={xAt(active)} y1={top} y2={base} className="trend-cursor" /> : null}
+      </svg>
+      {current ? (
+        <div className={`trend-hover ${xAt(active) / width > 0.62 ? "left" : ""}`} style={{ left: `${(xAt(active) / width) * 100}%` }}>
+          <strong>{current.full}</strong>
+          <span><i style={{ background: RATE_COLOR }} />Success <b>{currentRate == null ? "—" : `${currentRate}%`}</b></span>
+          <span><i style={{ background: DELIVERED_COLOR }} />Delivered <b>{current.delivered}</b></span>
+          <span><i style={{ background: FAILED_COLOR }} />Returned or cancelled <b>{current.failed}</b></span>
+          <span><i style={{ background: MOVING_COLOR }} />Still on the way <b>{current.moving}</b></span>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 const SPEND_COLOR = "#e7c08a"
 
 export function AdTrend({ days, from, to }) {
