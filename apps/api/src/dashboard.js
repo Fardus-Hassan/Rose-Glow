@@ -40,14 +40,32 @@ function rangeSql(range) {
   return "TRUE"
 }
 
+function spentSql(range) {
+  if (range === "today") return "spent_on = (now() AT TIME ZONE 'Asia/Dhaka')::date"
+  if (range === "month") return "date_trunc('month', spent_on) = date_trunc('month', now() AT TIME ZONE 'Asia/Dhaka')"
+  return "TRUE"
+}
+
 export async function orderTotals() {
   return summarize("all")
 }
 
 async function summarize(range) {
-  const result = await pool.query(SUMMARY_SQL.replace("__RANGE__", rangeSql(range)))
+  const [result, spent] = await Promise.all([
+    pool.query(SUMMARY_SQL.replace("__RANGE__", rangeSql(range))),
+    pool.query(`
+      SELECT (SELECT COALESCE(SUM(amount), 0) FROM ad_spends WHERE ${spentSql(range)})::float8 AS ads,
+             (SELECT COALESCE(SUM(amount), 0) FROM buying_expenses WHERE ${spentSql(range)})::float8 AS expenses
+    `),
+  ])
   const row = result.rows[0]
+  const profit = Number(row.sales) - Number(row.cost) - Number(row.delivery_expense) - Number(row.cod_expense)
+  const ads = Number(spent.rows[0].ads)
+  const expenses = Number(spent.rows[0].expenses)
   return {
+    ads,
+    expenses,
+    net: profit - ads - expenses,
     orders: row.orders,
     sales: Number(row.sales),
     delivery: Number(row.delivery),
@@ -56,7 +74,7 @@ async function summarize(range) {
     gifts: Number(row.gifts),
     paid: Number(row.paid),
     due: Number(row.due),
-    profit: Number(row.sales) - Number(row.cost) - Number(row.delivery_expense) - Number(row.cod_expense),
+    profit,
   }
 }
 

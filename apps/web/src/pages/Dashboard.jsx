@@ -151,9 +151,9 @@ function Board({ data, go }) {
     <>
       <div className="stats">
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
-        <Stat kicker="Today" label="Profit" value={taka(data.today.profit)} note={data.today.gifts > 0 ? `Gifts cost ${taka(data.today.gifts)} · already taken out` : "Sales minus cost and the delivery you pay"} />
-        <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders`} />
-        <Stat kicker="This month" label="Profit" value={taka(data.month.profit)} note={data.month.gifts > 0 ? `Gifts ${taka(data.month.gifts)} · due ${taka(data.dueAll)}` : `Due to collect ${taka(data.dueAll)}`} />
+        <Stat kicker="Today" label="Net profit" value={taka(data.today.net)} note={netNote(data.today)} tone={data.today.net < 0 ? "bad" : ""} />
+        <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders · due ${taka(data.dueAll)}`} />
+        <Stat kicker="This month" label="Net profit" value={taka(data.month.net)} note={netNote(data.month)} tone={data.month.net < 0 ? "bad" : ""} />
       </div>
 
       <article className="card dash-block">
@@ -334,12 +334,16 @@ function StockAlerts({ inventory, go }) {
   )
 }
 
-function Stat({ kicker, label, value, note }) {
+function netNote(period) {
+  return `Orders ${taka(period.profit)} − ads ${taka(period.ads)} − costs ${taka(period.expenses)}`
+}
+
+function Stat({ kicker, label, value, note, tone = "" }) {
   return (
     <article className="stat">
       <span>{kicker}</span>
       <p>{label}</p>
-      <strong>{value}</strong>
+      <strong className={tone}>{value}</strong>
       <small>{note}</small>
     </article>
   )
