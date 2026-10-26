@@ -243,6 +243,7 @@ WHERE status = 'cancelled' AND courier_status = 'cancelled_return_received' AND 
 
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS returned_qty INTEGER NOT NULL DEFAULT 0 CHECK (returned_qty >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS private_note TEXT NOT NULL DEFAULT '';
 
 CREATE OR REPLACE VIEW order_money AS
 SELECT o.id, o.status, o.source_id, o.ordered_at, o.paid_amount, o.discount,

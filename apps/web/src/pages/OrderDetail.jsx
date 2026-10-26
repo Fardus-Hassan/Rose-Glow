@@ -73,6 +73,7 @@ export default function OrderDetail({ id }) {
       paidAmount: order.paidAmount ? String(order.paidAmount) : "",
       paymentMethod: order.paymentMethod,
       note: order.note || "",
+      privateNote: order.privateNote || "",
       sourceId: order.sourceId ? String(order.sourceId) : "",
     })
     setLines(order.items.map((item) => {
@@ -179,6 +180,7 @@ export default function OrderDetail({ id }) {
           deliveryPaidBy: draft.deliveryPaidBy,
           discount: numberOrZero(draft.discount),
           note: draft.note,
+          privateNote: draft.privateNote,
           sourceId: draft.sourceId || null,
           items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity, gift: line.gift })),
         }),
@@ -419,8 +421,11 @@ export default function OrderDetail({ id }) {
                 <input type="number" min="0" step="1" value={draft.deliveryCharge} onChange={(event) => setDraftField("deliveryCharge", event.target.value)} placeholder="Amount" aria-label="Delivery amount" disabled={Boolean(order.consignmentId)} />
               </div>
             </div>
-            <Field label="Note">
-              <input value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="Optional" disabled={Boolean(order.consignmentId)} />
+            <Field label="Courier note">
+              <textarea rows="2" value={draft.note} onChange={(event) => setDraftField("note", event.target.value)} placeholder="Goes to Steadfast for the rider" maxLength={400} disabled={Boolean(order.consignmentId)} />
+            </Field>
+            <Field label="Private note">
+              <textarea rows="2" value={draft.privateNote} onChange={(event) => setDraftField("privateNote", event.target.value)} placeholder="Only you see this" maxLength={1000} />
             </Field>
             <p className="sum"><span>Items</span><b>{taka(goods)}</b></p>
             {giftCost > 0 ? <p className="sum"><span>Gift (your cost)</span><b>{taka(giftCost)}</b></p> : null}
@@ -467,7 +472,8 @@ export default function OrderDetail({ id }) {
                   <p><span>Payment</span><b>{paymentLabel(order.paymentMethod)}</b></p>
                   <p><span>Time</span><b>{when(order.orderedAt)}</b></p>
                 </div>
-                {order.note ? <p className="who-note">{order.note}</p> : null}
+                {order.note ? <p className="who-note"><span>Courier note</span>{order.note}</p> : null}
+                {order.privateNote ? <p className="who-note private"><span>Private note</span>{order.privateNote}</p> : null}
               </article>
               {order.courier.trim().toLowerCase() === "steadfast" ? (
                 <article className="card">

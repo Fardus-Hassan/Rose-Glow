@@ -31,6 +31,7 @@ export default function OrderCreate() {
     paidAmount: "",
     paymentMethod: "cod",
     note: "",
+    privateNote: "",
     sourceId: "",
   })
 
@@ -256,8 +257,11 @@ export default function OrderCreate() {
               <input type="number" min="0" step="1" value={form.deliveryCharge} onChange={(event) => set("deliveryCharge", event.target.value)} placeholder="Amount" aria-label="Delivery amount" />
             </div>
           </div>
-          <Field label="Note">
-            <input value={form.note} onChange={(event) => set("note", event.target.value)} placeholder="Optional" />
+          <Field label="Courier note">
+            <textarea rows="2" value={form.note} onChange={(event) => set("note", event.target.value)} placeholder="Goes to Steadfast for the rider" maxLength={400} />
+          </Field>
+          <Field label="Private note">
+            <textarea rows="2" value={form.privateNote} onChange={(event) => set("privateNote", event.target.value)} placeholder="Only you see this" maxLength={1000} />
           </Field>
           <Row label="Products" value={taka(goods)} />
           {giftCost > 0 ? <Row label="Gift (your cost)" value={taka(giftCost)} /> : null}

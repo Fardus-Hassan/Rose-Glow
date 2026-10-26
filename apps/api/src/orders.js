@@ -40,6 +40,7 @@ function present(row, items = undefined) {
     paidAmount: paid,
     paymentMethod: row.payment_method,
     note: row.note,
+    privateNote: row.private_note || "",
     sourceId: row.source_id,
     sourceName: row.source_name || "",
     stockHeld: row.stock_held,
@@ -71,7 +72,7 @@ const ORDER_SELECT = `
          o.cod_charge::float8 AS cod_charge,
          o.cod_paid_by,
          o.paid_amount::float8 AS paid_amount,
-         o.payment_method, o.note, o.source_id, src.name AS source_name, o.stock_held,
+         o.payment_method, o.note, o.private_note, o.source_id, src.name AS source_name, o.stock_held,
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod, o.return_settled,
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
@@ -230,6 +231,7 @@ function readOrderFields(body, { partial = false } = {}) {
   const codPaidBy = body.codPaidBy === "customer" ? "customer" : "free"
   const codCharge = money(body.codCharge)
   const note = noteText(body.note, 400)
+  const privateNote = body.privateNote === undefined ? null : noteText(body.privateNote, 1000)
   const sourceId = readSourceId(body)
   if (!customerName) throw fail(400, "Enter the customer's name")
   if (!phone) throw fail(400, "Enter an 11-digit mobile number starting with 01")
@@ -240,7 +242,7 @@ function readOrderFields(body, { partial = false } = {}) {
   if (deliveryCharge === null || discount === null || paidAmount === null || codCharge === null) throw fail(400, "Enter valid amounts")
   if (!PAYMENT_IDS.has(paymentMethod)) throw fail(400, "Payment method is not valid")
   if (deliveryPaidBy === "customer" && deliveryCharge <= 0) throw fail(400, "Enter the delivery charge")
-  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, codCharge, codPaidBy, sourceId }
+  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, privateNote, codCharge, codPaidBy, sourceId }
   if (partial) return fields
   return fields
 }
@@ -407,8 +409,8 @@ export async function createOrder(body) {
     await applyNeeds(client, built.needs, hold)
     const inserted = await client.query(
       `INSERT INTO orders
-        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $5 = 'courier' THEN now() END)
+        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at, private_note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $5 = 'courier' THEN now() END, $17)
        RETURNING id`,
       [
         fields.customerName,
@@ -427,6 +429,7 @@ export async function createOrder(body) {
         fields.codCharge,
         fields.codPaidBy,
         fields.sourceId,
+        fields.privateNote || "",
       ],
     )
     orderId = inserted.rows[0].id
@@ -535,7 +538,7 @@ export async function updateOrder(id, body) {
       `UPDATE orders SET
         customer_name = $2, mobile = $3, address = $4, courier = $5, status = $6, ordered_at = $7,
         delivery_charge = $8, delivery_paid_by = $9, discount = $10, paid_amount = $11, payment_method = $12, note = $13, stock_held = $14,
-        cod_charge = $15, cod_paid_by = $16, source_id = $17,
+        cod_charge = $15, cod_paid_by = $16, source_id = $17, private_note = COALESCE($18, private_note),
         courier_sent_at = CASE WHEN $6 = 'courier' THEN COALESCE(courier_sent_at, now()) ELSE courier_sent_at END
        WHERE id = $1`,
       [
@@ -556,6 +559,7 @@ export async function updateOrder(id, body) {
         fields.codCharge,
         fields.codPaidBy,
         fields.sourceId,
+        fields.privateNote,
       ],
     )
     await client.query("COMMIT")
