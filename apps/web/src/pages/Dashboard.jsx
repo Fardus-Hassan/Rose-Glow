@@ -255,7 +255,7 @@ function Board({ data, go }) {
               </div>
               <div>
                 <span>Bringing in</span>
-                <strong>{taka(data.books.expenses)}</strong>
+                <strong>{taka(data.books.bringing)}</strong>
               </div>
               <div>
                 <span>Sold</span>
@@ -264,7 +264,7 @@ function Board({ data, go }) {
               <div>
                 <span>Profit</span>
                 <strong>{taka(data.books.profit)}</strong>
-                {data.books.ads > 0 ? <small className="muted">Ads {taka(data.books.ads)} taken out</small> : null}
+                <TakenOut ads={data.books.ads} salary={data.books.salary} />
               </div>
             </div>
           </div>
@@ -334,8 +334,15 @@ function StockAlerts({ inventory, go }) {
   )
 }
 
+function TakenOut({ ads, salary }) {
+  const parts = [ads > 0 ? `Ads ${taka(ads)}` : "", salary > 0 ? `salary ${taka(salary)}` : ""].filter(Boolean)
+  if (!parts.length) return null
+  return <small className="muted">{parts.join(" · ")} taken out</small>
+}
+
 function netNote(period) {
-  return `Orders ${taka(period.profit)} − ads ${taka(period.ads)} − costs ${taka(period.expenses)}`
+  const salary = period.salary > 0 ? ` − salary ${taka(period.salary)}` : ""
+  return `Orders ${taka(period.profit)} − ads ${taka(period.ads)} − costs ${taka(period.expenses)}${salary}`
 }
 
 function Stat({ kicker, label, value, note, tone = "" }) {

@@ -55,17 +55,20 @@ async function summarize(range) {
     pool.query(SUMMARY_SQL.replace("__RANGE__", rangeSql(range))),
     pool.query(`
       SELECT (SELECT COALESCE(SUM(amount), 0) FROM ad_spends WHERE ${spentSql(range)})::float8 AS ads,
-             (SELECT COALESCE(SUM(amount), 0) FROM buying_expenses WHERE ${spentSql(range)})::float8 AS expenses
+             (SELECT COALESCE(SUM(amount), 0) FROM buying_expenses WHERE kind <> 'salary' AND ${spentSql(range)})::float8 AS expenses,
+             (SELECT COALESCE(SUM(amount), 0) FROM buying_expenses WHERE kind = 'salary' AND ${spentSql(range)})::float8 AS salary
     `),
   ])
   const row = result.rows[0]
   const profit = Number(row.sales) - Number(row.cost) - Number(row.delivery_expense) - Number(row.cod_expense)
   const ads = Number(spent.rows[0].ads)
   const expenses = Number(spent.rows[0].expenses)
+  const salary = Number(spent.rows[0].salary)
   return {
     ads,
     expenses,
-    net: profit - ads - expenses,
+    salary,
+    net: profit - ads - expenses - salary,
     orders: row.orders,
     sales: Number(row.sales),
     delivery: Number(row.delivery),
@@ -105,10 +108,12 @@ export async function dashboard() {
     books: {
       goods: booksMoney.goods,
       expenses: booksMoney.expenses,
+      bringing: booksMoney.bringing,
+      salary: booksMoney.salary,
       vehicle: booksMoney.vehicle,
       courier: booksMoney.courier,
       other: booksMoney.other,
-      broughtIn: booksMoney.goods + booksMoney.expenses,
+      broughtIn: booksMoney.goods + booksMoney.bringing,
       sales: allDue.sales,
       ads: adsAll,
       profit: allDue.profit - booksMoney.expenses - adsAll,

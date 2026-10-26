@@ -27,20 +27,23 @@ function optionalDay(value) {
 
 const IN_RANGE = `($1::date IS NULL OR bought_on >= $1::date) AND ($2::date IS NULL OR bought_on <= $2::date)`
 
-const KINDS = new Set(["vehicle", "courier", "other"])
+const KINDS = new Set(["vehicle", "courier", "other", "salary"])
 
 export async function bookTotals() {
   const [goods, kinds] = await Promise.all([
     pool.query(`SELECT COALESCE(SUM(quantity * unit_cost), 0)::float8 AS total FROM purchases`),
     pool.query(`SELECT kind, COALESCE(SUM(amount), 0)::float8 AS total FROM buying_expenses GROUP BY kind`),
   ])
-  const byKind = { vehicle: 0, courier: 0, other: 0 }
+  const byKind = { vehicle: 0, courier: 0, other: 0, salary: 0 }
   for (const row of kinds.rows) {
     if (row.kind in byKind) byKind[row.kind] = Number(row.total)
   }
+  const bringing = byKind.vehicle + byKind.courier + byKind.other
   return {
     goods: Number(goods.rows[0].total),
-    expenses: byKind.vehicle + byKind.courier + byKind.other,
+    expenses: bringing + byKind.salary,
+    bringing,
+    salary: byKind.salary,
     vehicle: byKind.vehicle,
     courier: byKind.courier,
     other: byKind.other,
@@ -154,7 +157,9 @@ export async function listPurchases({ limit, offset, expenseLimit, expenseOffset
     expenseTotal: expenseCount.rows[0].total,
     goods: totals.goods,
     expensesTotal: totals.expenses,
-    broughtIn: totals.goods + totals.expenses,
+    bringingTotal: totals.bringing,
+    salaryTotal: totals.salary,
+    broughtIn: totals.goods + totals.bringing,
     days: days.rows.map((row) => ({
       day: row.day,
       pieces: row.pieces,
@@ -190,7 +195,7 @@ function expenseFields(body) {
   const amount = money(body.amount)
   const spentOn = assertDay(body.spentOn)
   const note = noteText(body.note, 160)
-  if (!KINDS.has(kind)) throw fail(400, "Choose vehicle, courier, or other")
+  if (!KINDS.has(kind)) throw fail(400, "Choose vehicle, courier, salary, or other")
   if (amount === null || amount <= 0) throw fail(400, "Enter how much you spent")
   return { kind, amount, spentOn, note }
 }

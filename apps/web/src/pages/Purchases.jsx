@@ -10,6 +10,7 @@ const PAGE_SIZES = [10, 20, 50, 100, 200]
 const EXPENSE_KINDS = [
   { id: "vehicle", label: "Vehicle" },
   { id: "courier", label: "Courier" },
+  { id: "salary", label: "Salary" },
   { id: "other", label: "Other" },
 ]
 
@@ -38,6 +39,8 @@ export default function Purchases() {
   const [sales, setSales] = useState(0)
   const [profit, setProfit] = useState(0)
   const [adSpend, setAdSpend] = useState(0)
+  const [bringingSum, setBringingSum] = useState(0)
+  const [salarySum, setSalarySum] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [expensePage, setExpensePage] = useState(1)
@@ -117,6 +120,8 @@ export default function Purchases() {
     setSales(body.sales)
     setProfit(body.profit)
     setAdSpend(body.ads || 0)
+    setBringingSum(body.bringingTotal ?? body.expensesTotal)
+    setSalarySum(body.salaryTotal || 0)
     setPlaces(body.places || [])
     setPlaceTotal(body.placeTotal || 0)
     setDayTotal(body.dayTotal || 0)
@@ -321,7 +326,7 @@ export default function Purchases() {
         </div>
         <div>
           <span>Bringing in</span>
-          <strong>{taka(expenseSum)}</strong>
+          <strong>{taka(bringingSum)}</strong>
         </div>
         <div>
           <span>Sold</span>
@@ -330,7 +335,9 @@ export default function Purchases() {
         <div>
           <span>Profit</span>
           <strong>{taka(profit)}</strong>
-          {adSpend > 0 ? <small className="muted">Ads {taka(adSpend)} taken out</small> : null}
+          {adSpend > 0 || salarySum > 0 ? (
+            <small className="muted">{[adSpend > 0 ? `Ads ${taka(adSpend)}` : "", salarySum > 0 ? `salary ${taka(salarySum)}` : ""].filter(Boolean).join(" · ")} taken out</small>
+          ) : null}
         </div>
       </div>
 
@@ -376,7 +383,7 @@ export default function Purchases() {
       </form>
 
       <form className="card books-form expense-form" onSubmit={saveExpense}>
-        <h2>{editingExpenseId ? "Edit this cost" : "Bringing it in"}</h2>
+        <h2>{editingExpenseId ? "Edit this cost" : "Add a cost"}</h2>
         <div className="books-line expense">
           <label className="field">
             <span>Date</span>
@@ -394,7 +401,7 @@ export default function Purchases() {
           </label>
           <label className="field">
             <span>Note</span>
-            <input value={expenseNote} onChange={(event) => setExpenseNote(event.target.value)} placeholder="Vehicle fare, courier" maxLength={160} />
+            <input value={expenseNote} onChange={(event) => setExpenseNote(event.target.value)} placeholder={kind === "salary" ? "Who you paid, which month" : "Vehicle fare, courier"} maxLength={160} />
           </label>
           <div className="form-actions wide">
             <button className="btn" type="submit" disabled={savingExpense}>{savingExpense ? "Saving…" : editingExpenseId ? "Update" : "Save"}</button>
@@ -459,7 +466,7 @@ export default function Purchases() {
                 <small>
                   {[
                     day.pieces > 0 ? `${day.pieces} ${day.pieces === 1 ? "piece" : "pieces"}` : "",
-                    day.expenses > 0 ? `bringing in ${taka(day.expenses)}` : "",
+                    day.expenses > 0 ? `costs ${taka(day.expenses)}` : "",
                   ].filter(Boolean).join(" · ")}
                 </small>
                 <b>{taka(day.total)}</b>
@@ -582,10 +589,10 @@ export default function Purchases() {
 
       <article className="card expense-list">
         <div className="card-head">
-          <h2>Bringing in</h2>
+          <h2>Costs</h2>
           {ready ? <p className="muted small">{expenseTotal} {expenseTotal === 1 ? "cost" : "costs"} · {taka(expenseSum)}</p> : null}
         </div>
-        {ready && expenseTotal === 0 ? <p className="muted">No vehicle, courier, or other cost yet.</p> : null}
+        {ready && expenseTotal === 0 ? <p className="muted">No vehicle, courier, salary, or other cost yet.</p> : null}
         {expenses.length > 0 ? (
           <div className="table-card">
             <table>

@@ -174,6 +174,16 @@ CREATE TABLE IF NOT EXISTS buying_expenses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS buying_expenses_spent_on_idx ON buying_expenses (spent_on DESC, id DESC);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'buying_expenses_kind_check' AND pg_get_constraintdef(oid) LIKE '%salary%'
+  ) THEN
+    ALTER TABLE buying_expenses DROP CONSTRAINT IF EXISTS buying_expenses_kind_check;
+    ALTER TABLE buying_expenses ADD CONSTRAINT buying_expenses_kind_check CHECK (kind IN ('vehicle', 'courier', 'other', 'salary'));
+  END IF;
+END $$;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_charge NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (cod_charge >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer'));
