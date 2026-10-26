@@ -735,8 +735,41 @@ input:-webkit-autofill {
   flex: none;
 }
 .filter-tools { display: flex; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; min-width: min(100%, 280px); }
-.filter-tools input { width: min(100%, 240px); }
 .filter-tools select { width: 148px; }
+.filter-tools .range-trigger {
+  min-height: 46px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border-color: rgba(242, 209, 208, 0.22);
+  font-size: 0.9rem;
+}
+.search-box { position: relative; display: block; width: min(100%, 260px); }
+.search-box input { padding-left: 40px; padding-right: 38px; }
+.search-box input::-webkit-search-cancel-button { display: none; }
+.search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--gold);
+  pointer-events: none;
+}
+.search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(242, 209, 208, 0.12);
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+}
 table { width: 100%; border-collapse: collapse; }
 th { text-align: left; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
 th, td { padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -1054,8 +1087,19 @@ tr.selected { background: var(--rose-soft); }
   .chart ul { width: 100%; }
   .filters { flex-direction: column; align-items: stretch; width: 100%; min-width: 0; }
   .filter-groups, .filter-pills, .filter-tools { width: 100%; max-width: 100%; min-width: 0; }
-  .filter-tools { flex-direction: column; align-items: stretch; }
+  .filter-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 6px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--card);
+  }
+  .filter-tools .search-box { grid-column: 1 / -1; width: 100%; }
   .filter-tools input, .filter-tools select, .range, .range-trigger { width: 100%; max-width: 100%; }
+  .filter-tools .range-trigger { justify-content: center; overflow: hidden; text-overflow: ellipsis; }
   .filter-pills {
     flex-wrap: nowrap;
     overflow-x: auto;

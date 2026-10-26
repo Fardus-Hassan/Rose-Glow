@@ -158,7 +158,14 @@ export default function Orders() {
           ) : null}
         </div>
         <div className="filter-tools">
-          <input value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="Name, mobile, or RG number" aria-label="Search" />
+          <label className="search-box">
+            <svg className="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <path d="m16 16 4 4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <input type="search" value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="Name, mobile, or RG number" aria-label="Search" />
+            {q ? <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setQ(""); setPage(1) }}>×</button> : null}
+          </label>
           <select aria-label="Source" value={source} onChange={(event) => { setSource(event.target.value); setPage(1) }}>
             <option value="all">All sources</option>
             {sources.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
