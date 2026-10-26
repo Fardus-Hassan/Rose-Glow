@@ -2,11 +2,74 @@ import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
 import { MANUAL_STATUSES, PAYMENTS } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
-import { taka } from "../format.js"
+import { taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
-import { Banner, Field, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { ProductList } from "./Orders.jsx"
+
+function phoneKey(value) {
+  const digits = String(value || "").replace(/\D/g, "").replace(/^88(?=01)/, "")
+  return /^01\d{9}$/.test(digits) ? digits : ""
+}
+
+function PastOrders({ mobile, onFill }) {
+  const key = phoneKey(mobile)
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    if (!key) {
+      setData(null)
+      return undefined
+    }
+    let live = true
+    api(`/api/orders?q=${encodeURIComponent(key)}&limit=5`)
+      .then((body) => { if (live) setData(body.total > 0 ? body : null) })
+      .catch(() => { if (live) setData(null) })
+    return () => { live = false }
+  }, [key])
+
+  if (!data) return null
+  const counts = Object.fromEntries((data.statusCounts || []).map((row) => [row.id, row.count]))
+  const latest = data.orders[0]
+  const facts = [
+    ["Delivered", counts.delivered || 0, ""],
+    ["Returned", counts.returned || 0, "bad"],
+    ["Cancelled", counts.cancelled || 0, "bad"],
+    ["Open", (counts.new || 0) + (counts.confirmed || 0) + (counts.courier || 0), ""],
+  ]
+  return (
+    <article className="card past-orders">
+      <div className="card-head">
+        <div>
+          <h2>Ordered before</h2>
+          <p className="muted small">{data.total} {data.total === 1 ? "order" : "orders"} from this number</p>
+        </div>
+        <button type="button" className="text-btn" onClick={() => onFill(latest)}>Use last name and address</button>
+      </div>
+      <div className="past-facts">
+        {facts.map(([label, value, tone]) => (
+          <p key={label} className={value > 0 && tone ? tone : ""}><span>{label}</span><b>{value}</b></p>
+        ))}
+      </div>
+      <ul className="past-list">
+        {data.orders.map((order) => (
+          <li key={order.id}>
+            <a href={`/orders/${order.id}`} target="_blank" rel="noreferrer" className="past-number">{order.number}</a>
+            <small className="muted">{when(order.orderedAt)}</small>
+            <ProductList items={order.items} max={2} />
+            <StatusPill status={order.status} />
+            <b>{taka(order.total)}</b>
+          </li>
+        ))}
+      </ul>
+      {data.total > data.orders.length ? (
+        <a className="text-btn past-more" href={`/orders?q=${encodeURIComponent(key)}`} target="_blank" rel="noreferrer">See all {data.total}</a>
+      ) : null}
+    </article>
+  )
+}
 
 export default function OrderCreate() {
   const { go } = useRoute()
@@ -193,6 +256,11 @@ export default function OrderCreate() {
               </Field>
             </div>
           </article>
+
+          <PastOrders
+            mobile={form.mobile}
+            onFill={(order) => setForm((current) => ({ ...current, customerName: order.customerName, address: order.address }))}
+          />
 
           <article className="card">
             <div className="add-line">

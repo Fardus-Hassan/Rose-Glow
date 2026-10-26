@@ -31,7 +31,7 @@ export default function Orders() {
   const [source, setSource] = useState("all")
   const [range, setRange] = useState(null)
   const [sources, setSources] = useState([])
-  const [q, setQ] = useState("")
+  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get("q") || "")
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [data, setData] = useState(null)
@@ -185,6 +185,7 @@ export default function Orders() {
               <tr>
                 <th>Order</th>
                 <th>Customer</th>
+                <th>Products</th>
                 <th>Address</th>
                 <th>Source</th>
                 <th>Time</th>
@@ -197,8 +198,15 @@ export default function Orders() {
               {data.orders.map((order) => (
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
                   <td data-label="Order">
-                    <strong>{order.number}</strong>
-                    {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
+                    <span className="order-cell">
+                      <strong>{order.number}</strong>
+                      {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
+                    </span>
+                    <small className="courier-meta">
+                      <span>{order.courier}</span>
+                      {order.trackingCode ? <span>{order.trackingCode}</span> : null}
+                      {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}
+                    </small>
                   </td>
                   <td data-label="Customer">
                     <CopyText value={order.customerName} label="Name" />
@@ -207,13 +215,9 @@ export default function Orders() {
                         <CopyText value={order.mobile} label="Number" />
                         <ContactActions mobile={order.mobile} />
                       </span>
-                      <span className="customer-meta">
-                        {order.courier}
-                        {order.trackingCode ? <><br />{order.trackingCode}</> : null}
-                        {order.courierStatus ? <><br />{courierStatusLabel(order.courierStatus)}</> : null}
-                      </span>
                     </small>
                   </td>
+                  <td data-label="Products"><ProductList items={order.items} /></td>
                   <td data-label="Address"><CopyText value={order.address} label="Address" className="copy-address" /></td>
                   <td data-label="Source">{order.sourceName || "—"}</td>
                   <td data-label="Time">{when(order.orderedAt)}</td>
@@ -240,6 +244,23 @@ export default function Orders() {
         ) : null}
       </article>
     </section>
+  )
+}
+
+export function ProductList({ items = [], max = 3 }) {
+  if (!items.length) return <span className="muted">—</span>
+  const shown = items.slice(0, max)
+  return (
+    <ul className="product-list">
+      {shown.map((item) => (
+        <li key={item.id}>
+          <span>{item.name}</span>
+          <b>× {item.quantity - (item.returned || 0)}</b>
+          {item.gift ? <em className="gift-tag">Gift</em> : null}
+        </li>
+      ))}
+      {items.length > max ? <li className="muted">+{items.length - max} more</li> : null}
+    </ul>
   )
 }
 

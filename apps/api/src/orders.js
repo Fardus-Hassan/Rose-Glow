@@ -92,7 +92,11 @@ async function itemsFor(client, orderId) {
      ORDER BY is_gift, id`,
     [orderId],
   )
-  return result.rows.map((row) => ({
+  return result.rows.map(shapeItem)
+}
+
+function shapeItem(row) {
+  return {
     id: row.id,
     productId: row.product_id,
     name: row.product_name,
@@ -101,7 +105,7 @@ async function itemsFor(client, orderId) {
     unitPrice: Number(row.unit_price),
     unitCost: Number(row.unit_cost),
     gift: row.is_gift,
-  }))
+  }
 }
 
 export async function getOrder(id) {
@@ -193,8 +197,21 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     `${ORDER_SELECT} ${clause} ORDER BY o.ordered_at DESC, o.id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   )
+  const lines = rows.rows.length
+    ? await pool.query(
+      `SELECT order_id, id, product_id, product_name, quantity, returned_qty, unit_price::float8 AS unit_price, unit_cost::float8 AS unit_cost, is_gift
+       FROM order_items WHERE order_id = ANY($1::int[]) ORDER BY is_gift, id`,
+      [rows.rows.map((row) => row.id)],
+    )
+    : { rows: [] }
+  const byOrder = new Map()
+  for (const line of lines.rows) {
+    const list = byOrder.get(line.order_id) || []
+    list.push(shapeItem(line))
+    byOrder.set(line.order_id, list)
+  }
   return {
-    orders: rows.rows.map((row) => present(row)),
+    orders: rows.rows.map((row) => present(row, byOrder.get(row.id) || [])),
     total: count.rows[0].total,
     statusCounts: statusFacets.rows,
     courierFilters: facets.rows,
