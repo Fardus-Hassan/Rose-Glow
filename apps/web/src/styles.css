@@ -1343,7 +1343,13 @@ tr.selected { background: var(--rose-soft); }
 .withdraw-body { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .withdraw-reasons > p { margin: 0 0 8px; }
 .reason-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.reason-bars li { padding: 10px 12px; background: var(--card-2); border-radius: 12px; display: grid; gap: 6px; }
+.reason-bars li { padding: 10px 12px; background: var(--card-2); border: 1px solid transparent; border-radius: 12px; display: grid; gap: 6px; cursor: pointer; transition: opacity 0.15s, border-color 0.15s; }
+.reason-bars li:hover { border-color: var(--line); }
+.reason-bars li.on { border-color: rgba(242, 209, 208, 0.55); }
+.reason-bars li.dim { opacity: 0.5; }
+.withdraw-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.withdraw-filters select { width: 160px; min-height: 46px; }
+.withdraw-filters .range-trigger { min-height: 46px; padding: 8px 14px; border-radius: 12px; border-color: rgba(242, 209, 208, 0.22); font-size: 0.9rem; }
 .reason-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .withdraw-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .withdraw-bar b { font-variant-numeric: tabular-nums; font-size: 0.86rem; }
@@ -1351,7 +1357,9 @@ tr.selected { background: var(--rose-soft); }
   .withdraw-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .withdraw-form .form-actions { grid-column: 1 / -1; }
   .withdraw-body { grid-template-columns: minmax(0, 1fr); }
-  .withdraw-head .range, .withdraw-head .range-trigger { width: 100%; }
+  .withdraw-filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: 100%; }
+  .withdraw-filters select, .withdraw-head .range, .withdraw-head .range-trigger { width: 100%; }
+  .withdraw-filters .text-btn { grid-column: 1 / -1; justify-self: end; }
 }
 .bar-fill.spend { background: linear-gradient(90deg, #f3d9a8, #c99a52); }
 .bar-fill.gain { background: linear-gradient(90deg, #a6e3c4, #5fbf8f); }

@@ -164,7 +164,7 @@ export function mount(app) {
   app.get("/api/withdrawals", wrap(async (req, res) => {
     const limit = Math.min(Math.max(whole(req.query.limit, 10) || 10, 1), 200)
     const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
-    res.json(await listWithdrawals({ limit, offset, from: req.query.from, to: req.query.to }))
+    res.json(await listWithdrawals({ limit, offset, from: req.query.from, to: req.query.to, reason: req.query.reason }))
   }))
 
   app.post("/api/withdrawals", wrap(async (req, res) => {

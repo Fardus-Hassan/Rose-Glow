@@ -42,23 +42,25 @@ export async function withdrawnTotals() {
   return { all: Number(row.all_time), month: Number(row.month), today: Number(row.today) }
 }
 
-export async function listWithdrawals({ limit, offset, from, to }) {
+export async function listWithdrawals({ limit, offset, from, to, reason }) {
   const start = optionalDay(from)
   const end = optionalDay(to)
   if (start && end && start > end) throw fail(400, "The start date is after the end date")
+  const only = REASONS.has(String(reason || "")) ? String(reason) : null
+  const ofReason = `($3::text IS NULL OR reason = $3::text)`
   const [count, rows, reasons, totals] = await Promise.all([
     pool.query(
       `SELECT COUNT(*)::int AS total, COALESCE(SUM(amount), 0)::float8 AS amount
-       FROM owner_withdrawals WHERE ${IN_RANGE}`,
-      [start, end],
+       FROM owner_withdrawals WHERE ${IN_RANGE} AND ${ofReason}`,
+      [start, end, only],
     ),
     pool.query(
       `SELECT id, taken_on::text AS taken_on, reason, amount::float8 AS amount, note
        FROM owner_withdrawals
-       WHERE ${IN_RANGE}
+       WHERE ${IN_RANGE} AND ${ofReason}
        ORDER BY taken_on DESC, id DESC
-       LIMIT $3 OFFSET $4`,
-      [start, end, limit, offset],
+       LIMIT $4 OFFSET $5`,
+      [start, end, only, limit, offset],
     ),
     pool.query(
       `SELECT reason, COUNT(*)::int AS times, SUM(amount)::float8 AS amount
@@ -72,6 +74,7 @@ export async function listWithdrawals({ limit, offset, from, to }) {
   return {
     from: start,
     to: end,
+    reason: only,
     withdrawals: rows.rows.map((row) => ({
       id: row.id,
       takenOn: row.taken_on,

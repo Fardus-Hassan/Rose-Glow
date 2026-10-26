@@ -24,6 +24,7 @@ export default function Withdrawals({ profit }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState("")
   const [range, setRange] = useState(null)
+  const [only, setOnly] = useState("")
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [takenOn, setTakenOn] = useState(todayISO)
@@ -39,7 +40,13 @@ export default function Withdrawals({ profit }) {
       params.set("from", range.from)
       params.set("to", range.to)
     }
+    if (only) params.set("reason", only)
     return params
+  }
+
+  function pickReason(next) {
+    setOnly(next)
+    setPage(1)
   }
 
   useEffect(() => {
@@ -56,7 +63,7 @@ export default function Withdrawals({ profit }) {
       })
       .catch((reason) => { if (live) setError(reason.message) })
     return () => { live = false }
-  }, [page, pageSize, range])
+  }, [page, pageSize, range, only])
 
   async function reload(nextPage = page) {
     setData(await api(`/api/withdrawals?${query(nextPage)}`))
@@ -174,21 +181,30 @@ export default function Withdrawals({ profit }) {
       </form>
 
       <div className="withdraw-head">
-        <h3>{range ? "In these dates" : "Every withdrawal"}</h3>
-        <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
+        <h3>{only ? reasonLabel(only) : range ? "In these dates" : "Every withdrawal"}</h3>
+        <div className="withdraw-filters">
+          <select aria-label="Filter by reason" value={only} onChange={(event) => pickReason(event.target.value)}>
+            <option value="">All reasons</option>
+            {REASONS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </select>
+          <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
+          {only || range ? <button type="button" className="text-btn" onClick={() => { setOnly(""); setRange(null); setPage(1) }}>Clear</button> : null}
+        </div>
       </div>
 
       {!data && !error ? <p className="muted">Loading…</p> : null}
-      {data && data.total === 0 ? (
+      {data && data.reasons.length === 0 ? (
         <Empty title={range ? "Nothing in these dates" : "Nothing taken out yet"} text="Save the money you take from the business and it will show here." />
       ) : null}
-      {data && data.total > 0 ? (
+      {data && data.reasons.length > 0 ? (
         <div className="withdraw-body">
           <section className="withdraw-reasons">
-            <p className="muted small">{data.total} {data.total === 1 ? "time" : "times"} · {taka(data.amount)}</p>
+            <p className="muted small">{data.total} {data.total === 1 ? "time" : "times"} · {taka(data.amount)}{only ? ` on ${reasonLabel(only).toLowerCase()}` : ""}</p>
             <ul className="reason-bars">
               {data.reasons.map((item) => (
-                <li key={item.reason}>
+                <li key={item.reason} className={only === item.reason ? "on" : only ? "dim" : ""} role="button" tabIndex={0} aria-pressed={only === item.reason}
+                  onClick={() => pickReason(only === item.reason ? "" : item.reason)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickReason(only === item.reason ? "" : item.reason) } }}>
                   <div className="reason-head">
                     <b>{reasonLabel(item.reason)}</b>
                     <small className="muted">{item.times} {item.times === 1 ? "time" : "times"}</small>
