@@ -115,6 +115,68 @@ img, svg { display: block; }
 .topbar .brand { display: none; }
 .tabbar { display: none; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+@media (min-width: 861px) {
+  .topbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 520px) minmax(0, 1fr); }
+  .topbar-actions { justify-self: end; }
+}
+.crumbs { min-width: 0; }
+.crumbs ol { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; font-size: 0.92rem; }
+.crumbs li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.crumbs li + li::before { content: "›"; color: var(--muted); }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a:hover { color: var(--ink); }
+.crumbs span { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.top-search { position: relative; min-width: 0; }
+.top-search .search-toggle { display: none; }
+.top-search .top-search-box { width: 100%; }
+.top-search-box input { height: 44px; border-radius: 14px; background: var(--card); }
+.search-key {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+.top-search-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 8px;
+  max-height: min(70vh, 460px);
+  overflow: auto;
+}
+.top-search-panel > p { margin: 6px 8px; }
+.top-search-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.top-search-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.top-search-list button.active { background: var(--card-2); }
+.top-search-list strong { color: var(--rose); font-variant-numeric: tabular-nums; }
+.top-search-who { display: grid; min-width: 0; }
+.top-search-who span, .top-search-who small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-search-who small { color: var(--muted); }
+.top-search-list b { font-variant-numeric: tabular-nums; }
+.top-search-all { display: block; margin: 6px 10px 4px; }
 .balance-pill {
   position: relative;
   overflow: hidden;
@@ -1070,6 +1132,29 @@ tr.selected { background: var(--rose-soft); }
   .topbar .brand small { display: block; font-size: 0.72rem; white-space: nowrap; }
   .topbar .mark { width: 38px; height: 38px; border-radius: 12px; }
   .topbar-actions { gap: 8px; flex: none; }
+  .crumbs { display: none; }
+  .top-search { margin-left: auto; position: static; }
+  .top-search .search-toggle { display: grid; width: 40px; height: 40px; }
+  .top-search .top-search-box { display: none; }
+  .top-search.shown::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgb(18, 17, 16);
+  }
+  .top-search.shown .top-search-box {
+    display: block;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    z-index: 2;
+    width: auto;
+  }
+  .top-search-panel { left: 12px; right: 12px; top: calc(100% + 4px); }
+  .top-search-list button { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .top-search-list button .pill, .search-key { display: none; }
   .balance-pill { min-width: 0; height: 40px; padding-right: 12px; font-size: 0.82rem; }
   .balance-coin { width: 30px; height: 30px; }
   .tabbar {

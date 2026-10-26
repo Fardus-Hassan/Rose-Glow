@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import BalancePill from "./balance.jsx"
+import { orderNo } from "./format.js"
 import Notifications from "./notifications.jsx"
 import Ads from "./pages/Ads.jsx"
 import Courier from "./pages/Courier.jsx"
@@ -10,6 +11,7 @@ import OrderCreate from "./pages/OrderCreate.jsx"
 import OrderDetail from "./pages/OrderDetail.jsx"
 import Orders from "./pages/Orders.jsx"
 import { RouteContext } from "./route.jsx"
+import TopSearch from "./topsearch.jsx"
 
 const NAV = [
   { href: "/", label: "Dashboard", short: "Home", icon: "board" },
@@ -36,7 +38,7 @@ export default function App() {
 
   function go(href) {
     window.history.pushState({}, "", href)
-    setKey(href.split("?")[0])
+    setKey(href)
   }
 
   const path = key.split("?")[0]
@@ -53,7 +55,7 @@ export default function App() {
   let page = <Dashboard />
   if (path === "/orders/new") page = <OrderCreate />
   else if (orderMatch) page = <OrderDetail id={Number(orderMatch[1])} />
-  else if (path === "/orders") page = <Orders />
+  else if (path === "/orders") page = <Orders key={key} />
   else if (path === "/inventory") page = <Inventory />
   else if (path === "/purchases") page = <Purchases />
   else if (path === "/ads") page = <Ads />
@@ -96,6 +98,8 @@ export default function App() {
                 <small>Jewelry ledger</small>
               </span>
             </a>
+            <Crumbs path={path} go={go} />
+            <TopSearch />
             <div className="topbar-actions">
               <BalancePill />
               <Notifications />
@@ -125,6 +129,35 @@ export default function App() {
 function isCurrent(href, path) {
   if (href === "/orders") return path === "/orders" || /^\/orders\/\d+$/.test(path)
   return path === href
+}
+
+function crumbsFor(path) {
+  const home = { href: "/", label: "Dashboard" }
+  const orders = { href: "/orders", label: "Orders" }
+  const order = path.match(/^\/orders\/(\d+)$/)
+  if (path === "/") return [home]
+  if (path === "/orders") return [home, orders, { label: "All orders" }]
+  if (path === "/orders/new") return [home, orders, { label: "New order" }]
+  if (order) return [home, orders, { label: orderNo(order[1]) }]
+  const item = NAV.find((entry) => entry.href === path)
+  return [home, { label: item ? item.label : "Not found" }]
+}
+
+function Crumbs({ path, go }) {
+  const trail = crumbsFor(path)
+  return (
+    <nav className="crumbs" aria-label="You are here">
+      <ol>
+        {trail.map((crumb, index) => (
+          <li key={crumb.label}>
+            {crumb.href && index < trail.length - 1 ? (
+              <a href={crumb.href} onClick={(event) => { event.preventDefault(); go(crumb.href) }}>{crumb.label}</a>
+            ) : <span aria-current="page">{crumb.label}</span>}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
 }
 
 function Missing({ go }) {
