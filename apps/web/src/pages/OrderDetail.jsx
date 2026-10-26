@@ -481,16 +481,10 @@ export default function OrderDetail({ id }) {
                   {order.courierError && !order.consignmentId ? <Banner message={order.courierError} /> : null}
                   {order.consignmentId ? (
                     <>
-                      <div className="fact-grid">
-                        <p><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
-                        <p><span>Tracking</span><b>{order.trackingCode || order.consignmentId}</b></p>
-                      </div>
-                      <ChargeBox order={order} onSaved={setOrder} />
-                      {order.trackingCode ? <CopyText value={order.trackingCode} label="Tracking code" /> : null}
-                      <div className="actions">
-                        <button type="button" className="btn secondary" disabled={saving} onClick={refreshTrack}>Refresh status</button>
-                        {order.status === "courier" ? <button type="button" className="btn danger" disabled={saving} onClick={askReturn}>Request return</button> : null}
-                      </div>
+                      <ChargeBox order={order} onSaved={setOrder}>
+                        <button type="button" className="btn secondary small-btn" disabled={saving} onClick={refreshTrack}>Refresh status</button>
+                        {order.status === "courier" ? <button type="button" className="btn danger small-btn" disabled={saving} onClick={askReturn}>Request return</button> : null}
+                      </ChargeBox>
                       {steps.length > 0 ? (
                         <ol className="track-steps">
                           {steps.map((step, index) => (
@@ -560,7 +554,7 @@ export default function OrderDetail({ id }) {
   )
 }
 
-function ChargeBox({ order, onSaved }) {
+function ChargeBox({ order, onSaved, children }) {
   const [value, setValue] = useState("")
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -582,29 +576,38 @@ function ChargeBox({ order, onSaved }) {
   const known = order.courierCharge !== null
   return (
     <div className="charge-box">
-      <div className="fact-grid">
+      <div className="fact-grid parcel-facts">
+        <p><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
         <p>
-          <span>Steadfast charge</span>
-          <b>{known ? taka(order.courierCharge) : "Not known yet"}</b>
-          <small className="muted">{known ? (order.courierChargeBy === "manual" ? "You entered" : "From Steadfast") : `Using ${taka(order.deliveryCharge)} from the order`}</small>
+          <span>Tracking</span>
+          <b>{order.trackingCode ? <CopyText value={order.trackingCode} label="Tracking code" /> : order.consignmentId}</b>
+        </p>
+        <p>
+          <span>Charge</span>
+          <b>{known ? taka(order.courierCharge) : taka(order.deliveryCharge)}</b>
+          <small className="muted">{known ? (order.courierChargeBy === "manual" ? "You entered" : "From Steadfast") : "Estimate"}</small>
         </p>
         <p>
           <span>Collected</span>
           <b>{order.courierCod === null ? "—" : taka(order.courierCod)}</b>
+          <small className="muted">{order.courierCod === null ? "Not yet" : "By Steadfast"}</small>
         </p>
       </div>
       {open ? (
         <form className="charge-form" onSubmit={(event) => { event.preventDefault(); save(value) }}>
           <input type="number" min="0" step="1" inputMode="numeric" value={value} onChange={(event) => setValue(event.target.value)} placeholder="What Steadfast charged" required autoFocus />
-          <button type="submit" className="btn" disabled={busy}>Save</button>
-          <button type="button" className="btn secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
+          <button type="submit" className="btn small-btn" disabled={busy}>Save</button>
+          <button type="button" className="btn secondary small-btn" disabled={busy} onClick={() => setOpen(false)}>Cancel</button>
         </form>
       ) : (
-        <div className="actions">
-          <button type="button" className="text-btn" onClick={() => { setValue(known ? String(order.courierCharge) : ""); setOpen(true) }}>
-            {known ? "Change charge" : "Enter charge"}
-          </button>
-          {order.courierChargeBy === "manual" ? <button type="button" className="text-btn" disabled={busy} onClick={() => save(null)}>Clear</button> : null}
+        <div className="parcel-actions">
+          {children}
+          <span className="parcel-charge-links">
+            <button type="button" className="text-btn" onClick={() => { setValue(known ? String(order.courierCharge) : ""); setOpen(true) }}>
+              {known ? "Change charge" : "Enter charge"}
+            </button>
+            {order.courierChargeBy === "manual" ? <button type="button" className="text-btn" disabled={busy} onClick={() => save(null)}>Clear</button> : null}
+          </span>
         </div>
       )}
     </div>

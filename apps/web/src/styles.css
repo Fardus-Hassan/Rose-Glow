@@ -500,10 +500,19 @@ td .copy-address {
 .fact-grid span { display: block; color: var(--muted); font-size: 0.75rem; }
 .fact-grid b { font-weight: 600; }
 .fact-grid small { display: block; font-size: 0.72rem; margin-top: 2px; }
-.charge-box { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
-.charge-box .actions { margin: 0; }
+.charge-box { display: grid; gap: 10px; }
+.parcel-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.parcel-facts p { min-width: 0; }
+.parcel-facts b { display: block; overflow-wrap: anywhere; }
+.parcel-facts .copy-text { font-weight: 600; }
+.parcel-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.parcel-charge-links { display: inline-flex; gap: 4px; margin-left: auto; }
+.btn.small-btn { min-height: 36px; padding: 6px 14px; font-size: 0.88rem; }
 .charge-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
 .charge-form input { min-height: 40px; }
+@media (max-width: 1100px) {
+  .parcel-facts { grid-template-columns: 1fr 1fr; }
+}
 .who-note { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); }
 .detail-lines li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; }
 .detail-form { display: grid; gap: 10px; }
