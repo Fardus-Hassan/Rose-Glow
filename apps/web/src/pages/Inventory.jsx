@@ -2,7 +2,9 @@ import { useEffect, useState } from "react"
 import { LOW_STOCK_AT } from "@rose/shared"
 import { api } from "../api.js"
 import { taka } from "../format.js"
-import { Banner, Empty, LIST_PAGE, Pager } from "../ui.jsx"
+import { Banner, Empty, Pager } from "../ui.jsx"
+
+const PAGE_SIZES = [10, 20, 50, 100]
 
 export default function Inventory() {
   const [products, setProducts] = useState(null)
@@ -10,6 +12,8 @@ export default function Inventory() {
   const [notice, setNotice] = useState("")
   const [productPage, setProductPage] = useState(1)
   const [comboPage, setComboPage] = useState(1)
+  const [productPageSize, setProductPageSize] = useState(PAGE_SIZES[0])
+  const [comboPageSize, setComboPageSize] = useState(PAGE_SIZES[0])
 
   async function reload(message) {
     const body = await api("/api/products")
@@ -29,18 +33,18 @@ export default function Inventory() {
   const combos = products?.filter((item) => item.isCombo) || []
   const pieces = singles.reduce((sum, item) => sum + item.stockQty, 0)
   const low = singles.filter((item) => item.stockQty <= LOW_STOCK_AT).length
-  const shownProducts = singles.slice((productPage - 1) * LIST_PAGE, productPage * LIST_PAGE)
-  const shownCombos = combos.slice((comboPage - 1) * LIST_PAGE, comboPage * LIST_PAGE)
+  const shownProducts = singles.slice((productPage - 1) * productPageSize, productPage * productPageSize)
+  const shownCombos = combos.slice((comboPage - 1) * comboPageSize, comboPage * comboPageSize)
 
   useEffect(() => {
-    const pages = Math.max(1, Math.ceil(singles.length / LIST_PAGE) || 1)
+    const pages = Math.max(1, Math.ceil(singles.length / productPageSize) || 1)
     if (productPage > pages) setProductPage(pages)
-  }, [singles.length, productPage])
+  }, [singles.length, productPage, productPageSize])
 
   useEffect(() => {
-    const pages = Math.max(1, Math.ceil(combos.length / LIST_PAGE) || 1)
+    const pages = Math.max(1, Math.ceil(combos.length / comboPageSize) || 1)
     if (comboPage > pages) setComboPage(pages)
-  }, [combos.length, comboPage])
+  }, [combos.length, comboPage, comboPageSize])
 
   return (
     <section className="page">
@@ -92,7 +96,14 @@ export default function Inventory() {
           </table>
           </div>
         ) : null}
-        <Pager page={productPage} total={singles.length} onPage={(next) => turnPage(setProductPage, next, "product-list")} />
+        <Pager
+          page={productPage}
+          total={singles.length}
+          pageSize={productPageSize}
+          pageSizes={PAGE_SIZES}
+          onPage={(next) => turnPage(setProductPage, next, "product-list")}
+          onPageSize={(next) => { setProductPageSize(next); setProductPage(1) }}
+        />
       </article>
 
       <div className="inv-forms">
@@ -123,7 +134,14 @@ export default function Inventory() {
             </table>
             </div>
           ) : null}
-          <Pager page={comboPage} total={combos.length} onPage={(next) => turnPage(setComboPage, next, "combo-list")} />
+          <Pager
+            page={comboPage}
+            total={combos.length}
+            pageSize={comboPageSize}
+            pageSizes={PAGE_SIZES}
+            onPage={(next) => turnPage(setComboPage, next, "combo-list")}
+            onPageSize={(next) => { setComboPageSize(next); setComboPage(1) }}
+          />
         </article>
       </div>
     </section>
