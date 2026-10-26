@@ -6,7 +6,7 @@ import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, ContactActions, CopyText, Empty, Pager, StatusPill } from "../ui.jsx"
+import { Banner, ContactActions, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -293,6 +293,11 @@ function StatusMenu({ order, onChanged }) {
     if (nextStatus === order.status || busy) {
       setOpen(false)
       return
+    }
+    const question = courierStatusQuestion(order, nextStatus)
+    if (question) {
+      setOpen(false)
+      if (!await askConfirm(question)) return
     }
     setBusy(true)
     try {

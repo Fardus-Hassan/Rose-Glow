@@ -7,7 +7,7 @@ import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, ContactActions, CopyText, Field, StatusPill } from "../ui.jsx"
+import { Banner, ContactActions, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
   const { go } = useRoute()
@@ -129,6 +129,8 @@ export default function OrderDetail({ id }) {
 
   async function changeStatus(status) {
     if (!order || status === order.status || saving) return
+    const question = courierStatusQuestion(order, status)
+    if (question && !await askConfirm(question)) return
     setSaving(true)
     setError("")
     try {
@@ -163,6 +165,8 @@ export default function OrderDetail({ id }) {
       setError(`Not enough ${product?.name || "stock"}`)
       return
     }
+    const question = courierStatusQuestion({ ...order, courier: draft.courier }, draft.status)
+    if (question && !await askConfirm(question)) return
     setSaving(true)
     setError("")
     try {
@@ -232,6 +236,13 @@ export default function OrderDetail({ id }) {
   }
 
   async function askReturn() {
+    const sure = await askConfirm({
+      title: "Ask Steadfast to return this parcel?",
+      message: "The order becomes Cancelled. The pieces come back to stock when the parcel reaches you.",
+      yes: "Yes, request return",
+      danger: true,
+    })
+    if (!sure) return
     setSaving(true)
     setError("")
     try {

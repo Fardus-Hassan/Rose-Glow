@@ -1,5 +1,77 @@
+import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { statusLabel } from "@rose/shared"
+
+const confirmListeners = new Set()
+
+// Opens the app's own yes/no box (ConfirmHost must be mounted). Resolves true on yes.
+export function askConfirm({ title, message = "", yes = "Yes", no = "No", danger = false }) {
+  return new Promise((resolve) => {
+    if (!confirmListeners.size) return resolve(window.confirm(title))
+    confirmListeners.forEach((show) => show({ title, message, yes, no, danger, resolve }))
+  })
+}
+
+export function ConfirmHost() {
+  const [ask, setAsk] = useState(null)
+
+  useEffect(() => {
+    confirmListeners.add(setAsk)
+    return () => confirmListeners.delete(setAsk)
+  }, [])
+
+  useEffect(() => {
+    if (!ask) return undefined
+    function onKey(event) {
+      if (event.key === "Escape") finish(false)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  })
+
+  function finish(answer) {
+    ask?.resolve(answer)
+    setAsk(null)
+  }
+
+  if (!ask) return null
+  return (
+    <div className="modal-back" role="presentation" onClick={() => finish(false)}>
+      <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(event) => event.stopPropagation()}>
+        <h2 id="confirm-title">{ask.title}</h2>
+        {ask.message ? <p className="muted">{ask.message}</p> : null}
+        <div className="actions">
+          <button type="button" className="btn secondary" onClick={() => finish(false)}>{ask.no}</button>
+          <button type="button" className={ask.danger ? "btn danger" : "btn"} onClick={() => finish(true)} autoFocus>{ask.yes}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// The question to ask before a hand status change that touches the courier, or null if none is needed.
+export function courierStatusQuestion(order, next) {
+  const current = order?.status
+  if (!order || next === current) return null
+  if (next === "courier") {
+    const sends = String(order.courier || "").trim().toLowerCase() === "steadfast" && !order.consignmentId
+    return {
+      title: "Move to In courier?",
+      message: sends ? "This sends the parcel to Steadfast right now." : "The order will be marked as handed to the courier.",
+      yes: sends ? "Yes, send it" : "Yes, move it",
+    }
+  }
+  if (current === "courier" && (next === "new" || next === "confirmed")) {
+    return {
+      title: `Move back to ${statusLabel(next)}?`,
+      message: order.consignmentId
+        ? "The parcel stays booked in Steadfast. This only changes it here. If you removed it in Steadfast, use \"Removed in Steadfast\" instead."
+        : "The order leaves In courier.",
+      yes: "Yes, move it",
+    }
+  }
+  return null
+}
 
 export function Field({ label, children, className = "" }) {
   return (

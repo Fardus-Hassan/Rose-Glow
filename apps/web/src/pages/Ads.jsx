@@ -4,7 +4,7 @@ import { api } from "../api.js"
 import DateRange from "../DateRange.jsx"
 import { rangeFor, todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
-import { Banner, Empty, Pager } from "../ui.jsx"
+import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100]
 
@@ -130,7 +130,7 @@ export default function Ads() {
   }
 
   async function remove(row) {
-    if (!window.confirm(`Remove the ${row.sourceName} ad cost of ${taka(row.amount)}?`)) return
+    if (!await askConfirm({ title: `Remove the ${row.sourceName} ad cost of ${taka(row.amount)}?`, yes: "Yes, remove", danger: true })) return
     setError("")
     try {
       await api(`/api/ads/${row.id}`, { method: "DELETE" })

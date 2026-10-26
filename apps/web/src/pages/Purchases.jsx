@@ -4,7 +4,7 @@ import { api } from "../api.js"
 import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
 import { useRoute } from "../route.jsx"
-import { Banner, Empty, Pager } from "../ui.jsx"
+import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 import Withdrawals from "./Withdrawals.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -275,7 +275,7 @@ export default function Purchases() {
   }
 
   async function removeExpense(row) {
-    if (!window.confirm(`Remove this ${kindLabel(row.kind).toLowerCase()} cost of ${taka(row.amount)}?`)) return
+    if (!await askConfirm({ title: `Remove this ${kindLabel(row.kind).toLowerCase()} cost of ${taka(row.amount)}?`, yes: "Yes, remove", danger: true })) return
     setError("")
     try {
       await api(`/api/buying-expenses/${row.id}`, { method: "DELETE" })
@@ -292,7 +292,7 @@ export default function Purchases() {
   }
 
   async function remove(row) {
-    if (!window.confirm(`Remove this purchase of ${row.productName}? Stock will go down by ${row.quantity}.`)) return
+    if (!await askConfirm({ title: `Remove this purchase of ${row.productName}?`, message: `Stock will go down by ${row.quantity}.`, yes: "Yes, remove", danger: true })) return
     setError("")
     try {
       await api(`/api/purchases/${row.id}`, { method: "DELETE" })

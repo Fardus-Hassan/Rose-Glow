@@ -4,7 +4,7 @@ import { api } from "../api.js"
 import DateRange from "../DateRange.jsx"
 import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
-import { Empty, Pager } from "../ui.jsx"
+import { Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 export const REASONS = [
@@ -108,7 +108,7 @@ export default function Withdrawals({ profit }) {
   }
 
   async function remove(row) {
-    if (!window.confirm(`Remove this withdrawal of ${taka(row.amount)}?`)) return
+    if (!await askConfirm({ title: `Remove this withdrawal of ${taka(row.amount)}?`, yes: "Yes, remove", danger: true })) return
     setError("")
     try {
       await api(`/api/withdrawals/${row.id}`, { method: "DELETE" })

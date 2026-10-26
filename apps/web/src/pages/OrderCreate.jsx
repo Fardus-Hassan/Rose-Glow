@@ -6,7 +6,7 @@ import { taka } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import { SourceField } from "../sources.jsx"
-import { Banner, Field } from "../ui.jsx"
+import { Banner, Field, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 export default function OrderCreate() {
   const { go } = useRoute()
@@ -118,6 +118,8 @@ export default function OrderCreate() {
       setError(`Not enough ${product?.name || "stock"}`)
       return
     }
+    const question = courierStatusQuestion({ status: "new", courier: form.courier }, form.status)
+    if (question && !await askConfirm(question)) return
     setSaving(true)
     setError("")
     try {

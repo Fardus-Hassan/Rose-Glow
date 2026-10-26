@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { LOW_STOCK_AT } from "@rose/shared"
 import { api } from "../api.js"
 import { taka } from "../format.js"
-import { Banner, Empty, Pager } from "../ui.jsx"
+import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100]
 
@@ -291,7 +291,7 @@ function ProductRow({ product, onDone, onError }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete ${product.name}?`)) return
+    if (!await askConfirm({ title: `Delete ${product.name}?`, message: "The product leaves your stock list.", yes: "Yes, delete", danger: true })) return
     onError("")
     try {
       await api(`/api/products/${product.id}`, { method: "DELETE" })
@@ -381,7 +381,7 @@ function ComboRow({ product, singles, onDone, onError }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete ${product.name}?`)) return
+    if (!await askConfirm({ title: `Delete ${product.name}?`, message: "Only the combo goes. The products inside stay.", yes: "Yes, delete", danger: true })) return
     try {
       await api(`/api/products/${product.id}`, { method: "DELETE" })
       await onDone("Combo deleted")
