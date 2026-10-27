@@ -1981,3 +1981,19 @@ tr.selected { background: var(--rose-soft); }
   .balance-long { display: none; }
   .balance-short { display: inline; }
 }
+
+@media (max-width: 860px) {
+  .topbar .brand { flex: 1 1 auto; overflow: hidden; }
+  .topbar .brand strong { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .top-search { margin-left: 0; }
+}
+
+@media (max-width: 389px) {
+  .topbar { gap: 6px; padding-inline: 10px; }
+  .topbar .brand span { display: none; }
+  .topbar .mark { width: 36px; height: 36px; }
+  .topbar-actions { gap: 6px; }
+  .top-search .search-toggle, .bell-btn { width: 38px; height: 38px; border-radius: 12px; }
+  .balance-pill { height: 38px; padding-left: 4px; padding-right: 10px; gap: 6px; }
+  .balance-coin { width: 28px; height: 28px; }
+}
