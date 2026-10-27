@@ -1575,6 +1575,17 @@ tr.selected { background: var(--rose-soft); }
   align-content: center;
 }
 .pair-card .stock-kpis strong { font-size: 1.05rem; }
+@media (max-width: 600px) {
+  .pair-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "mix" "key" "kpis";
+    row-gap: 10px;
+  }
+  .pair-body .stock-mix svg { width: 150px; }
+  .pair-body .stock-key { margin-bottom: 4px; }
+  .pair-card .stock-kpis strong { white-space: nowrap; }
+  .pair-card .card-head .text-btn { white-space: nowrap; }
+}
 .stock-key i { width: 8px; height: 8px; border-radius: 99px; display: inline-block; }
 .stock-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
 .stock-list { list-style: none; margin: 0; padding: 0; }
