@@ -659,15 +659,43 @@ td .copy-address {
 .parcel-stages {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 4px 0 0;
   padding: 0;
 }
-.parcel-stages li { text-align: center; color: var(--muted); }
-.parcel-stages b { display: block; font-size: 0.78rem; font-weight: 600; }
-.parcel-stages small { display: block; font-size: 0.68rem; }
-.parcel-stages li.done { color: var(--good); }
+.parcel-stages li { position: relative; display: grid; justify-items: center; align-content: start; gap: 2px; text-align: center; color: var(--muted); }
+.parcel-stages li::after {
+  content: "";
+  position: absolute;
+  top: 11px;
+  left: calc(50% + 15px);
+  width: calc(100% - 30px);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.parcel-stages li:last-child::after { display: none; }
+.parcel-stages li.linked::after { background: var(--good); }
+.parcel-stages i {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line);
+  border-radius: 99px;
+  font-style: normal;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.parcel-stages li.done i { border-color: var(--good); background: var(--good); color: #10201a; }
+.parcel-stages li.bad i { border-color: var(--bad); background: var(--bad); color: #2a1416; }
+.parcel-stages b { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.parcel-stages li.done b { color: var(--ink); }
+.parcel-stages li.bad b { color: var(--bad); }
+.parcel-stages small { display: block; font-size: 0.7rem; color: var(--muted); }
+.parcel-rider-note { margin: -4px 0 0; }
 .parcel-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
@@ -687,8 +715,7 @@ td .copy-address {
   .parcel-grid section:first-child { grid-column: 1 / -1; }
 }
 @media (max-width: 520px) {
-  .parcel-stages { gap: 4px; }
-  .parcel-stages b { font-size: 0.7rem; }
+  .parcel-stages b { font-size: 0.72rem; }
   .parcel-stages small { font-size: 0.62rem; }
 }
 .modal {

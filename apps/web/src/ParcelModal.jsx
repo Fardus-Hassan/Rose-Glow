@@ -4,14 +4,6 @@ import { courierStatusLabel } from "@rose/shared"
 import { api } from "./api.js"
 import { taka, when } from "./format.js"
 
-const STAGES = [
-  { id: "created", label: "Booked", test: /creat|book|placed|api/i },
-  { id: "picked", label: "Picked up", test: /pick/i },
-  { id: "transit", label: "In transit", test: /transit|hub|receiv/i },
-  { id: "assigned", label: "Rider", test: /assign|rider|delivery man/i },
-  { id: "delivered", label: "Delivered", test: /deliver/i },
-]
-
 export function ParcelEye({ orderId }) {
   const [open, setOpen] = useState(false)
   return (
@@ -27,6 +19,7 @@ export function ParcelEye({ orderId }) {
 function ParcelModal({ orderId, onClose }) {
   const [order, setOrder] = useState(null)
   const [steps, setSteps] = useState([])
+  const [stages, setStages] = useState([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
 
@@ -37,6 +30,7 @@ function ParcelModal({ orderId, onClose }) {
       .then((body) => {
         setOrder(body.order)
         setSteps(newestFirst(body.steps || []))
+        setStages(body.stages || [])
       })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false))
@@ -51,11 +45,7 @@ function ParcelModal({ orderId, onClose }) {
     return () => document.removeEventListener("keydown", onKey)
   }, [orderId])
 
-  const stages = STAGES.map((stage) => {
-    const hit = [...steps].reverse().find((step) => stage.test.test(step.text || ""))
-    const done = Boolean(hit) || (stage.id === "delivered" && ["delivered", "partial_delivered"].includes(order?.courierStatus))
-    return { ...stage, done, at: hit?.at || "" }
-  })
+  const withRider = stages.find((stage) => stage.id === "rider")?.done && !stages.find((stage) => stage.id === "end")?.done
   const panelUrl = order?.trackingUrl || (order?.trackingCode ? `https://steadfast.com.bd/t/${order.trackingCode}` : "")
 
   return (
@@ -80,13 +70,19 @@ function ParcelModal({ orderId, onClose }) {
               <strong>{courierStatusLabel(order.courierStatus) || "Pending"}</strong>
             </div>
             <ol className="parcel-stages">
-              {stages.map((stage) => (
-                <li key={stage.id} className={stage.done ? "done" : ""}>
+              {stages.map((stage, index) => (
+                <li key={stage.id} className={[stage.done ? "done" : "", stage.tone || "", stages[index + 1]?.done ? "linked" : ""].filter(Boolean).join(" ")}>
+                  <i aria-hidden="true">{stage.done ? (stage.tone === "bad" ? "×" : "✓") : ""}</i>
                   <b>{stage.label}</b>
-                  <small>{stage.at ? safeWhen(stage.at) : "—"}</small>
+                  {stage.at ? <small>{safeWhen(stage.at)}</small> : null}
                 </li>
               ))}
             </ol>
+            {withRider && panelUrl ? (
+              <p className="muted small parcel-rider-note">
+                Steadfast does not share the rider's name and phone through its API. <a href={panelUrl} target="_blank" rel="noreferrer">See them in Steadfast</a>
+              </p>
+            ) : null}
             <div className="parcel-grid">
               <section>
                 <h3>Customer</h3>

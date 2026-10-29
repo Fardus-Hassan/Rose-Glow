@@ -63,7 +63,40 @@ export async function trackOrder(id) {
   } catch {
     steps = []
   }
-  return { order: await getOrder(id), steps }
+  const fresh = await getOrder(id)
+  return { order: fresh, steps, stages: await stagesFor(fresh, steps) }
+}
+
+const DONE_DELIVERY = new Set(["delivered", "partial_delivered", "partial_delivered_return_processing", "partial_delivered_return_rider_assigned", "partial_delivered_return_received"])
+const RIDER_REPORTED = new Set(["delivered_approval_pending", "partial_delivered_approval_pending", ...DONE_DELIVERY])
+const isCancelled = (status) => status === "cancelled" || status.startsWith("cancelled_return")
+
+// Mirrors the four steps in the Steadfast panel, using only what Steadfast has told us:
+// the booking, each status it sent (first time seen), and its own "Assigned to rider" message.
+async function stagesFor(order, steps) {
+  const { rows } = await pool.query(
+    `SELECT status, created_at, idempotency_key FROM courier_events WHERE order_id = $1 AND consignment_id = $2 ORDER BY created_at, id`,
+    [order.id, order.consignmentId],
+  )
+  const bookedAt = rows.find((row) => row.idempotency_key === `book:${order.id}:${order.consignmentId}`)?.created_at || null
+  const firstAt = (test) => rows.find((row) => test(row.status || ""))?.created_at || null
+  const now = order.courierStatus || ""
+  const approvedTest = (status) => status && status !== "in_review" && !isCancelled(status) && status !== "cancelled_approval_pending"
+  const riderStep = steps
+    .filter((step) => /^assigned to rider/i.test(step.text))
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)))[0]
+  const deliveredAt = firstAt((status) => DONE_DELIVERY.has(status))
+  const approvedAt = firstAt((status) => status === "pending")
+  const cancelled = isCancelled(now)
+  const final = cancelled
+    ? { id: "end", label: "Cancelled", tone: "bad", done: true, at: firstAt(isCancelled) }
+    : { id: "end", label: now.startsWith("partial_delivered") && DONE_DELIVERY.has(now) ? "Partly delivered" : "Delivered", done: DONE_DELIVERY.has(now), at: deliveredAt }
+  return [
+    { id: "entered", label: "Entered", done: true, at: bookedAt },
+    { id: "approved", label: "Approved", done: Boolean(approvedAt) || approvedTest(now), at: approvedAt },
+    { id: "rider", label: "With a rider", done: Boolean(riderStep) || RIDER_REPORTED.has(now), at: riderStep?.at || null },
+    final,
+  ]
 }
 
 export async function requestReturn(id, reason) {
