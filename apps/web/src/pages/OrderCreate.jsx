@@ -5,6 +5,7 @@ import { api, fromInputValue, nowInput } from "../api.js"
 import { taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
+import Select, { productOptions } from "../select.jsx"
 import { SourceField } from "../sources.jsx"
 import { Banner, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 import { ProductList } from "./Orders.jsx"
@@ -80,7 +81,7 @@ export default function OrderCreate() {
   const [couriers, setCouriers] = useState([])
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
-  const [pick, setPick] = useState("")
+  const [pick, setPick] = useState([])
   const [pickQty, setPickQty] = useState(1)
   const [lines, setLines] = useState([])
   const [form, setForm] = useState({
@@ -141,14 +142,14 @@ export default function OrderCreate() {
   }
 
   function addLine() {
-    const product = products.find((item) => item.id === Number(pick))
+    const chosen = pick.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
     const quantity = Number(pickQty)
-    if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+    if (!chosen.length || !Number.isInteger(quantity) || quantity <= 0) {
       setError("Choose a product and a quantity")
       return
     }
     setError("")
-    setLines((current) => addTo(current, {
+    setLines((current) => chosen.reduce((next, product) => addTo(next, {
       productId: product.id,
       name: product.name,
       quantity,
@@ -157,8 +158,8 @@ export default function OrderCreate() {
       isCombo: product.isCombo,
       components: product.components,
       gift: false,
-    }))
-    setPick("")
+    }), current))
+    setPick([])
     setPickQty(1)
   }
 
@@ -210,9 +211,6 @@ export default function OrderCreate() {
     }
   }
 
-  const singles = products.filter((item) => !item.isCombo)
-  const combos = products.filter((item) => item.isCombo)
-
   return (
     <section className="page">
       <div className="page-head">
@@ -233,15 +231,22 @@ export default function OrderCreate() {
                 <input value={form.mobile} onChange={(event) => set("mobile", event.target.value)} inputMode="tel" placeholder="01XXXXXXXXX" required />
               </Field>
               <Field label="Courier">
-                <select value={form.courier} onChange={(event) => set("courier", event.target.value)} required>
-                  {couriers.length === 0 ? <option value="">No courier is connected</option> : null}
-                  {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
-                </select>
+                <Select
+                  label="Courier"
+                  value={form.courier}
+                  onChange={(value) => set("courier", value)}
+                  options={couriers.map((courier) => ({ value: courier.name, label: courier.name }))}
+                  placeholder={couriers.length ? "Choose" : "No courier is connected"}
+                  required
+                />
               </Field>
               <Field label="Status">
-                <select value={form.status} onChange={(event) => set("status", event.target.value)}>
-                  {MANUAL_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-                </select>
+                <Select
+                  label="Status"
+                  value={form.status}
+                  onChange={(value) => set("status", value)}
+                  options={MANUAL_STATUSES.map((status) => ({ value: status.id, label: status.label }))}
+                />
               </Field>
               <SourceField
                 value={form.sourceId}
@@ -266,21 +271,15 @@ export default function OrderCreate() {
 
           <article className="card">
             <div className="add-line">
-              <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="Product">
-                <option value="">Choose a product</option>
-                <optgroup label="Products">
-                  {singles.map((product) => (
-                    <option key={product.id} value={product.id}>{product.name} · in stock {product.stockQty}</option>
-                  ))}
-                </optgroup>
-                {combos.length ? (
-                  <optgroup label="Combos">
-                    {combos.map((product) => (
-                      <option key={product.id} value={product.id}>{product.name} · can make {product.available}</option>
-                    ))}
-                  </optgroup>
-                ) : null}
-              </select>
+              <Select
+                multiple
+                search
+                label="Products"
+                value={pick}
+                onChange={setPick}
+                placeholder="Choose products"
+                options={productOptions(products, (product) => product.isCombo ? `can make ${product.available}` : `in stock ${product.stockQty}`)}
+              />
               <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
               <button type="button" className="btn secondary" onClick={addLine}>Add</button>
             </div>
@@ -317,9 +316,12 @@ export default function OrderCreate() {
             </Field>
           </div>
           <Field label="Payment">
-            <select value={form.paymentMethod} onChange={(event) => set("paymentMethod", event.target.value)}>
-              {PAYMENTS.map((payment) => <option key={payment.id} value={payment.id}>{payment.label}</option>)}
-            </select>
+            <Select
+              label="Payment"
+              value={form.paymentMethod}
+              onChange={(value) => set("paymentMethod", value)}
+              options={PAYMENTS.map((payment) => ({ value: payment.id, label: payment.label }))}
+            />
           </Field>
           <div className="field">
             <span>Delivery</span>

@@ -4,6 +4,7 @@ import { api } from "../api.js"
 import DateRange from "../DateRange.jsx"
 import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
+import Select from "../select.jsx"
 import { Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -24,7 +25,7 @@ export default function Withdrawals({ profit }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState("")
   const [range, setRange] = useState(null)
-  const [only, setOnly] = useState("")
+  const [only, setOnly] = useState([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [takenOn, setTakenOn] = useState(todayISO)
@@ -40,13 +41,17 @@ export default function Withdrawals({ profit }) {
       params.set("from", range.from)
       params.set("to", range.to)
     }
-    if (only) params.set("reason", only)
+    if (only.length) params.set("reason", only.join(","))
     return params
   }
 
   function pickReason(next) {
     setOnly(next)
     setPage(1)
+  }
+
+  function toggleReason(id) {
+    pickReason(only.includes(id) ? only.filter((item) => item !== id) : [...only, id])
   }
 
   useEffect(() => {
@@ -162,9 +167,7 @@ export default function Withdrawals({ profit }) {
         </label>
         <label className="field">
           <span>Why</span>
-          <select value={reason} onChange={(event) => setReason(event.target.value)}>
-            {REASONS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
+          <Select label="Why" value={reason} onChange={setReason} options={REASONS.map((item) => ({ value: item.id, label: item.label }))} />
         </label>
         <label className="field">
           <span>Amount</span>
@@ -181,14 +184,11 @@ export default function Withdrawals({ profit }) {
       </form>
 
       <div className="withdraw-head">
-        <h3>{only ? reasonLabel(only) : range ? "In these dates" : "Every withdrawal"}</h3>
+        <h3>{only.length ? only.map(reasonLabel).join(", ") : range ? "In these dates" : "Every withdrawal"}</h3>
         <div className="withdraw-filters">
-          <select aria-label="Filter by reason" value={only} onChange={(event) => pickReason(event.target.value)}>
-            <option value="">All reasons</option>
-            {REASONS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-          </select>
+          <Select multiple label="Filter by reason" allLabel="All reasons" value={only} onChange={pickReason} options={REASONS.map((item) => ({ value: item.id, label: item.label }))} />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
-          {only || range ? <button type="button" className="text-btn" onClick={() => { setOnly(""); setRange(null); setPage(1) }}>Clear</button> : null}
+          {only.length || range ? <button type="button" className="text-btn" onClick={() => { setOnly([]); setRange(null); setPage(1) }}>Clear</button> : null}
         </div>
       </div>
 
@@ -199,12 +199,12 @@ export default function Withdrawals({ profit }) {
       {data && data.reasons.length > 0 ? (
         <div className="withdraw-body">
           <section className="withdraw-reasons">
-            <p className="muted small">{data.total} {data.total === 1 ? "time" : "times"} · {taka(data.amount)}{only ? ` on ${reasonLabel(only).toLowerCase()}` : ""}</p>
+            <p className="muted small">{data.total} {data.total === 1 ? "time" : "times"} · {taka(data.amount)}{only.length ? ` on ${only.map(reasonLabel).join(", ").toLowerCase()}` : ""}</p>
             <ul className="reason-bars">
               {data.reasons.map((item) => (
-                <li key={item.reason} className={only === item.reason ? "on" : only ? "dim" : ""} role="button" tabIndex={0} aria-pressed={only === item.reason}
-                  onClick={() => pickReason(only === item.reason ? "" : item.reason)}
-                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pickReason(only === item.reason ? "" : item.reason) } }}>
+                <li key={item.reason} className={only.includes(item.reason) ? "on" : only.length ? "dim" : ""} role="button" tabIndex={0} aria-pressed={only.includes(item.reason)}
+                  onClick={() => toggleReason(item.reason)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleReason(item.reason) } }}>
                   <div className="reason-head">
                     <b>{reasonLabel(item.reason)}</b>
                     <small className="muted">{item.times} {item.times === 1 ? "time" : "times"}</small>

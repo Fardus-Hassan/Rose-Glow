@@ -130,13 +130,20 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   const params = []
   const where = []
   if (source && source !== "all") {
-    if (source === "none") where.push("o.source_id IS NULL")
-    else {
-      const sourceId = whole(source)
-      if (!sourceId) throw fail(400, "Source is not valid")
-      params.push(sourceId)
-      where.push(`o.source_id = $${params.length}`)
+    const picks = [...new Set(String(source).split(",").map((item) => item.trim()).filter(Boolean))]
+    const none = picks.includes("none")
+    const ids = picks.filter((item) => item !== "none").map((item) => {
+      const sourceId = whole(item)
+      if (!sourceId || sourceId <= 0) throw fail(400, "Source is not valid")
+      return sourceId
+    })
+    const parts = []
+    if (ids.length) {
+      params.push(ids)
+      parts.push(`o.source_id = ANY($${params.length}::int[])`)
     }
+    if (none) parts.push("o.source_id IS NULL")
+    if (parts.length) where.push(`(${parts.join(" OR ")})`)
   }
   const hasFrom = Boolean(from)
   const hasTo = Boolean(to)

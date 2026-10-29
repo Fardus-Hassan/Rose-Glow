@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { LOW_STOCK_AT } from "@rose/shared"
 import { api } from "../api.js"
 import { taka } from "../format.js"
+import Select from "../select.jsx"
 import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100]
@@ -194,7 +195,7 @@ function ProductForm({ onDone, onError }) {
 }
 
 function ComboForm({ singles, onDone, onError }) {
-  const [parts, setParts] = useState([{ productId: "", quantity: 1 }, { productId: "", quantity: 1 }])
+  const [parts, setParts] = useState([])
   const [saving, setSaving] = useState(false)
   const cost = comboCost(parts, singles)
 
@@ -214,7 +215,7 @@ function ComboForm({ singles, onDone, onError }) {
         },
       })
       formEl.reset()
-      setParts([{ productId: "", quantity: 1 }, { productId: "", quantity: 1 }])
+      setParts([])
       await onDone("Combo created")
     } catch (reason) {
       onError(reason.message)
@@ -231,18 +232,9 @@ function ComboForm({ singles, onDone, onError }) {
         <input name="sellPrice" type="number" min="0" step="1" required placeholder="Sell" aria-label="Selling price" />
         <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
       </div>
-      {parts.map((part, index) => (
-        <div className="add-line" key={index}>
-          <select aria-label="Combo product" value={part.productId} onChange={(event) => setParts(updatePart(parts, index, { productId: event.target.value }))}>
-            <option value="">Product</option>
-            {singles.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.stockQty}</option>)}
-          </select>
-          <input aria-label="Combo quantity" type="number" min="1" step="1" value={part.quantity} onChange={(event) => setParts(updatePart(parts, index, { quantity: Number(event.target.value) }))} />
-          <button type="button" className="text-btn" onClick={() => setParts(parts.filter((_, item) => item !== index))}>Remove</button>
-        </div>
-      ))}
+      <ComboParts parts={parts} setParts={setParts} singles={singles} />
       <div className="inv-combo-foot">
-        <button type="button" className="text-btn" onClick={() => setParts([...parts, { productId: "", quantity: 1 }])}>Another product</button>
+        <span className="muted small">{parts.length} {parts.length === 1 ? "product" : "products"}</span>
         <span className="muted small">Cost {taka(cost)}</span>
       </div>
     </form>
@@ -418,22 +410,45 @@ function ComboRow({ product, singles, onDone, onError }) {
                 <input name="sellPrice" type="number" min="0" step="1" defaultValue={product.sellPrice} required aria-label="Selling price" />
                 <button className="btn secondary" type="submit" disabled={saving}>Save</button>
               </div>
-              {parts.map((part, index) => (
-                <div className="add-line" key={index}>
-                  <select aria-label="Combo product" value={part.productId} onChange={(event) => setParts(updatePart(parts, index, { productId: event.target.value }))}>
-                    <option value="">Product</option>
-                    {singles.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.stockQty}</option>)}
-                  </select>
-                  <input aria-label="Combo quantity" type="number" min="1" step="1" value={part.quantity} onChange={(event) => setParts(updatePart(parts, index, { quantity: Number(event.target.value) }))} />
-                  <button type="button" className="text-btn" onClick={() => setParts(parts.filter((_, item) => item !== index))}>Remove</button>
-                </div>
-              ))}
-              <button type="button" className="text-btn" onClick={() => setParts([...parts, { productId: "", quantity: 1 }])}>Another product</button>
+              <ComboParts parts={parts} setParts={setParts} singles={singles} />
             </form>
           </td>
         </tr>
       ) : null}
     </>
+  )
+}
+
+function ComboParts({ parts, setParts, singles }) {
+  const picked = parts.map((part) => String(part.productId))
+
+  function pick(ids) {
+    setParts(ids.map((id) => parts.find((part) => String(part.productId) === id) || { productId: id, quantity: 1 }))
+  }
+
+  return (
+    <div className="combo-parts">
+      <Select
+        multiple
+        search
+        label="Products in this combo"
+        placeholder="Choose products"
+        value={picked}
+        onChange={pick}
+        options={singles.map((product) => ({ value: String(product.id), label: product.name, hint: `in stock ${product.stockQty}` }))}
+      />
+      {parts.length ? (
+        <ul className="combo-part-list">
+          {parts.map((part, index) => (
+            <li key={part.productId}>
+              <span>{singles.find((item) => item.id === Number(part.productId))?.name || "Product"}</span>
+              <input aria-label="Combo quantity" type="number" min="1" step="1" value={part.quantity} onChange={(event) => setParts(updatePart(parts, index, { quantity: Number(event.target.value) }))} />
+              <button type="button" className="text-btn" onClick={() => setParts(parts.filter((_, item) => item !== index))}>Remove</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 

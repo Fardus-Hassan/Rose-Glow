@@ -5,6 +5,7 @@ import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
+import Select, { productOptions } from "../select.jsx"
 import { SourceField } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, ContactActions, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
@@ -22,7 +23,7 @@ export default function OrderDetail({ id }) {
   const [couriers, setCouriers] = useState([])
   const [products, setProducts] = useState([])
   const [lines, setLines] = useState([])
-  const [pick, setPick] = useState("")
+  const [pick, setPick] = useState([])
   const [pickQty, setPickQty] = useState(1)
   const [draft, setDraft] = useState(null)
   const [steps, setSteps] = useState([])
@@ -90,7 +91,7 @@ export default function OrderDetail({ id }) {
         gift: Boolean(item.gift),
       }
     }))
-    setPick("")
+    setPick([])
     setPickQty(1)
     setEditing(true)
   }
@@ -100,14 +101,14 @@ export default function OrderDetail({ id }) {
   }
 
   function addLine() {
-    const product = products.find((item) => item.id === Number(pick))
+    const chosen = pick.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
     const quantity = Number(pickQty)
-    if (!product || !Number.isInteger(quantity) || quantity <= 0) {
+    if (!chosen.length || !Number.isInteger(quantity) || quantity <= 0) {
       setError("Choose a product and a quantity")
       return
     }
     setError("")
-    setLines((current) => addTo(current, {
+    setLines((current) => chosen.reduce((next, product) => addTo(next, {
       productId: product.id,
       name: product.name,
       quantity,
@@ -116,8 +117,8 @@ export default function OrderDetail({ id }) {
       isCombo: product.isCombo,
       components: product.components,
       gift: false,
-    }))
-    setPick("")
+    }), current))
+    setPick([])
     setPickQty(1)
   }
 
@@ -358,16 +359,26 @@ export default function OrderDetail({ id }) {
                   <input value={draft.mobile} onChange={(event) => setDraftField("mobile", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
                 <Field label="Courier">
-                  <select value={draft.courier} onChange={(event) => setDraftField("courier", event.target.value)} disabled={Boolean(order.consignmentId)} required>
-                    {draft.courier && !couriers.some((item) => item.name === draft.courier) ? <option value={draft.courier}>{draft.courier}</option> : null}
-                    {couriers.map((courier) => <option key={courier.id} value={courier.name}>{courier.name}</option>)}
-                  </select>
+                  <Select
+                    label="Courier"
+                    value={draft.courier}
+                    onChange={(value) => setDraftField("courier", value)}
+                    disabled={Boolean(order.consignmentId)}
+                    required
+                    options={[
+                      ...(draft.courier && !couriers.some((item) => item.name === draft.courier) ? [{ value: draft.courier, label: draft.courier }] : []),
+                      ...couriers.map((courier) => ({ value: courier.name, label: courier.name })),
+                    ]}
+                  />
                 </Field>
                 <Field label="Status">
                   {MANUAL_STATUSES.some((status) => status.id === draft.status) ? (
-                    <select value={draft.status} onChange={(event) => setDraftField("status", event.target.value)}>
-                      {MANUAL_STATUSES.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-                    </select>
+                    <Select
+                      label="Status"
+                      value={draft.status}
+                      onChange={(value) => setDraftField("status", value)}
+                      options={MANUAL_STATUSES.map((status) => ({ value: status.id, label: status.label }))}
+                    />
                   ) : (
                     <input value={statusLabel(draft.status)} disabled />
                   )}
@@ -383,21 +394,16 @@ export default function OrderDetail({ id }) {
             </article>
             <article className="card">
               <div className="add-line">
-                <select value={pick} onChange={(event) => setPick(event.target.value)} aria-label="Product" disabled={Boolean(order.consignmentId)}>
-                  <option value="">Choose a product</option>
-                  <optgroup label="Products">
-                    {products.filter((item) => !item.isCombo).map((product) => (
-                      <option key={product.id} value={product.id}>{product.name} · in stock {shownStock(product, heldPieces)}</option>
-                    ))}
-                  </optgroup>
-                  {products.some((item) => item.isCombo) ? (
-                    <optgroup label="Combos">
-                      {products.filter((item) => item.isCombo).map((product) => (
-                        <option key={product.id} value={product.id}>{product.name} · can make {shownCombo(product, products, heldPieces)}</option>
-                      ))}
-                    </optgroup>
-                  ) : null}
-                </select>
+                <Select
+                  multiple
+                  search
+                  label="Products"
+                  value={pick}
+                  onChange={setPick}
+                  placeholder="Choose products"
+                  disabled={Boolean(order.consignmentId)}
+                  options={productOptions(products, (product) => product.isCombo ? `can make ${shownCombo(product, products, heldPieces)}` : `in stock ${shownStock(product, heldPieces)}`)}
+                />
                 <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} disabled={Boolean(order.consignmentId)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
                 <button type="button" className="btn secondary" onClick={addLine} disabled={Boolean(order.consignmentId)}>Add</button>
               </div>
@@ -438,9 +444,13 @@ export default function OrderDetail({ id }) {
               </Field>
             </div>
             <Field label="Payment">
-              <select value={draft.paymentMethod} onChange={(event) => setDraftField("paymentMethod", event.target.value)} disabled={Boolean(order.consignmentId)}>
-                {PAYMENTS.map((payment) => <option key={payment.id} value={payment.id}>{payment.label}</option>)}
-              </select>
+              <Select
+                label="Payment"
+                value={draft.paymentMethod}
+                onChange={(value) => setDraftField("paymentMethod", value)}
+                disabled={Boolean(order.consignmentId)}
+                options={PAYMENTS.map((payment) => ({ value: payment.id, label: payment.label }))}
+              />
             </Field>
             <div className="field">
               <span>Delivery</span>

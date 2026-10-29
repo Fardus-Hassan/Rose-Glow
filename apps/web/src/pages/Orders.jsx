@@ -6,6 +6,7 @@ import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
+import Select from "../select.jsx"
 import { Banner, ContactActions, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
@@ -28,7 +29,7 @@ function matchesFilter(order, filter) {
 export default function Orders() {
   const { go } = useRoute()
   const [status, setStatus] = useState("all")
-  const [source, setSource] = useState("all")
+  const [source, setSource] = useState([])
   const [range, setRange] = useState(null)
   const [sources, setSources] = useState([])
   const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get("q") || "")
@@ -74,7 +75,7 @@ export default function Orders() {
     const handle = setTimeout(() => {
       const query = new URLSearchParams({
         status,
-        source,
+        source: source.length ? source.join(",") : "all",
         q,
         limit: String(pageSize),
         offset: String((page - 1) * pageSize),
@@ -166,11 +167,14 @@ export default function Orders() {
             <input type="search" value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} placeholder="Name, mobile, or RG number" aria-label="Search" />
             {q ? <button type="button" className="search-clear" aria-label="Clear search" onClick={() => { setQ(""); setPage(1) }}>×</button> : null}
           </label>
-          <select aria-label="Source" value={source} onChange={(event) => { setSource(event.target.value); setPage(1) }}>
-            <option value="all">All sources</option>
-            {sources.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            <option value="none">Not set</option>
-          </select>
+          <Select
+            multiple
+            label="Source"
+            allLabel="All sources"
+            value={source}
+            onChange={(next) => { setSource(next); setPage(1) }}
+            options={[...sources.map((item) => ({ value: String(item.id), label: item.name })), { value: "none", label: "Not set" }]}
+          />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
         </div>
       </div>

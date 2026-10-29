@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { statusLabel } from "@rose/shared"
+import Select from "./select.jsx"
 
 const confirmListeners = new Set()
 
@@ -235,9 +236,14 @@ export function Pager({ page, total, pageSize = LIST_PAGE, onPage, pageSizes, on
           <span>Page {page} / {pages}</span>
           <label>
             Rows
-            <select aria-label="Rows per page" value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>
-              {pageSizes.map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
+            <Select
+              className="compact"
+              search={false}
+              label="Rows per page"
+              value={String(pageSize)}
+              onChange={(next) => onPageSize(Number(next))}
+              options={pageSizes.map((size) => ({ value: String(size), label: String(size) }))}
+            />
           </label>
         </div>
       ) : <p className="muted small">{start}–{end} / {total}</p>}

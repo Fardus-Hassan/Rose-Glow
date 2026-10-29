@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { api } from "./api.js"
+import Select from "./select.jsx"
 import { Banner, askConfirm } from "./ui.jsx"
 
 export function SourceField({ value, onChange, sources, onSources, required = false }) {
@@ -12,10 +13,13 @@ export function SourceField({ value, onChange, sources, onSources, required = fa
           Source
           <button type="button" className="icon-add" aria-label="Add or edit sources" onMouseDown={(event) => event.preventDefault()} onClick={() => setOpen(true)}>+</button>
         </span>
-        <select value={value} required={required} onChange={(event) => onChange(event.target.value)}>
-          <option value="">Choose</option>
-          {sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
-        </select>
+        <Select
+          label="Source"
+          value={value === null || value === undefined ? "" : String(value)}
+          required={required}
+          onChange={onChange}
+          options={sources.map((source) => ({ value: String(source.id), label: source.name }))}
+        />
       </label>
       {open ? (
         <SourceModal

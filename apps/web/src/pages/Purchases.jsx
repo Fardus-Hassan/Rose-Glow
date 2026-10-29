@@ -4,6 +4,7 @@ import { api } from "../api.js"
 import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
 import { useRoute } from "../route.jsx"
+import Select from "../select.jsx"
 import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 import Withdrawals from "./Withdrawals.jsx"
 
@@ -352,12 +353,14 @@ export default function Purchases() {
           </label>
           <label className="field">
             <span>Product</span>
-            <select value={productId} onChange={(event) => pickProduct(event.target.value)} required>
-              <option value="">Choose</option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>{product.name}</option>
-              ))}
-            </select>
+            <Select
+              search
+              required
+              label="Product"
+              value={productId === "" || productId == null ? "" : String(productId)}
+              onChange={pickProduct}
+              options={products.map((product) => ({ value: String(product.id), label: product.name }))}
+            />
           </label>
           <label className="field">
             <span>From</span>
@@ -392,9 +395,7 @@ export default function Purchases() {
           </label>
           <label className="field">
             <span>What</span>
-            <select value={kind} onChange={(event) => setKind(event.target.value)}>
-              {EXPENSE_KINDS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
-            </select>
+            <Select label="What" value={kind} onChange={setKind} options={EXPENSE_KINDS.map((item) => ({ value: item.id, label: item.label }))} />
           </label>
           <label className="field">
             <span>Amount</span>

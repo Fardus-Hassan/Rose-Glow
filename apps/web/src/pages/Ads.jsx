@@ -4,6 +4,7 @@ import { api } from "../api.js"
 import DateRange from "../DateRange.jsx"
 import { rangeFor, todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
+import Select from "../select.jsx"
 import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100]
@@ -172,10 +173,15 @@ export default function Ads() {
             </label>
             <label className="field">
               <span>Platform</span>
-              <select value={sourceId} onChange={(event) => setSourceId(event.target.value)} required>
-                {sources.length === 0 ? <option value="">Add a source first</option> : null}
-                {sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}
-              </select>
+              <Select
+                required
+                label="Platform"
+                value={sourceId === "" || sourceId == null ? "" : String(sourceId)}
+                onChange={setSourceId}
+                placeholder={sources.length === 0 ? "Add a source first" : "Choose"}
+                disabled={sources.length === 0}
+                options={sources.map((source) => ({ value: String(source.id), label: source.name }))}
+              />
             </label>
             <label className="field">
               <span>Amount</span>

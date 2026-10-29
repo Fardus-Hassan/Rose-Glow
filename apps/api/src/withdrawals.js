@@ -46,8 +46,9 @@ export async function listWithdrawals({ limit, offset, from, to, reason }) {
   const start = optionalDay(from)
   const end = optionalDay(to)
   if (start && end && start > end) throw fail(400, "The start date is after the end date")
-  const only = REASONS.has(String(reason || "")) ? String(reason) : null
-  const ofReason = `($3::text IS NULL OR reason = $3::text)`
+  const picked = [...new Set(String(reason || "").split(",").map((item) => item.trim()).filter((item) => REASONS.has(item)))]
+  const only = picked.length ? picked : null
+  const ofReason = `($3::text[] IS NULL OR reason = ANY($3::text[]))`
   const [count, rows, reasons, totals] = await Promise.all([
     pool.query(
       `SELECT COUNT(*)::int AS total, COALESCE(SUM(amount), 0)::float8 AS amount
