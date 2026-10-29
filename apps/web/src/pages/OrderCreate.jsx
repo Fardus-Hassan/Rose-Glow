@@ -71,6 +71,8 @@ function PastOrders({ mobile, onFill }) {
   )
 }
 
+const DEFAULT_COURIER_NOTE = "কাস্টমার ফোন রিসিভ না করলে বা কোনো সমস্যা হলে অবশ্যই মার্চেন্টকে জানাতে হবে। মার্চেন্টকে না জানিয়ে কোনোভাবেই প্রোডাক্ট ফেরত পাঠানো যাবে না।"
+
 export default function OrderCreate() {
   const { go } = useRoute()
   const [products, setProducts] = useState([])
@@ -93,7 +95,7 @@ export default function OrderCreate() {
     discount: "",
     paidAmount: "",
     paymentMethod: "cod",
-    note: "",
+    note: DEFAULT_COURIER_NOTE,
     privateNote: "",
     sourceId: "",
   })
