@@ -82,7 +82,6 @@ export default function OrderCreate() {
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [pick, setPick] = useState([])
-  const [pickQty, setPickQty] = useState(1)
   const [lines, setLines] = useState([])
   const [form, setForm] = useState({
     customerName: "",
@@ -141,18 +140,14 @@ export default function OrderCreate() {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
-  function addLine() {
-    const chosen = pick.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
-    const quantity = Number(pickQty)
-    if (!chosen.length || !Number.isInteger(quantity) || quantity <= 0) {
-      setError("Choose a product and a quantity")
-      return
-    }
+  function addLine(ids) {
+    const chosen = ids.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
+    if (!chosen.length) return
     setError("")
     setLines((current) => chosen.reduce((next, product) => addTo(next, {
       productId: product.id,
       name: product.name,
-      quantity,
+      quantity: 1,
       sellPrice: product.sellPrice,
       costPrice: product.costPrice,
       isCombo: product.isCombo,
@@ -160,7 +155,6 @@ export default function OrderCreate() {
       gift: false,
     }), current))
     setPick([])
-    setPickQty(1)
   }
 
   function setLineQty(key, value) {
@@ -270,18 +264,17 @@ export default function OrderCreate() {
           />
 
           <article className="card">
-            <div className="add-line">
+            <div className="add-line single">
               <Select
                 multiple
                 search
                 label="Products"
                 value={pick}
                 onChange={setPick}
+                onDone={addLine}
                 placeholder="Choose products"
                 options={productOptions(products, (product) => product.isCombo ? `can make ${product.available}` : `in stock ${product.stockQty}`)}
               />
-              <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
-              <button type="button" className="btn secondary" onClick={addLine}>Add</button>
             </div>
             {lines.length === 0 ? <p className="muted small">Add a product.</p> : (
               <ul className="lines create-lines">

@@ -24,7 +24,6 @@ export default function OrderDetail({ id }) {
   const [products, setProducts] = useState([])
   const [lines, setLines] = useState([])
   const [pick, setPick] = useState([])
-  const [pickQty, setPickQty] = useState(1)
   const [draft, setDraft] = useState(null)
   const [steps, setSteps] = useState([])
 
@@ -92,7 +91,6 @@ export default function OrderDetail({ id }) {
       }
     }))
     setPick([])
-    setPickQty(1)
     setEditing(true)
   }
 
@@ -100,18 +98,14 @@ export default function OrderDetail({ id }) {
     setDraft((current) => ({ ...current, [key]: value }))
   }
 
-  function addLine() {
-    const chosen = pick.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
-    const quantity = Number(pickQty)
-    if (!chosen.length || !Number.isInteger(quantity) || quantity <= 0) {
-      setError("Choose a product and a quantity")
-      return
-    }
+  function addLine(ids) {
+    const chosen = ids.map((id) => products.find((item) => item.id === Number(id))).filter(Boolean)
+    if (!chosen.length) return
     setError("")
     setLines((current) => chosen.reduce((next, product) => addTo(next, {
       productId: product.id,
       name: product.name,
-      quantity,
+      quantity: 1,
       sellPrice: product.sellPrice,
       costPrice: product.costPrice,
       isCombo: product.isCombo,
@@ -119,7 +113,6 @@ export default function OrderDetail({ id }) {
       gift: false,
     }), current))
     setPick([])
-    setPickQty(1)
   }
 
   function setLineQty(key, value) {
@@ -393,19 +386,18 @@ export default function OrderDetail({ id }) {
               </div>
             </article>
             <article className="card">
-              <div className="add-line">
+              <div className="add-line single">
                 <Select
                   multiple
                   search
                   label="Products"
                   value={pick}
                   onChange={setPick}
+                  onDone={addLine}
                   placeholder="Choose products"
                   disabled={Boolean(order.consignmentId)}
                   options={productOptions(products, (product) => product.isCombo ? `can make ${shownCombo(product, products, heldPieces)}` : `in stock ${shownStock(product, heldPieces)}`)}
                 />
-                <input aria-label="Quantity" type="number" min="1" step="1" value={pickQty} onChange={(event) => setPickQty(event.target.value)} disabled={Boolean(order.consignmentId)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addLine() } }} />
-                <button type="button" className="btn secondary" onClick={addLine} disabled={Boolean(order.consignmentId)}>Add</button>
               </div>
               {lines.length === 0 ? <p className="muted small">Add a product.</p> : (
                 <ul className="lines create-lines">

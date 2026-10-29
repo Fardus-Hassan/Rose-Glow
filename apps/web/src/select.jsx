@@ -18,6 +18,7 @@ export default function Select({
   required = false,
   label = "",
   className = "",
+  onDone,
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -34,6 +35,8 @@ export default function Select({
     ? (Array.isArray(value) ? value : []).map(String)
     : value === "" || value === null || value === undefined ? [] : [String(value)]
   const pickedSet = new Set(picked)
+  const latest = useRef(picked)
+  latest.current = picked
   const searchable = search ?? options.length >= SEARCH_FROM
   const term = query.trim().toLowerCase()
   const shown = term ? options.filter((option) => `${option.label} ${option.hint || ""} ${option.group || ""}`.toLowerCase().includes(term)) : options
@@ -57,6 +60,11 @@ export default function Select({
   function close(refocus) {
     setOpen(false)
     if (refocus) trigger.current?.focus()
+    if (multiple && onDone && latest.current.length) {
+      const done = latest.current
+      latest.current = []
+      onDone(done)
+    }
   }
 
   function choose(option) {
