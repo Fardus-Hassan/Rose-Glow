@@ -7,7 +7,7 @@ import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import Select from "../select.jsx"
-import { Banner, ContactActions, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -199,12 +199,12 @@ export default function Orders() {
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
                   <td data-label="Order">
                     <span className="order-cell">
-                      <strong>{order.number}</strong>
+                      <CopyChip value={order.number} label="Order number" className="order-no" />
                       {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
                     </span>
                     <small className="courier-meta">
                       <span>{order.courier}</span>
-                      {order.trackingCode ? <span>{order.trackingCode}</span> : null}
+                      {order.consignmentId ? <CopyChip value={String(order.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : null}
                       {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}
                     </small>
                   </td>

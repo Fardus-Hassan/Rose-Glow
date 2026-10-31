@@ -8,7 +8,7 @@ import { useRoute } from "../route.jsx"
 import Select, { productOptions } from "../select.jsx"
 import { SourceField } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, ContactActions, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
   const { go } = useRoute()
@@ -321,7 +321,7 @@ export default function OrderDetail({ id }) {
         <div>
           <button type="button" className="text-btn back" onClick={() => go("/orders")}>All orders</button>
           <div className="detail-title">
-            <h1>{order.number}</h1>
+            <h1><CopyChip value={order.number} label="Order number" className="order-no big" /></h1>
             <StatusPill status={editing && draft ? draft.status : order.status} />
           </div>
           <p className="muted">{order.customerName}{order.sourceName ? ` · ${order.sourceName}` : ""} · {when(order.orderedAt)}</p>
@@ -708,17 +708,23 @@ function ChargeBox({ order, onSaved, children }) {
   return (
     <div className="charge-box">
       <div className="fact-grid parcel-facts">
-        <p><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
-        <p>
-          <span>Tracking</span>
-          <b>{order.trackingCode ? <CopyText value={order.trackingCode} label="Tracking code" /> : order.consignmentId}</b>
+        <p className="f-id">
+          <span>Consignment ID</span>
+          <b><CopyChip value={String(order.consignmentId)} label="Consignment ID" className="consign big" /></b>
         </p>
-        <p>
+        {order.trackingCode ? (
+          <p className="f-track">
+            <span>Tracking code</span>
+            <b><CopyChip value={order.trackingCode} label="Tracking code" className="consign big" /></b>
+          </p>
+        ) : null}
+        <p className="f-status"><span>Status</span><b>{courierStatusLabel(order.courierStatus) || "Pending"}</b></p>
+        <p className="f-charge">
           <span>Charge</span>
           <b>{known ? taka(order.courierCharge) : taka(order.deliveryCharge)}</b>
           <small className="muted">{known ? (order.courierChargeBy === "manual" ? "You entered" : "From Steadfast") : "Estimate"}</small>
         </p>
-        <p>
+        <p className="f-collected">
           <span>Collected</span>
           <b>{order.courierCod === null ? "—" : taka(order.courierCod)}</b>
           <small className="muted">{order.courierCod === null ? "Not yet" : order.codFee > 0 ? `1% COD ${taka(order.codFee)}` : "By Steadfast"}</small>

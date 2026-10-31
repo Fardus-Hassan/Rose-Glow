@@ -110,6 +110,47 @@ export function CopyText({ value, label, className = "" }) {
   )
 }
 
+export function CopyChip({ value, label, tag = "", className = "" }) {
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    if (!done) return undefined
+    const timer = setTimeout(() => setDone(false), 1400)
+    return () => clearTimeout(timer)
+  }, [done])
+
+  async function copy(event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const text = String(value ?? "").trim()
+    if (!text) return
+    try {
+      await writeClipboard(text)
+      setDone(true)
+      toast.success(`${label} copied`)
+    } catch {
+      toast.error("Could not copy")
+    }
+  }
+
+  return (
+    <button type="button" className={`copy-chip${done ? " done" : ""} ${className}`.trim()} onClick={copy} title={`Copy ${label.toLowerCase()}`} aria-label={`Copy ${label.toLowerCase()} ${value}`}>
+      {tag ? <span className="copy-chip-tag">{tag}</span> : null}
+      <b>{value}</b>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        {done ? (
+          <path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+          <>
+            <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M15.5 8.5V6.5a2 2 0 0 0-2-2h-7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </>
+        )}
+      </svg>
+    </button>
+  )
+}
+
 async function writeClipboard(text) {
   if (document.hasFocus() && navigator.clipboard?.writeText) {
     try {
