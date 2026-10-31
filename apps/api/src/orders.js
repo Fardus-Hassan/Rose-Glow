@@ -1,8 +1,6 @@
 import { MANUAL_STATUSES, PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, mobile, money, noteText, when, whole } from "./http.js"
-import { hiddenCourierStatuses } from "./settings.js"
-
 const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
 const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
 
@@ -180,7 +178,7 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   const clause = where.length ? `WHERE ${where.join(" AND ")}` : ""
   const statusWhere = sharedWhere.length ? `WHERE ${sharedWhere.join(" AND ")}` : ""
   const facetWhere = [...sharedWhere, "o.courier_status IS NOT NULL", "o.courier_status <> ''"]
-  const [statusFacets, facets, count, hidden] = await Promise.all([
+  const [statusFacets, facets, count] = await Promise.all([
     pool.query(
       `SELECT o.status AS id, COUNT(*)::int AS count
        FROM orders o
@@ -197,7 +195,6 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
       sharedParams,
     ),
     pool.query(`SELECT COUNT(*)::int AS total FROM orders o ${clause}`, params),
-    hiddenCourierStatuses(),
   ])
   params.push(limit, offset)
   const rows = await pool.query(
@@ -222,7 +219,6 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     total: count.rows[0].total,
     statusCounts: statusFacets.rows,
     courierFilters: facets.rows,
-    hiddenCourierStatuses: hidden,
   }
 }
 

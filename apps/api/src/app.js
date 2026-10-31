@@ -20,7 +20,6 @@ import {
   saveAccount,
   trackOrder,
 } from "./courier.js"
-import { courierFilterView, saveCourierFilters } from "./settings.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
 import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
@@ -234,14 +233,6 @@ export function mount(app) {
     const limit = Math.min(Math.max(whole(req.query.limit, 10) || 10, 1), 200)
     const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
     res.json(await parcelList({ limit, offset }))
-  }))
-
-  app.get("/api/courier/filters", wrap(async (req, res) => {
-    res.json(await courierFilterView())
-  }))
-
-  app.put("/api/courier/filters", wrap(async (req, res) => {
-    res.json(await saveCourierFilters(req.body || {}))
   }))
 
   app.get("/api/courier/notifications", wrap(async (req, res) => {

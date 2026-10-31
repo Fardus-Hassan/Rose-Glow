@@ -38,7 +38,6 @@ export default function Orders() {
   const [data, setData] = useState(null)
   const [statusCounts, setStatusCounts] = useState([])
   const [courierFilters, setCourierFilters] = useState([])
-  const [hiddenCourier, setHiddenCourier] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
@@ -95,7 +94,6 @@ export default function Orders() {
           setData(body)
           setStatusCounts(body.statusCounts || [])
           setCourierFilters(body.courierFilters || [])
-          setHiddenCourier(body.hiddenCourierStatuses || [])
         })
         .catch((reason) => { if (live) setError(reason.message) })
         .finally(() => { if (live) setLoading(false) })
@@ -111,15 +109,13 @@ export default function Orders() {
     return () => { live = false }
   }, [])
 
-  const hidden = new Set(hiddenCourier)
-  const knownIds = Object.keys(COURIER_STATUSES).filter((id) => !hidden.has(id))
-  const extraIds = courierFilters.map((item) => item.id).filter((id) => id && !COURIER_STATUSES[id] && !hidden.has(id))
-  const selectedId = status.startsWith("sf:") ? status.slice(3) : ""
-  const courierPills = selectedId && !knownIds.includes(selectedId) && !extraIds.includes(selectedId)
-    ? [...knownIds, ...extraIds, selectedId]
-    : [...knownIds, ...extraIds]
-  const statusCount = new Map(statusCounts.map((item) => [item.id, item.count]))
   const courierCount = new Map(courierFilters.map((item) => [item.id, item.count]))
+  const selectedId = status.startsWith("sf:") ? status.slice(3) : ""
+  const filled = (id) => id && (courierCount.get(id) > 0 || id === selectedId)
+  const knownIds = Object.keys(COURIER_STATUSES).filter(filled)
+  const extraIds = [...courierFilters.map((item) => item.id), selectedId].filter((id, index, list) => filled(id) && !COURIER_STATUSES[id] && list.indexOf(id) === index)
+  const courierPills = [...knownIds, ...extraIds]
+  const statusCount = new Map(statusCounts.map((item) => [item.id, item.count]))
   const allCount = statusCounts.reduce((sum, item) => sum + item.count, 0)
   const countsReady = data !== null
 

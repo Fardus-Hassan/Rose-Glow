@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
-import { COURIER_STATUSES, courierStatusLabel, statusLabel } from "@rose/shared"
+import { courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
@@ -23,9 +23,6 @@ export default function Courier() {
   const [apiKey, setApiKey] = useState("")
   const [secretKey, setSecretKey] = useState("")
   const [webhookToken, setWebhookToken] = useState("")
-  const [hidden, setHidden] = useState(null)
-  const [extra, setExtra] = useState([])
-  const [savingFilters, setSavingFilters] = useState(false)
 
   function applyAccount(next) {
     setAccount(next)
@@ -34,12 +31,9 @@ export default function Courier() {
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/courier/account"), api("/api/courier/filters")])
-      .then(([next, filters]) => {
-        if (!live) return
-        applyAccount(next)
-        setHidden(new Set(filters.hidden || []))
-        setExtra(filters.extra || [])
+    api("/api/courier/account")
+      .then((next) => {
+        if (live) applyAccount(next)
       })
       .catch((reason) => {
         if (live) setError(reason.message)
@@ -131,40 +125,6 @@ export default function Courier() {
     }
   }
 
-  function toggleFilter(id) {
-    setHidden((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  async function saveFilters() {
-    setSavingFilters(true)
-    setError("")
-    try {
-      const body = await api("/api/courier/filters", {
-        method: "PUT",
-        body: { hidden: [...hidden] },
-      })
-      setHidden(new Set(body.hidden || []))
-      setExtra(body.extra || [])
-      toast.success("Filter list saved")
-    } catch (reason) {
-      setError(reason.message)
-      toast.error(reason.message)
-    } finally {
-      setSavingFilters(false)
-    }
-  }
-
-  const filterStatuses = [
-    ...Object.entries(COURIER_STATUSES).map(([id, label]) => ({ id, label })),
-    ...extra.filter((id) => !COURIER_STATUSES[id]).map((id) => ({ id, label: courierStatusLabel(id) })),
-  ]
-  const shown = hidden ? filterStatuses.filter((item) => !hidden.has(item.id)).length : 0
-
   return (
     <section className="page courier-page">
       <div className="page-head">
@@ -220,33 +180,6 @@ export default function Courier() {
         </aside>
       </div>
 
-      <article className="card stack tight">
-        <div className="card-head">
-          <h2>Order filters</h2>
-          {hidden ? <p className="muted">{shown} of {filterStatuses.length} shown on All orders</p> : null}
-        </div>
-        <p className="muted">Tick the Steadfast statuses you want on All orders. Untick any you want to hide, then save.</p>
-        {!hidden ? <p className="muted">Loading…</p> : (
-          <>
-            <div className="check-grid">
-              {filterStatuses.map((item) => (
-                <label key={item.id} className="check">
-                  <input
-                    type="checkbox"
-                    checked={!hidden.has(item.id)}
-                    onChange={() => toggleFilter(item.id)}
-                  />
-                  <span>{item.label}</span>
-                </label>
-              ))}
-            </div>
-            <div className="actions filter-actions">
-              <button type="button" className="text-btn" disabled={savingFilters} onClick={() => setHidden(new Set())}>Show all</button>
-              <button type="button" className="btn" disabled={savingFilters} onClick={saveFilters}>{savingFilters ? "Saving…" : "Save filters"}</button>
-            </div>
-          </>
-        )}
-      </article>
 
       <article className="card list-card parcel-card">
         <div className="card-head">
