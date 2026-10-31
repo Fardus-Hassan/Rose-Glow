@@ -221,15 +221,20 @@ export async function notificationFeed(limit) {
   return listNotifications(limit)
 }
 
+// courier_events is also the parcel history (tracking steps, charge, webhook dedupe), so old rows stay and only leave the bell.
+const NOTIFY_FRESH = `created_at > now() - interval '30 days'`
+
 async function listNotifications(limit = 20) {
   const [counts, items] = await Promise.all([
     pool.query(
       `SELECT COUNT(*) FILTER (WHERE read_at IS NULL)::int AS unread, COUNT(*)::int AS total
-       FROM courier_events`,
+       FROM courier_events
+       WHERE ${NOTIFY_FRESH}`,
     ),
     pool.query(
       `SELECT id, order_id, status, message, created_at, read_at IS NULL AS unread
        FROM courier_events
+       WHERE ${NOTIFY_FRESH}
        ORDER BY created_at DESC, id DESC
        LIMIT $1`,
       [limit],
@@ -254,7 +259,7 @@ export async function markNotifications(ids, limit) {
     const clean = ids.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0).slice(0, 50)
     if (clean.length) await pool.query(`UPDATE courier_events SET read_at = now() WHERE id = ANY($1::int[]) AND read_at IS NULL`, [clean])
   } else {
-    await pool.query(`UPDATE courier_events SET read_at = now() WHERE read_at IS NULL`)
+    await pool.query(`UPDATE courier_events SET read_at = now() WHERE read_at IS NULL AND ${NOTIFY_FRESH}`)
   }
   return listNotifications(limit)
 }
