@@ -671,7 +671,8 @@ h1 .copy-chip.big svg { width: 20px; height: 20px; }
   .payment-card .card-head { flex-direction: column; align-items: stretch; }
   .payment-tools { flex-wrap: nowrap; }
   .payment-tools > :first-child { flex: 1; min-width: 0; }
-  .payment-tools > .btn { flex: none; min-height: 44px; padding-inline: 14px; }
+  .payment-tools .range-trigger { width: 100%; height: 40px; justify-content: center; }
+  .payment-tools > .btn { flex: none; height: 40px; min-height: 40px; padding: 0 14px; font-size: 0.9rem; }
   .payment-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .payment-parcels li { grid-template-columns: minmax(0, 1fr) auto; }
   .payment-parcel-ids { grid-column: 1 / -1; grid-row: 2; justify-items: start; }
