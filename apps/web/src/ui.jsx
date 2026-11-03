@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { statusLabel } from "@rose/shared"
 import Select from "./select.jsx"
+import { when } from "./format.js"
 
 const confirmListeners = new Set()
 
@@ -246,6 +247,19 @@ function CallIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M7.1 3.2c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.4 1.4c-.2.2-.3.5-.2.8 1.2 3.4 3.9 6.1 7.3 7.3.3.1.6 0 .8-.2l1.4-1.4c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.2 1.2c-.5.5-1.2.8-2 .7-6.2-.7-11.1-5.6-11.8-11.8-.1-.8.2-1.5.7-2l1.2-1.2Z" />
     </svg>
+  )
+}
+
+export function PaidBadge({ payout, big = false }) {
+  if (!payout) return null
+  const title = `Steadfast paid this to you in ${payout.label}${payout.paidAt ? ` on ${when(payout.paidAt)}` : ""}`
+  return (
+    <span className={`paid-badge${big ? " big" : ""}`} title={title}>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m6.5 12.5 3.5 3.5 7.5-8" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      Paid
+    </span>
   )
 }
 

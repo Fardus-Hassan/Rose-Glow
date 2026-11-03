@@ -8,7 +8,7 @@ import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import Select from "../select.jsx"
 import { TagList } from "../sources.jsx"
-import { Banner, ContactActions, CopyChip, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Empty, Pager, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -282,13 +282,12 @@ export default function Orders() {
                     <span className="order-cell">
                       <CopyChip value={order.number} label="Order number" className="order-no" />
                       {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
+                      <PaidBadge payout={order.payout} />
                     </span>
                     <small className="courier-meta">
                       <span>{order.courier}</span>
                       {order.consignmentId ? <CopyChip value={String(order.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : null}
-                      {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}
-                      {order.payout ? <span className="paid-tag" title={`Steadfast paid this in ${order.payout.label}${order.payout.paidAt ? ` on ${when(order.payout.paidAt)}` : ""}`}>Paid</span> : null}
-                    </small>
+                      {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}                    </small>
                   </td>
                   <td data-label="Customer">
                     <CopyText value={order.customerName} label="Name" />

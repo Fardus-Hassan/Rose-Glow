@@ -8,7 +8,7 @@ import { useRoute } from "../route.jsx"
 import Select, { productOptions } from "../select.jsx"
 import { SourceField, TagField, TagList } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, ContactActions, CopyChip, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Field, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
   const { go } = useRoute()
@@ -327,6 +327,7 @@ export default function OrderDetail({ id }) {
           <div className="detail-title">
             <h1><CopyChip value={order.number} label="Order number" className="order-no big" /></h1>
             <StatusPill status={editing && draft ? draft.status : order.status} />
+            <PaidBadge payout={order.payout} big />
           </div>
           <p className="muted">{order.customerName}{order.sourceName ? ` · ${order.sourceName}` : ""} · {when(order.orderedAt)}</p>
         </div>
@@ -736,10 +737,15 @@ function ChargeBox({ order, onSaved, children }) {
         </p>
       </div>
       {order.payout ? (
-        <p className="payout-line">
-          <span className="paid-tag">Paid</span>
-          Steadfast paid this to you in <b>{order.payout.label}</b>{order.payout.paidAt ? ` on ${when(order.payout.paidAt)}` : ""}
-        </p>
+        <div className="payout-card">
+          <i aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.5 3.5 7.5-8" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </i>
+          <p>
+            <b>Paid to you by Steadfast</b>
+            <span>In <CopyChip value={order.payout.label} label="Payment ID" className="consign" />{order.payout.paidAt ? ` on ${when(order.payout.paidAt)}` : ""}</span>
+          </p>
+        </div>
       ) : null}
       {open ? (
         <form className="charge-form" onSubmit={(event) => { event.preventDefault(); save(value) }}>
