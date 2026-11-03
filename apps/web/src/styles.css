@@ -1533,7 +1533,7 @@ tr.selected { background: var(--rose-soft); }
     border-radius: 18px;
     background: var(--card);
   }
-  .filter-tools .search-box { grid-column: 1 / -1; width: 100%; }
+  .filter-tools .search-box, .filter-tools .range { grid-column: 1 / -1; width: 100%; }
   .filter-tools input, .filter-tools .select, .range, .range-trigger { width: 100%; max-width: 100%; }
   .filter-tools .range-trigger { justify-content: center; overflow: hidden; text-overflow: ellipsis; }
   .filter-pills {

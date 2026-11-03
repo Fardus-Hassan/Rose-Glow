@@ -39,6 +39,7 @@ function readUrl() {
   return {
     status: FILTERS.some((item) => item.id === status) || /^sf:[a-z0-9_]{1,80}$/.test(status) ? status : "all",
     source: (params.get("source") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
+    tags: (params.get("tags") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
     range: DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null,
     q: params.get("q") || "",
     page: Number.isInteger(page) && page > 1 ? page : 1,
@@ -46,10 +47,11 @@ function readUrl() {
   }
 }
 
-function writeUrl({ status, source, range, q, page, pageSize }) {
+function writeUrl({ status, source, tags, range, q, page, pageSize }) {
   const params = new URLSearchParams()
   if (status !== "all") params.set("status", status)
   if (source.length) params.set("source", source.join(","))
+  if (tags.length) params.set("tags", tags.join(","))
   if (range?.from && range?.to) {
     params.set("from", range.from)
     params.set("to", range.to)
@@ -67,8 +69,10 @@ export default function Orders() {
   const [initial] = useState(readUrl)
   const [status, setStatus] = useState(initial.status)
   const [source, setSource] = useState(initial.source)
+  const [tagPick, setTagPick] = useState(initial.tags)
   const [range, setRange] = useState(initial.range)
   const [sources, setSources] = useState([])
+  const [tags, setTags] = useState([])
   const [q, setQ] = useState(initial.q)
   const [page, setPage] = useState(initial.page)
   const [pageSize, setPageSize] = useState(initial.pageSize)
@@ -109,8 +113,8 @@ export default function Orders() {
   }
 
   useEffect(() => {
-    writeUrl({ status, source, range, q, page, pageSize })
-  }, [status, source, range, q, page, pageSize])
+    writeUrl({ status, source, tags: tagPick, range, q, page, pageSize })
+  }, [status, source, tagPick, range, q, page, pageSize])
 
   useEffect(() => {
     let live = true
@@ -121,6 +125,7 @@ export default function Orders() {
       const query = new URLSearchParams({
         status,
         source: source.length ? source.join(",") : "all",
+        tags: tagPick.join(","),
         q,
         limit: String(pageSize),
         offset: String((page - 1) * pageSize),
@@ -145,12 +150,15 @@ export default function Orders() {
         .finally(() => { if (live) setLoading(false) })
     }, 200)
     return () => { live = false; clearTimeout(handle) }
-  }, [status, source, range, q, page, pageSize, tick])
+  }, [status, source, tagPick, range, q, page, pageSize, tick])
 
   useEffect(() => {
     let live = true
     api("/api/sources")
       .then((body) => { if (live) setSources(body.sources) })
+      .catch(() => {})
+    api("/api/tags")
+      .then((body) => { if (live) setTags(body.tags) })
       .catch(() => {})
     return () => { live = false }
   }, [])
@@ -216,6 +224,15 @@ export default function Orders() {
             value={source}
             onChange={(next) => { setSource(next); setPage(1) }}
             options={[...sources.map((item) => ({ value: String(item.id), label: item.name })), { value: "none", label: "Not set" }]}
+          />
+          <Select
+            multiple
+            search={tags.length > 8}
+            label="Tags"
+            allLabel="All tags"
+            value={tagPick}
+            onChange={(next) => { setTagPick(next); setPage(1) }}
+            options={[...tags.map((item) => ({ value: String(item.id), label: item.name })), { value: "none", label: "No tags" }]}
           />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
         </div>

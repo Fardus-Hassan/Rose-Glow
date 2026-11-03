@@ -128,7 +128,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const COURIER_STATUS_ID = /^[a-z0-9_]{1,80}$/
 
-export async function listOrders({ status, q, source, from, to, limit, offset }) {
+export async function listOrders({ status, q, source, tags, from, to, limit, offset }) {
   const params = []
   const where = []
   if (source && source !== "all") {
@@ -145,6 +145,22 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
       parts.push(`o.source_id = ANY($${params.length}::int[])`)
     }
     if (none) parts.push("o.source_id IS NULL")
+    if (parts.length) where.push(`(${parts.join(" OR ")})`)
+  }
+  if (tags) {
+    const picks = [...new Set(String(tags).split(",").map((item) => item.trim()).filter(Boolean))]
+    const none = picks.includes("none")
+    const ids = picks.filter((item) => item !== "none").map((item) => {
+      const tagId = whole(item)
+      if (!tagId || tagId <= 0) throw fail(400, "Tag is not valid")
+      return tagId
+    })
+    const parts = []
+    if (ids.length) {
+      params.push(ids)
+      parts.push(`EXISTS (SELECT 1 FROM order_tag_links l WHERE l.order_id = o.id AND l.tag_id = ANY($${params.length}::int[]))`)
+    }
+    if (none) parts.push("NOT EXISTS (SELECT 1 FROM order_tag_links l WHERE l.order_id = o.id)")
     if (parts.length) where.push(`(${parts.join(" OR ")})`)
   }
   const hasFrom = Boolean(from)

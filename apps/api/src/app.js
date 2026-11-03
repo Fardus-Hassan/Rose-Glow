@@ -222,6 +222,7 @@ export function mount(app) {
       status: req.query.status || "all",
       q: req.query.q || "",
       source: req.query.source || "all",
+      tags: req.query.tags || "",
       from: req.query.from || "",
       to: req.query.to || "",
       limit,
