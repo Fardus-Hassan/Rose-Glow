@@ -47,6 +47,7 @@ function Brand({ go }) {
 
 export default function App() {
   const [key, setKey] = useState(locationKey)
+  const [visit, setVisit] = useState(0)
 
   useEffect(() => {
     const onPop = () => setKey(locationKey())
@@ -57,6 +58,7 @@ export default function App() {
   function go(href) {
     window.history.pushState({}, "", href)
     setKey(href)
+    setVisit((value) => value + 1)
   }
 
   const path = key.split("?")[0]
@@ -73,7 +75,7 @@ export default function App() {
   let page = <Dashboard />
   if (path === "/orders/new") page = <OrderCreate />
   else if (orderMatch) page = <OrderDetail id={Number(orderMatch[1])} />
-  else if (path === "/orders") page = <Orders key={key} />
+  else if (path === "/orders") page = <Orders key={`${key}#${visit}`} />
   else if (path === "/inventory") page = <Inventory />
   else if (path === "/purchases") page = <Purchases />
   else if (path === "/ads") page = <Ads />

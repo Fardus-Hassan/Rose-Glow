@@ -27,15 +27,51 @@ function matchesFilter(order, filter) {
   return order.status === filter
 }
 
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+function readUrl() {
+  const params = new URLSearchParams(window.location.search)
+  const status = params.get("status") || ""
+  const from = params.get("from") || ""
+  const to = params.get("to") || ""
+  const page = Number(params.get("page"))
+  const rows = Number(params.get("rows"))
+  return {
+    status: FILTERS.some((item) => item.id === status) || /^sf:[a-z0-9_]{1,80}$/.test(status) ? status : "all",
+    source: (params.get("source") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
+    range: DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null,
+    q: params.get("q") || "",
+    page: Number.isInteger(page) && page > 1 ? page : 1,
+    pageSize: PAGE_SIZES.includes(rows) ? rows : 10,
+  }
+}
+
+function writeUrl({ status, source, range, q, page, pageSize }) {
+  const params = new URLSearchParams()
+  if (status !== "all") params.set("status", status)
+  if (source.length) params.set("source", source.join(","))
+  if (range?.from && range?.to) {
+    params.set("from", range.from)
+    params.set("to", range.to)
+  }
+  if (q.trim()) params.set("q", q)
+  if (page > 1) params.set("page", String(page))
+  if (pageSize !== 10) params.set("rows", String(pageSize))
+  const search = params.toString()
+  const next = `${window.location.pathname}${search ? `?${search}` : ""}`
+  if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(window.history.state, "", next)
+}
+
 export default function Orders() {
   const { go } = useRoute()
-  const [status, setStatus] = useState("all")
-  const [source, setSource] = useState([])
-  const [range, setRange] = useState(null)
+  const [initial] = useState(readUrl)
+  const [status, setStatus] = useState(initial.status)
+  const [source, setSource] = useState(initial.source)
+  const [range, setRange] = useState(initial.range)
   const [sources, setSources] = useState([])
-  const [q, setQ] = useState(() => new URLSearchParams(window.location.search).get("q") || "")
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [q, setQ] = useState(initial.q)
+  const [page, setPage] = useState(initial.page)
+  const [pageSize, setPageSize] = useState(initial.pageSize)
   const [data, setData] = useState(null)
   const [statusCounts, setStatusCounts] = useState([])
   const [courierFilters, setCourierFilters] = useState([])
@@ -71,6 +107,10 @@ export default function Orders() {
     setPage(next)
     document.querySelector(".list-card")?.scrollIntoView({ block: "start", behavior: "smooth" })
   }
+
+  useEffect(() => {
+    writeUrl({ status, source, range, q, page, pageSize })
+  }, [status, source, range, q, page, pageSize])
 
   useEffect(() => {
     let live = true
