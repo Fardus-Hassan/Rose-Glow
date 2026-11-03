@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { STATUSES, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
-import { AdPlatformBars, AdTrend, BooksMix, CourierSuccessChart, ShareDonut, SourceChart, StockMix, TrendChart, successRate } from "../charts.jsx"
+import { AdPlatformBars, AdTrend, BooksMix, CourierSuccessChart, MoneyChart, ShareDonut, SourceChart, StockMix, TrendChart, successRate } from "../charts.jsx"
 import DateRange from "../DateRange.jsx"
 import { rangeFor } from "../dates.js"
 import { taka } from "../format.js"
@@ -88,6 +88,44 @@ function useAds(range) {
   return { report: current, error }
 }
 
+function MoneyBlock() {
+  const [range, setRange] = useState(() => rangeFor("year"))
+  const [report, setReport] = useState(null)
+  const [error, setError] = useState("")
+  useEffect(() => {
+    let live = true
+    setError("")
+    const query = new URLSearchParams({ from: range.from, to: range.to })
+    api(`/api/stats/money?${query}`)
+      .then((body) => { if (live) setReport(body) })
+      .catch((reason) => { if (live) setError(reason.message) })
+    return () => { live = false }
+  }, [range.from, range.to])
+  const current = report && report.from === range.from && report.to === range.to ? report : null
+  return (
+    <article className="card dash-block money-block">
+      <div className="card-head">
+        <div>
+          <h2>Sales and Steadfast payments</h2>
+          <p className="muted small">What you sold and what Steadfast sent you</p>
+        </div>
+        <DateRange value={range} onChange={setRange} />
+      </div>
+      <Banner message={error} />
+      {!current && !error ? <p className="muted load-line">Loading…</p> : null}
+      {current ? (
+        <>
+          <div className="trend-kpis">
+            <span><i className="bar" />Sales <b>{taka(current.sales)}</b> · {current.orders} orders</span>
+            <span><i className="paid" />From Steadfast <b>{taka(current.received)}</b> · {current.payouts} {current.payouts === 1 ? "payment" : "payments"}</span>
+          </div>
+          <MoneyChart days={current.days} from={range.from} to={range.to} />
+        </>
+      ) : null}
+    </article>
+  )
+}
+
 function AdsBlock({ go }) {
   const [range, setRange] = useState(() => rangeFor("month"))
   const { report, error } = useAds(range)
@@ -163,6 +201,8 @@ function Board({ data, go }) {
           </>
         ) : null}
       </div>
+
+      <MoneyBlock />
 
       <article className="card dash-block">
         <div className="card-head">

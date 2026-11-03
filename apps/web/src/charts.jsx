@@ -354,6 +354,88 @@ export function AdTrend({ days, from, to }) {
   )
 }
 
+const PAYOUT_COLOR = "#7dcaa5"
+
+export function MoneyChart({ days, from, to }) {
+  const buckets = bucketPoints(days, from, to, ["sales", "orders", "received", "payouts"])
+  const [active, setActive] = useState(null)
+  const peak = Math.max(0, ...buckets.map((item) => Math.max(item.sales, item.received)))
+  const [host, px] = useWidth([peak])
+  if (!peak) return <p className="muted chart-empty">No sales or Steadfast payments in these dates.</p>
+  const scale = niceMax(peak)
+  const width = px
+  const height = 240
+  const font = width < 520 ? 12 : 13
+  const left = Math.max(44, axisAmount(scale).length * (font * 0.62) + 14)
+  const right = 12
+  const monthly = /^\d{4}-\d{2}$/.test(buckets[0]?.date || "")
+  const innerW = width - left - right
+  const slot = innerW / buckets.length
+  const stacked = monthly && slot < 48
+  const top = 14
+  const bottom = monthly ? (stacked ? font + 28 : font + 16) : font + 28
+  const innerH = height - top - bottom
+  const base = height - bottom
+  const barW = Math.max(2, Math.min(22, slot * 0.32))
+  const gap = Math.min(4, barW * 0.25)
+  const xAt = (index) => left + slot * index + slot / 2
+  const tall = (value) => Math.max(value ? 2 : 0, (value / scale) * innerH)
+  const steps = 4
+  const current = active == null ? null : buckets[active]
+
+  return (
+    <div className="trend" ref={host}>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ fontSize: font }} role="img" aria-label="Sales and Steadfast payments" onPointerLeave={() => setActive(null)}>
+        {Array.from({ length: steps + 1 }, (_, step) => {
+          const y = base - (innerH / steps) * step
+          return (
+            <g key={step}>
+              <line x1={left} x2={width - right} y1={y} y2={y} className="trend-grid" />
+              <text x={left - 8} y={y} textAnchor="end" dominantBaseline="middle" className="trend-axis">{axisAmount((scale / steps) * step)}</text>
+            </g>
+          )
+        })}
+        <defs>
+          <linearGradient id="money-sales" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#f4b3b6" />
+            <stop offset="1" stopColor="#d45362" />
+          </linearGradient>
+          <linearGradient id="money-paid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#b5ead0" />
+            <stop offset="1" stopColor="#3f9f74" />
+          </linearGradient>
+        </defs>
+        {current ? <rect x={left + slot * active + 2} y={top} width={slot - 4} height={innerH} rx="8" className="money-focus" /> : null}
+        {buckets.map((item, index) => {
+          const center = xAt(index)
+          const sales = tall(item.sales)
+          const received = tall(item.received)
+          const dim = active != null && index !== active ? 0.5 : 1
+          return (
+            <g key={item.date} opacity={dim}>
+              <rect x={center - gap / 2 - barW} y={base - sales} width={barW} height={sales} rx={Math.min(4, barW / 2)} fill="url(#money-sales)" />
+              <rect x={center + gap / 2} y={base - received} width={barW} height={received} rx={Math.min(4, barW / 2)} fill="url(#money-paid)" />
+            </g>
+          )
+        })}
+        <DayLabels buckets={buckets} xAt={xAt} slot={slot} height={height} font={font} monthly={monthly} stacked={stacked} />
+        {buckets.map((item, index) => (
+          <rect key={`hit-${item.date}`} x={left + slot * index} y={top} width={slot} height={innerH} fill="transparent" onPointerEnter={() => setActive(index)} />
+        ))}
+      </svg>
+      {current ? (
+        <div className={`trend-hover ${xAt(active) / width > 0.62 ? "left" : ""}`} style={{ left: `${(xAt(active) / width) * 100}%` }}>
+          <strong>{current.full}</strong>
+          <span><i style={{ background: ORDER_COLOR }} />Sales <b>{taka(current.sales)}</b></span>
+          <span>Orders <b>{current.orders}</b></span>
+          <span><i style={{ background: PAYOUT_COLOR }} />From Steadfast <b>{taka(current.received)}</b></span>
+          <span>Payments <b>{current.payouts}</b></span>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function AdPlatformBars({ platforms }) {
   const paid = platforms.filter((item) => item.paid)
   if (!paid.length) return null

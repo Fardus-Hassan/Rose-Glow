@@ -128,9 +128,45 @@ function daySpan(from, to) {
   return Math.round((end - start) / 86400000) + 1
 }
 
-export async function rangeStats(from, to) {
+function checkRange(from, to) {
   if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
   if (daySpan(from, to) > 800) throw fail(400, "Keep the date range within 800 days")
+}
+
+export async function moneyStats(from, to) {
+  checkRange(from, to)
+  const [saleRows, payoutRows] = await Promise.all([
+    pool.query(
+      `SELECT to_char((o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date,
+              COUNT(*)::int AS orders, COALESCE(SUM(o.sales), 0)::float8 AS sales
+       FROM order_money o
+       WHERE o.counted AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+       GROUP BY 1`,
+      [from, to],
+    ),
+    pool.query(
+      `SELECT to_char((p.paid_at AT TIME ZONE 'Asia/Dhaka')::date, 'YYYY-MM-DD') AS date,
+              COUNT(*)::int AS payouts, COALESCE(SUM(COALESCE(p.received, p.amount)), 0)::float8 AS received
+       FROM steadfast_payments p
+       WHERE p.paid_at IS NOT NULL AND (p.paid_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date
+       GROUP BY 1`,
+      [from, to],
+    ),
+  ])
+  const byDate = new Map()
+  const pointOf = (date) => {
+    if (!byDate.has(date)) byDate.set(date, { date, orders: 0, sales: 0, payouts: 0, received: 0 })
+    return byDate.get(date)
+  }
+  for (const row of saleRows.rows) Object.assign(pointOf(row.date), { orders: row.orders, sales: Number(row.sales) })
+  for (const row of payoutRows.rows) Object.assign(pointOf(row.date), { payouts: row.payouts, received: Number(row.received) })
+  const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+  const sum = (key) => days.reduce((total, day) => total + day[key], 0)
+  return { from, to, days, orders: sum("orders"), sales: sum("sales"), payouts: sum("payouts"), received: sum("received") }
+}
+
+export async function rangeStats(from, to) {
+  checkRange(from, to)
   const countable = `o.counted AND (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date`
   const [pointRows, sourceRows, statusRows, courierRows] = await Promise.all([
     pool.query(

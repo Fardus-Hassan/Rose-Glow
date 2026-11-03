@@ -1,6 +1,6 @@
 import { migrate, pool } from "./db.js"
 import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
-import { dashboard, orderTotals, rangeStats } from "./dashboard.js"
+import { dashboard, moneyStats, orderTotals, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { createTag, deleteTag, listTags, updateTag } from "./tags.js"
 import { paymentDetail, paymentList, syncPayments, syncPaymentsSoon } from "./payments.js"
@@ -55,6 +55,10 @@ export function mount(app) {
 
   app.get("/api/stats", wrap(async (req, res) => {
     res.json(await rangeStats(req.query.from, req.query.to))
+  }))
+
+  app.get("/api/stats/money", wrap(async (req, res) => {
+    res.json(await moneyStats(req.query.from, req.query.to))
   }))
 
   app.get("/api/sources", wrap(async (req, res) => {

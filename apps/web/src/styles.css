@@ -1817,6 +1817,13 @@ tr.selected { background: var(--rose-soft); }
 .ad-charts h3 { margin: 0 0 4px; font-size: 0.92rem; }
 .ad-charts h3 + p { margin: 0; }
 .ad-charts .trend-kpis { margin-bottom: 6px; }
+.trend-kpis i.paid { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(#b5ead0, #3f9f74); }
+.money-focus { fill: rgba(255, 255, 255, 0.04); }
+@media (max-width: 640px) {
+  .money-block .card-head { flex-direction: column; align-items: stretch; }
+  .money-block .card-head > :last-child { width: 100%; }
+  .money-block .range-trigger { width: 100%; height: 40px; justify-content: center; }
+}
 .trend-kpis i.spend { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(#f3d9a8, #c99a52); }
 .ad-bars { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px; }
 .ad-bars li { padding: 10px 12px; background: var(--card-2); border-radius: 12px; display: grid; gap: 6px; }
