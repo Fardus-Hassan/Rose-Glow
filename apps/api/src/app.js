@@ -2,6 +2,7 @@ import { migrate, pool } from "./db.js"
 import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
 import { dashboard, orderTotals, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
+import { createTag, deleteTag, listTags, updateTag } from "./tags.js"
 import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, setCourierCharge, setReturnedPieces, updateOrder } from "./orders.js"
 import {
@@ -69,6 +70,23 @@ export function mount(app) {
 
   app.delete("/api/sources/:id", wrap(async (req, res) => {
     await deleteSource(idFrom(req))
+    res.json({ ok: true })
+  }))
+
+  app.get("/api/tags", wrap(async (req, res) => {
+    res.json({ tags: await listTags() })
+  }))
+
+  app.post("/api/tags", wrap(async (req, res) => {
+    res.status(201).json({ tag: await createTag(req.body || {}) })
+  }))
+
+  app.patch("/api/tags/:id", wrap(async (req, res) => {
+    res.json({ tag: await updateTag(idFrom(req), req.body || {}) })
+  }))
+
+  app.delete("/api/tags/:id", wrap(async (req, res) => {
+    await deleteTag(idFrom(req))
     res.json({ ok: true })
   }))
 

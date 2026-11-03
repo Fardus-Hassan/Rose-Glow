@@ -6,7 +6,7 @@ import { paymentLabel, taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import Select, { productOptions } from "../select.jsx"
-import { SourceField } from "../sources.jsx"
+import { SourceField, TagField, TagList } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import { Banner, ContactActions, CopyChip, CopyText, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
@@ -20,6 +20,7 @@ export default function OrderDetail({ id }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmUnlink, setConfirmUnlink] = useState(false)
   const [sources, setSources] = useState([])
+  const [tags, setTags] = useState([])
   const [couriers, setCouriers] = useState([])
   const [products, setProducts] = useState([])
   const [lines, setLines] = useState([])
@@ -48,10 +49,11 @@ export default function OrderDetail({ id }) {
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/sources"), api("/api/products"), api("/api/courier/active")])
-      .then(([sourceBody, catalog, courierBody]) => {
+    Promise.all([api("/api/sources"), api("/api/products"), api("/api/courier/active"), api("/api/tags")])
+      .then(([sourceBody, catalog, courierBody, tagBody]) => {
         if (!live) return
         setSources(sourceBody.sources)
+        setTags(tagBody.tags)
         setProducts(catalog.products)
         setCouriers(courierBody.couriers)
       })
@@ -76,6 +78,7 @@ export default function OrderDetail({ id }) {
       note: order.note || "",
       privateNote: order.privateNote || "",
       sourceId: order.sourceId ? String(order.sourceId) : "",
+      tagIds: (order.tags || []).map((tag) => String(tag.id)),
     })
     setLines(order.items.map((item) => {
       const product = catalog.find((entry) => entry.id === item.productId)
@@ -181,6 +184,7 @@ export default function OrderDetail({ id }) {
           note: draft.note,
           privateNote: draft.privateNote,
           sourceId: draft.sourceId || null,
+          tagIds: draft.tagIds.map(Number),
           items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity, gift: line.gift })),
         }),
       })
@@ -383,6 +387,7 @@ export default function OrderDetail({ id }) {
                 <Field label="Address" className="wide">
                   <textarea rows={3} value={draft.address} onChange={(event) => setDraftField("address", event.target.value)} disabled={Boolean(order.consignmentId)} required />
                 </Field>
+                <TagField className="wide" value={draft.tagIds} onChange={(value) => setDraftField("tagIds", value)} tags={tags} onTags={setTags} />
               </div>
             </article>
             <article className="card">
@@ -503,6 +508,7 @@ export default function OrderDetail({ id }) {
                   <p><span>Payment</span><b>{paymentLabel(order.paymentMethod)}</b></p>
                   <p><span>Time</span><b>{when(order.orderedAt)}</b></p>
                 </div>
+                {order.tags?.length ? <p className="who-tags"><span>Tags</span><TagList tags={order.tags} /></p> : null}
                 {order.note ? <p className="who-note"><span>Courier note</span>{order.note}</p> : null}
                 {order.privateNote ? <p className="who-note private"><span>Private note</span>{order.privateNote}</p> : null}
               </article>

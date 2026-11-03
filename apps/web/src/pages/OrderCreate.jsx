@@ -6,7 +6,7 @@ import { taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
 import Select, { productOptions } from "../select.jsx"
-import { SourceField } from "../sources.jsx"
+import { SourceField, TagField } from "../sources.jsx"
 import { Banner, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 import { ProductList } from "./Orders.jsx"
 
@@ -78,6 +78,7 @@ export default function OrderCreate() {
   const { go } = useRoute()
   const [products, setProducts] = useState([])
   const [sources, setSources] = useState([])
+  const [tags, setTags] = useState([])
   const [couriers, setCouriers] = useState([])
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
@@ -98,15 +99,17 @@ export default function OrderCreate() {
     note: DEFAULT_COURIER_NOTE,
     privateNote: "",
     sourceId: "",
+    tagIds: [],
   })
 
   useEffect(() => {
     let live = true
-    Promise.all([api("/api/products"), api("/api/sources"), api("/api/courier/active")])
-      .then(([catalog, sourceBody, courierBody]) => {
+    Promise.all([api("/api/products"), api("/api/sources"), api("/api/courier/active"), api("/api/tags")])
+      .then(([catalog, sourceBody, courierBody, tagBody]) => {
         if (!live) return
         setProducts(catalog.products)
         setSources(sourceBody.sources)
+        setTags(tagBody.tags)
         setCouriers(courierBody.couriers)
         setForm((current) => {
           const next = { ...current }
@@ -252,6 +255,7 @@ export default function OrderCreate() {
               <Field label="Order time" className="span-2">
                 <input type="datetime-local" value={form.orderedAt} onChange={(event) => set("orderedAt", event.target.value)} required />
               </Field>
+              <TagField className="wide" value={form.tagIds} onChange={(tagIds) => set("tagIds", tagIds)} tags={tags} onTags={setTags} />
               <Field label="Address" className="wide">
                 <textarea rows={3} value={form.address} onChange={(event) => set("address", event.target.value)} required />
               </Field>

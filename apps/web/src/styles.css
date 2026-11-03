@@ -694,6 +694,21 @@ td .copy-address {
 .who-note span { display: block; margin-bottom: 2px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
 .who-note.private { color: #e7c08a; }
 .who-note.private span { color: var(--muted); }
+.who-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0 0; }
+.who-tags > span:first-child { color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.who-tags .tag-list { margin-top: 0; }
+.tag-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 160, 170, 0.32);
+  background: rgba(232, 160, 170, 0.1);
+  color: var(--rose);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 .detail-lines li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
 .detail-lines li > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
 .back-tag { padding: 1px 8px; border-radius: 999px; background: rgba(240, 128, 128, 0.14); color: #f19a9a; font-size: 0.78rem; font-weight: 600; }
@@ -1149,7 +1164,10 @@ tr.selected { background: var(--rose-soft); }
 @media (max-width: 1200px) {
   .list-card .table-card td.serial { display: block; width: auto; padding: 2px 0 0; font-size: 0.72rem; text-align: left; }
   .list-card .table-card td.serial::before { content: "#"; font-size: inherit; }
+  .list-card .table-card .source-cell { align-items: flex-end; text-align: right; }
 }
+.source-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.source-cell .tag-list { margin-top: 0; }
 @media (max-width: 520px) {
   .order-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 0; padding: 6px 2px; font-size: 0.76rem; }
   .order-summary p { display: grid; gap: 0; padding: 0 8px; }

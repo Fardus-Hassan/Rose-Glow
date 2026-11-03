@@ -243,6 +243,20 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFA
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS private_note TEXT NOT NULL DEFAULT '';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_tries INTEGER NOT NULL DEFAULT 0;
 
+CREATE TABLE IF NOT EXISTS order_tags (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS order_tags_name_lower ON order_tags (lower(name));
+CREATE TABLE IF NOT EXISTS order_tag_links (
+  order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES order_tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (order_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS order_tag_links_tag_idx ON order_tag_links (tag_id);
+
 -- The one place an order's money is worked out. Every report reads from here.
 -- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
 -- Once Steadfast reports what it collected, its 1% COD charge replaces the typed one:

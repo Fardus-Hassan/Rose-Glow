@@ -7,6 +7,7 @@ import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import Select from "../select.jsx"
+import { TagList } from "../sources.jsx"
 import { Banner, ContactActions, CopyChip, CopyText, Empty, Pager, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
@@ -227,7 +228,12 @@ export default function Orders() {
                   </td>
                   <td data-label="Products"><ProductList items={order.items} /></td>
                   <td data-label="Address"><CopyText value={order.address} label="Address" className="copy-address" /></td>
-                  <td data-label="Source">{order.sourceName || "—"}</td>
+                  <td data-label="Source">
+                    <span className="source-cell">
+                      {order.sourceName || "—"}
+                      <TagList tags={order.tags} />
+                    </span>
+                  </td>
                   <td data-label="Time">{when(order.orderedAt)}</td>
                   <td data-label="Status">
                     <StatusMenu order={order} onChanged={replaceOrder} />

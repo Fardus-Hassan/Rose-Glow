@@ -1,6 +1,7 @@
 import { MANUAL_STATUSES, PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, mobile, money, noteText, when, whole } from "./http.js"
+import { readTagIds, writeOrderTags } from "./tags.js"
 const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
 const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
 
@@ -42,6 +43,7 @@ function present(row, items = undefined) {
     courierTries: row.courier_tries || 0,
     sourceId: row.source_id,
     sourceName: row.source_name || "",
+    tags: row.tags || [],
     stockHeld: row.stock_held,
     consignmentId: row.consignment_id ? Number(row.consignment_id) : null,
     trackingCode: row.tracking_code || "",
@@ -76,7 +78,9 @@ const ORDER_SELECT = `
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod, o.return_settled,
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
-         m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.cod_fee::float8 AS cod_fee, m.profit::float8 AS profit
+         m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.cod_fee::float8 AS cod_fee, m.profit::float8 AS profit,
+         (SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.position, t.id), '[]'::json)
+          FROM order_tag_links l JOIN order_tags t ON t.id = l.tag_id WHERE l.order_id = o.id) AS tags
   FROM orders o
   JOIN order_money m ON m.id = o.id
   LEFT JOIN order_sources src ON src.id = o.source_id
@@ -280,6 +284,7 @@ function readOrderFields(body, { partial = false } = {}) {
   const note = noteText(body.note, 400)
   const privateNote = body.privateNote === undefined ? null : noteText(body.privateNote, 1000)
   const sourceId = readSourceId(body)
+  const tagIds = readTagIds(body)
   if (!customerName) throw fail(400, "Enter the customer's name")
   if (!phone) throw fail(400, "Enter an 11-digit mobile number starting with 01")
   if (address.length < 3) throw fail(400, "Enter the address")
@@ -289,7 +294,7 @@ function readOrderFields(body, { partial = false } = {}) {
   if (deliveryCharge === null || discount === null || paidAmount === null || codCharge === null) throw fail(400, "Enter valid amounts")
   if (!PAYMENT_IDS.has(paymentMethod)) throw fail(400, "Payment method is not valid")
   if (deliveryPaidBy === "customer" && deliveryCharge <= 0) throw fail(400, "Enter the delivery charge")
-  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, privateNote, codCharge, codPaidBy, sourceId }
+  const fields = { customerName, phone, address, courier, status, orderedAt, deliveryCharge, deliveryPaidBy, discount, paidAmount, paymentMethod, note, privateNote, codCharge, codPaidBy, sourceId, tagIds }
   if (partial) return fields
   return fields
 }
@@ -493,6 +498,7 @@ export async function createOrder(body) {
         [orderId, productId, quantity],
       )
     }
+    await writeOrderTags(client, orderId, fields.tagIds)
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
@@ -609,6 +615,7 @@ export async function updateOrder(id, body) {
         fields.privateNote,
       ],
     )
+    await writeOrderTags(client, id, fields.tagIds)
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
