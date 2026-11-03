@@ -105,7 +105,7 @@ export default function PaymentsCard({ connected }) {
               <tr>
                 <th>Date</th>
                 <th>Payment</th>
-                <th>Amount</th>
+                <th>Received</th>
                 <th>Status</th>
                 <th>Method</th>
                 <th>Parcels</th>
@@ -116,12 +116,15 @@ export default function PaymentsCard({ connected }) {
                 <tr key={payment.ref} onClick={() => setOpenRef(payment.ref)}>
                   <td data-label="Date">{payment.paidAt ? when(payment.paidAt) : "—"}</td>
                   <td data-label="Payment"><strong>{payment.label}</strong></td>
-                  <td data-label="Amount">{money(payment.amount)}</td>
+                  <td data-label="Received">
+                    {money(payment.received ?? payment.amount)}
+                    {payment.received !== null && payment.amount !== null && payment.amount !== payment.received ? <small>of {taka(payment.amount)}</small> : null}
+                  </td>
                   <td data-label="Status">{payment.status || "—"}</td>
                   <td data-label="Method">{payment.method || "—"}</td>
                   <td data-label="Parcels">
                     {payment.loaded ? payment.parcels : "…"}
-                    {payment.loaded && payment.parcels > payment.matched ? <small>{payment.parcels - payment.matched} not in Rose Glow</small> : null}
+                    {payment.loaded && payment.parcels > payment.matched ? <small>{payment.parcels - payment.matched} booked outside Rose Glow</small> : null}
                   </td>
                 </tr>
               ))}
@@ -175,7 +178,7 @@ function PaymentModal({ paymentRef, onClose }) {
         <div className="card-head">
           <div>
             <h2 id="payment-title">{payment ? payment.label : "Payment"}</h2>
-            {payment ? <p className="muted small">{payment.paidAt ? when(payment.paidAt) : ""}{payment.amount !== null ? ` · ${taka(payment.amount)}` : ""}</p> : null}
+            {payment ? <p className="muted small">{payment.paidAt ? when(payment.paidAt) : ""}{(payment.received ?? payment.amount) !== null ? ` · received ${taka(payment.received ?? payment.amount)}` : ""}</p> : null}
           </div>
           <button type="button" className="text-btn" onClick={onClose}>Close</button>
         </div>
@@ -201,9 +204,10 @@ function PaymentModal({ paymentRef, onClose }) {
                       {parcel.orderId ? (
                         <button type="button" className="text-btn" onClick={() => { onClose(); go(`/orders/${parcel.orderId}`) }}>{parcel.orderNumber}</button>
                       ) : (
-                        <strong>{parcel.invoice || "Not in Rose Glow"}</strong>
+                        <strong>{parcel.invoice || parcel.customerName || "Parcel"}</strong>
                       )}
-                      {parcel.customerName ? <small>{parcel.customerName}</small> : null}
+                      {parcel.orderId && parcel.customerName ? <small>{parcel.customerName}</small> : null}
+                      {!parcel.orderId ? <small>Booked outside Rose Glow{parcel.invoice && parcel.customerName ? ` · ${parcel.customerName}` : ""}</small> : null}
                     </div>
                     <div className="payment-parcel-ids">
                       {parcel.consignmentId ? <CopyChip value={String(parcel.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : null}

@@ -272,6 +272,10 @@ CREATE TABLE IF NOT EXISTS steadfast_payments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS steadfast_payments_paid_idx ON steadfast_payments (paid_at DESC NULLS LAST);
+-- Steadfast's total is what reached the merchant: amount - due_bills - charges.
+ALTER TABLE steadfast_payments ADD COLUMN IF NOT EXISTS received NUMERIC(14,2);
+UPDATE steadfast_payments SET received = (raw->>'total')::numeric
+WHERE received IS NULL AND raw->>'total' ~ '^-?[0-9]+(\\.[0-9]+)?$';
 CREATE TABLE IF NOT EXISTS steadfast_payment_parcels (
   payment_ref TEXT NOT NULL REFERENCES steadfast_payments(ref) ON DELETE CASCADE,
   position INTEGER NOT NULL,

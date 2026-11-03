@@ -58,7 +58,8 @@ function readPayment(row) {
   return {
     ref,
     label: text(row.payment_id ?? row.id),
-    amount: money(row.amount ?? row.total ?? row.paid_amount),
+    amount: money(row.amount ?? row.paid_amount),
+    received: money(row.total),
     status: text(row.status_label ?? row.status),
     method: text(row.method ?? row.payment_method),
     paidAt: moment(row.paid_at ?? row.payment_date ?? row.created_at),
@@ -102,11 +103,12 @@ async function writeState(state) {
 
 async function savePayment(info, raw) {
   const result = await pool.query(
-    `INSERT INTO steadfast_payments (ref, label, amount, status, method, paid_at, raw)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+    `INSERT INTO steadfast_payments (ref, label, amount, status, method, paid_at, raw, received)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
      ON CONFLICT (ref) DO UPDATE SET
        label = EXCLUDED.label,
        amount = COALESCE(EXCLUDED.amount, steadfast_payments.amount),
+       received = COALESCE(EXCLUDED.received, steadfast_payments.received),
        status = CASE WHEN EXCLUDED.status <> '' THEN EXCLUDED.status ELSE steadfast_payments.status END,
        method = CASE WHEN EXCLUDED.method <> '' THEN EXCLUDED.method ELSE steadfast_payments.method END,
        paid_at = COALESCE(EXCLUDED.paid_at, steadfast_payments.paid_at),
@@ -114,7 +116,7 @@ async function savePayment(info, raw) {
        updated_at = CASE WHEN steadfast_payments.raw IS DISTINCT FROM EXCLUDED.raw THEN now() ELSE steadfast_payments.updated_at END,
        raw = EXCLUDED.raw
      RETURNING (xmax = 0) AS inserted`,
-    [info.ref, info.label, info.amount, info.status, info.method, info.paidAt, JSON.stringify(raw)],
+    [info.ref, info.label, info.amount, info.status, info.method, info.paidAt, JSON.stringify(raw), info.received],
   )
   return result.rows[0].inserted
 }
@@ -144,9 +146,10 @@ async function saveDetail(ref, detail) {
          detail = $2::jsonb, detail_at = now(),
          amount = COALESCE(amount, $3), paid_at = COALESCE(paid_at, $4),
          status = CASE WHEN status = '' THEN $5 ELSE status END,
-         method = CASE WHEN method = '' THEN $6 ELSE method END
+         method = CASE WHEN method = '' THEN $6 ELSE method END,
+         received = COALESCE(received, $7)
        WHERE ref = $1`,
-      [ref, JSON.stringify(detail), info?.amount ?? null, info?.paidAt ?? null, info?.status || "", info?.method || ""],
+      [ref, JSON.stringify(detail), info?.amount ?? null, info?.paidAt ?? null, info?.status || "", info?.method || "", info?.received ?? null],
     )
     if (parcels.length) {
       await client.query(`DELETE FROM steadfast_payment_parcels WHERE payment_ref = $1`, [ref])
@@ -265,6 +268,7 @@ function shapePayment(row) {
     ref: row.ref,
     label: row.label || row.ref,
     amount: row.amount === null ? null : Number(row.amount),
+    received: row.received === null || row.received === undefined ? null : Number(row.received),
     status: row.status,
     method: row.method,
     paidAt: row.paid_at,
@@ -278,12 +282,12 @@ function shapePayment(row) {
 export async function paymentList({ limit, offset }) {
   const [totals, rows, state] = await Promise.all([
     pool.query(
-      `SELECT COUNT(*)::int AS payouts, COALESCE(SUM(amount), 0)::float8 AS amount, MAX(paid_at) AS last_paid,
+      `SELECT COUNT(*)::int AS payouts, COALESCE(SUM(COALESCE(received, amount)), 0)::float8 AS amount, MAX(paid_at) AS last_paid,
               (SELECT COUNT(*)::int FROM steadfast_payment_parcels) AS parcels
        FROM steadfast_payments`,
     ),
     pool.query(
-      `SELECT p.ref, p.label, p.amount::float8 AS amount, p.status, p.method, p.paid_at, p.first_seen, p.detail_at,
+      `SELECT p.ref, p.label, p.amount::float8 AS amount, p.received::float8 AS received, p.status, p.method, p.paid_at, p.first_seen, p.detail_at,
               COUNT(pp.position)::int AS parcels, COUNT(pp.order_id)::int AS matched
        FROM steadfast_payments p
        LEFT JOIN steadfast_payment_parcels pp ON pp.payment_ref = p.ref
@@ -312,7 +316,7 @@ function scalars(object) {
 
 export async function paymentDetail(ref) {
   const found = await pool.query(
-    `SELECT p.*, p.amount::float8 AS amount,
+    `SELECT p.*, p.amount::float8 AS amount, p.received::float8 AS received,
             (SELECT COUNT(*)::int FROM steadfast_payment_parcels WHERE payment_ref = p.ref) AS parcels,
             (SELECT COUNT(order_id)::int FROM steadfast_payment_parcels WHERE payment_ref = p.ref) AS matched
      FROM steadfast_payments p WHERE p.ref = $1`,
@@ -343,7 +347,7 @@ export async function paymentDetail(ref) {
       amount: item.amount === null ? null : Number(item.amount),
       orderId: item.order_id,
       orderNumber: item.order_id ? `RG-${String(item.order_id).padStart(4, "0")}` : "",
-      customerName: item.customer_name || "",
+      customerName: item.customer_name || text(item.raw?.recipient_name),
       orderStatus: item.status || "",
       facts: scalars(item.raw),
     })),
