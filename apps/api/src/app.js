@@ -6,6 +6,8 @@ import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, setCourierCharge, setReturnedPieces, updateOrder } from "./orders.js"
 import {
   accountView,
+  saveSteadfastUserId,
+  steadfastUserId,
   activeCouriers,
   bookIfNeeded,
   bookOrder,
@@ -215,6 +217,14 @@ export function mount(app) {
 
   app.get("/api/courier/account", wrap(async (req, res) => {
     res.json(await accountView(req))
+  }))
+
+  app.get("/api/courier/user-id", wrap(async (req, res) => {
+    res.json(await steadfastUserId())
+  }))
+
+  app.put("/api/courier/user-id", wrap(async (req, res) => {
+    res.json(await saveSteadfastUserId(req.body || {}))
   }))
 
   app.put("/api/courier/account", wrap(async (req, res) => {

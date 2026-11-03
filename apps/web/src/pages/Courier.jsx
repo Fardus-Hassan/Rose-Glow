@@ -4,9 +4,53 @@ import { courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
+import { setSteadfastId, useSteadfastId } from "../steadfastId.js"
 import { Banner, CopyText, Pager, askConfirm } from "../ui.jsx"
 
 const PAGE_SIZES = [10, 20, 50, 100, 200]
+
+function UserIdForm() {
+  const saved = useSteadfastId()
+  const [value, setValue] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const text = value ?? saved
+
+  async function save(event) {
+    event.preventDefault()
+    setBusy(true)
+    try {
+      const body = await api("/api/courier/user-id", { method: "PUT", body: { userId: text } })
+      setSteadfastId(body.userId)
+      setValue(null)
+      toast.success(body.userId ? "User ID saved" : "User ID removed")
+    } catch (reason) {
+      toast.error(reason.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="card user-id-card" onSubmit={save}>
+      <div>
+        <h2>Steadfast user ID</h2>
+        <p className="muted small">Copy it from your Steadfast profile. It shows under the Rose Glow logo.</p>
+      </div>
+      <div className="user-id-line">
+        <input
+          value={text}
+          onChange={(event) => setValue(event.target.value.replace(/\s/g, ""))}
+          placeholder="e.g. RJ2TJAUA"
+          aria-label="Steadfast user ID"
+          maxLength={40}
+          autoComplete="off"
+          spellCheck="false"
+        />
+        <button className="btn" type="submit" disabled={busy || text === saved}>{busy ? "Saving…" : "Save"}</button>
+      </div>
+    </form>
+  )
+}
 
 export default function Courier() {
   const { go } = useRoute()
@@ -180,6 +224,8 @@ export default function Courier() {
         </aside>
       </div>
 
+
+      <UserIdForm />
 
       <article className="card list-card parcel-card">
         <div className="card-head">

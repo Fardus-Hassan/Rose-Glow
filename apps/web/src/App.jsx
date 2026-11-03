@@ -11,6 +11,7 @@ import OrderCreate from "./pages/OrderCreate.jsx"
 import OrderDetail from "./pages/OrderDetail.jsx"
 import Orders from "./pages/Orders.jsx"
 import { RouteContext } from "./route.jsx"
+import { useSteadfastId } from "./steadfastId.js"
 import TopSearch from "./topsearch.jsx"
 
 const NAV = [
@@ -25,6 +26,23 @@ const NAV = [
 
 function locationKey() {
   return `${window.location.pathname}${window.location.search}`
+}
+
+function Brand({ go }) {
+  const userId = useSteadfastId()
+  return (
+    <a className={userId ? "brand has-id" : "brand"} href="/" onClick={(event) => { event.preventDefault(); go("/") }}>
+      <RoseMark />
+      <span>
+        <strong>Rose Glow</strong>
+        {userId ? (
+          <small className="brand-id" title="Steadfast user ID"><i>ID</i>{userId}</small>
+        ) : (
+          <small>Jewelry ledger</small>
+        )}
+      </span>
+    </a>
+  )
 }
 
 export default function App() {
@@ -66,13 +84,7 @@ export default function App() {
     <RouteContext.Provider value={{ go, path }}>
       <div className="app">
         <aside className="side">
-          <a className="brand" href="/" onClick={(event) => { event.preventDefault(); go("/") }}>
-            <RoseMark />
-            <span>
-              <strong>Rose Glow</strong>
-              <small>Jewelry ledger</small>
-            </span>
-          </a>
+          <Brand go={go} />
           <nav className="side-nav" aria-label="Main menu">
             {NAV.map((item) => (
               <a
@@ -91,13 +103,7 @@ export default function App() {
 
         <div className="workspace">
           <header className="topbar">
-            <a className="brand" href="/" onClick={(event) => { event.preventDefault(); go("/") }}>
-              <RoseMark />
-              <span>
-                <strong>Rose Glow</strong>
-                <small>Jewelry ledger</small>
-              </span>
-            </a>
+            <Brand go={go} />
             <Crumbs path={path} go={go} />
             <TopSearch />
             <div className="topbar-actions">

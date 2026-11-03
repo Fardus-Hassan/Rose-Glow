@@ -142,6 +142,28 @@ export async function activeCouriers() {
   return couriers
 }
 
+const USER_ID_KEY = "steadfast_user_id"
+
+export async function steadfastUserId() {
+  const found = await pool.query(`SELECT value FROM app_settings WHERE key = $1`, [USER_ID_KEY])
+  const value = found.rows[0]?.value
+  return { userId: typeof value === "string" ? value : "" }
+}
+
+export async function saveSteadfastUserId(body) {
+  const userId = String(body?.userId ?? "").trim()
+  if (userId.length > 40 || /[^A-Za-z0-9_-]/.test(userId)) throw fail(400, "Use only letters and numbers for the user ID")
+  if (!userId) await pool.query(`DELETE FROM app_settings WHERE key = $1`, [USER_ID_KEY])
+  else {
+    await pool.query(
+      `INSERT INTO app_settings (key, value) VALUES ($1, $2::jsonb)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [USER_ID_KEY, JSON.stringify(userId)],
+    )
+  }
+  return { userId }
+}
+
 export async function accountView(req) {
   const row = await accountRow()
   return publicAccount(row, req)
