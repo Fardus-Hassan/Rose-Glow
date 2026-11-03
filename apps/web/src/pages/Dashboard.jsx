@@ -202,8 +202,6 @@ function Board({ data, go }) {
         ) : null}
       </div>
 
-      <MoneyBlock />
-
       <article className="card dash-block">
         <div className="card-head">
           <div>
@@ -240,6 +238,8 @@ function Board({ data, go }) {
           {(stats) => <CourierSuccess parcels={stats.parcels} range={courierRange} />}
         </ChartSlot>
       </article>
+
+      <MoneyBlock />
 
       <div className="split">
         <article className="card">
