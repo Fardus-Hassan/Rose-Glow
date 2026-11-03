@@ -265,14 +265,13 @@ function OrderSummary({ summary }) {
     { label: "Profit", value: taka(summary.profit), tone: summary.profit < 0 ? "bad" : "good" },
   ]
   return (
-    <div className="order-summary">
+    <div className="order-summary" title="Cancelled and returned orders are left out of pieces, sales, value and due.">
       {facts.map((fact) => (
-        <div key={fact.label} title={fact.hint}>
+        <p key={fact.label} title={fact.hint}>
           <span>{fact.label}</span>
           <b className={fact.tone || undefined}>{fact.value}</b>
-        </div>
+        </p>
       ))}
-      <small className="muted">Cancelled and returned orders are left out of pieces, sales, value and due.</small>
     </div>
   )
 }
