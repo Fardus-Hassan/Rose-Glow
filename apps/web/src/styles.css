@@ -2259,8 +2259,8 @@ tr.selected { background: var(--rose-soft); }
   .list-card .product-list li { padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 0.84rem; }
   .list-card .product-list li b { font-size: 0.74rem; }
   .list-card .table-card td[data-label="Address"] { grid-area: addr; margin-top: 6px; }
-  .list-card .table-card .copy-address { max-width: none; max-height: 3em; color: var(--muted); font-size: 0.84rem; line-height: 1.5; -webkit-line-clamp: 2; }
-  .list-card .time-cell small { font-size: inherit; color: inherit; }
+  .list-card .table-card .copy-address { max-width: none; max-height: 3em; text-align: left; color: var(--muted); font-size: 0.84rem; line-height: 1.5; -webkit-line-clamp: 2; }
+  .list-card .time-cell, .list-card .time-cell span, .list-card .time-cell small { display: inline; font-size: inherit; color: inherit; white-space: nowrap; }
   .list-card .time-cell span::after { content: ", "; }
   .list-card .table-card td[data-label="Time"] { grid-area: time; justify-self: end; align-self: end; color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
   .list-card .table-card td[data-label="Source"],
