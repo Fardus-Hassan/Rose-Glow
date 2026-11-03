@@ -328,6 +328,7 @@ img, svg { display: block; }
   margin-bottom: 16px;
 }
 .page-head .btn { flex: none; }
+.page:not(.order-detail) > .page-head { display: none; }
 .eyebrow {
   margin: 0 0 4px;
   color: var(--gold);
@@ -1153,6 +1154,19 @@ input:-webkit-autofill {
 .courier-page .split > * { min-width: 0; max-width: 100%; }
 .filter-tools { display: flex; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; min-width: min(100%, 280px); }
 .filter-tools .select { width: 170px; }
+.filter-tools .price-range { width: 150px; }
+.price-body { display: flex; flex-direction: column; min-height: 0; }
+.price-inputs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 8px; padding: 12px 12px 4px; }
+.price-inputs label { display: grid; gap: 5px; color: var(--muted); font-size: 0.8rem; }
+.price-inputs input { min-height: 40px; padding: 8px 10px; border-radius: 10px; font-size: 15px; font-variant-numeric: tabular-nums; }
+.price-inputs i { padding-bottom: 10px; color: var(--muted); font-style: normal; }
+.price-wrong { margin: 4px 12px 0; color: #f08a92; font-size: 0.8rem; }
+.price-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 12px; }
+.price-presets .pill-btn { min-height: 32px; padding: 4px 11px; font-size: 0.84rem; }
+.sheet .price-inputs { padding: 8px 18px 4px; }
+.sheet .price-inputs input { min-height: 44px; font-size: 16px; }
+.sheet .price-presets { padding: 12px 18px 14px; }
+.sheet .price-presets .pill-btn { min-height: 38px; }
 .filter-tools .range-trigger {
   min-height: 46px;
   padding: 8px 14px;
@@ -1621,6 +1635,7 @@ tr.selected { background: var(--rose-soft); }
     background: var(--card);
   }
   .filter-tools .search-box { grid-column: 1 / -1; width: 100%; }
+  .filter-tools > .range { grid-column: 1 / -1; }
   .filter-tools input, .filter-tools .select, .range, .range-trigger { width: 100%; max-width: 100%; }
   .filter-tools .range-trigger { justify-content: center; overflow: hidden; text-overflow: ellipsis; }
   .filter-pills {
