@@ -159,7 +159,10 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
     const like = `$${params.length}`
     params.push(term.replace(/^RG-0*/i, ""))
     const exact = `$${params.length}`
-    where.push(`(o.customer_name ILIKE ${like} ESCAPE '\\' OR o.mobile ILIKE ${like} ESCAPE '\\' OR CAST(o.id AS TEXT) = ${exact})`)
+    params.push(term)
+    const raw = `$${params.length}`
+    where.push(`(o.customer_name ILIKE ${like} ESCAPE '\\' OR o.mobile ILIKE ${like} ESCAPE '\\' OR CAST(o.id AS TEXT) = ${exact}
+      OR CAST(o.consignment_id AS TEXT) = ${raw} OR o.tracking_code ILIKE ${raw})`)
   }
   const sharedParams = [...params]
   const sharedWhere = [...where]
@@ -194,7 +197,21 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
        ORDER BY count DESC, o.courier_status`,
       sharedParams,
     ),
-    pool.query(`SELECT COUNT(*)::int AS total FROM orders o ${clause}`, params),
+    pool.query(
+      `SELECT COUNT(*)::int AS total,
+              COALESCE(SUM(p.pieces) FILTER (WHERE m.counted), 0)::int AS pieces,
+              COALESCE(SUM(m.sales) FILTER (WHERE m.counted), 0)::float8 AS sales,
+              COALESCE(SUM(m.total) FILTER (WHERE m.counted), 0)::float8 AS value,
+              COALESCE(SUM(m.total - o.paid_amount) FILTER (WHERE m.counted), 0)::float8 AS due,
+              COALESCE(SUM(m.profit), 0)::float8 AS profit
+       FROM orders o
+       JOIN order_money m ON m.id = o.id
+       CROSS JOIN LATERAL (
+         SELECT COALESCE(SUM(oi.quantity - oi.returned_qty), 0) AS pieces FROM order_items oi WHERE oi.order_id = o.id
+       ) p
+       ${clause}`,
+      params,
+    ),
   ])
   params.push(limit, offset)
   const rows = await pool.query(
@@ -217,6 +234,14 @@ export async function listOrders({ status, q, source, from, to, limit, offset })
   return {
     orders: rows.rows.map((row) => present(row, byOrder.get(row.id) || [])),
     total: count.rows[0].total,
+    summary: {
+      orders: count.rows[0].total,
+      pieces: count.rows[0].pieces,
+      sales: count.rows[0].sales,
+      value: count.rows[0].value,
+      due: count.rows[0].due,
+      profit: count.rows[0].profit,
+    },
     statusCounts: statusFacets.rows,
     courierFilters: facets.rows,
   }

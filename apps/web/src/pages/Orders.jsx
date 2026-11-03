@@ -39,6 +39,8 @@ export default function Orders() {
   const [statusCounts, setStatusCounts] = useState([])
   const [courierFilters, setCourierFilters] = useState([])
   const [loading, setLoading] = useState(true)
+  const [tick, setTick] = useState(0)
+  const quiet = useRef(false)
   const [error, setError] = useState("")
 
   function replaceOrder(next) {
@@ -60,6 +62,8 @@ export default function Orders() {
         total: dropped ? Math.max(0, current.total - 1) : current.total,
       }
     })
+    quiet.current = true
+    setTick((value) => value + 1)
   }
 
   function showPage(next) {
@@ -69,7 +73,8 @@ export default function Orders() {
 
   useEffect(() => {
     let live = true
-    setLoading(true)
+    if (!quiet.current) setLoading(true)
+    quiet.current = false
     setError("")
     const handle = setTimeout(() => {
       const query = new URLSearchParams({
@@ -99,7 +104,7 @@ export default function Orders() {
         .finally(() => { if (live) setLoading(false) })
     }, 200)
     return () => { live = false; clearTimeout(handle) }
-  }, [status, source, range, q, page, pageSize])
+  }, [status, source, range, q, page, pageSize, tick])
 
   useEffect(() => {
     let live = true
@@ -176,6 +181,7 @@ export default function Orders() {
       </div>
 
       <article className="card list-card" aria-busy={loading}>
+        {data?.summary ? <OrderSummary summary={data.summary} /> : null}
         <div className="table-card">
         {loading ? <p className="muted load-line">Loading…</p> : null}
         {!loading && data && data.orders.length === 0 ? <Empty title="No orders" text="Nothing matched this search." /> : null}
@@ -183,6 +189,7 @@ export default function Orders() {
           <table>
             <thead>
               <tr>
+                <th className="serial">#</th>
                 <th>Order</th>
                 <th>Customer</th>
                 <th>Products</th>
@@ -195,8 +202,9 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody>
-              {data.orders.map((order) => (
+              {data.orders.map((order, index) => (
                 <tr key={order.id} onClick={() => go(`/orders/${order.id}`)}>
+                  <td className="serial" data-label="#">{(page - 1) * pageSize + index + 1}</td>
                   <td data-label="Order">
                     <span className="order-cell">
                       <CopyChip value={order.number} label="Order number" className="order-no" />
@@ -244,6 +252,28 @@ export default function Orders() {
         ) : null}
       </article>
     </section>
+  )
+}
+
+function OrderSummary({ summary }) {
+  const facts = [
+    { label: "Orders", value: summary.orders.toLocaleString("en-IN") },
+    { label: "Pieces sold", value: summary.pieces.toLocaleString("en-IN") },
+    { label: "Sales", value: taka(summary.sales), hint: "Products after discount" },
+    { label: "Order value", value: taka(summary.value), hint: "With delivery and COD" },
+    { label: "Due", value: taka(summary.due), tone: summary.due > 0 ? "bad" : "" },
+    { label: "Profit", value: taka(summary.profit), tone: summary.profit < 0 ? "bad" : "good" },
+  ]
+  return (
+    <div className="order-summary">
+      {facts.map((fact) => (
+        <div key={fact.label} title={fact.hint}>
+          <span>{fact.label}</span>
+          <b className={fact.tone || undefined}>{fact.value}</b>
+        </div>
+      ))}
+      <small className="muted">Cancelled and returned orders are left out of pieces, sales, value and due.</small>
+    </div>
   )
 }
 
