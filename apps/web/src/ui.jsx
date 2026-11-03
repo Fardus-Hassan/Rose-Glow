@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import toast from "react-hot-toast"
 import { statusLabel } from "@rose/shared"
 import Select from "./select.jsx"
@@ -247,6 +248,45 @@ function CallIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M7.1 3.2c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.4 1.4c-.2.2-.3.5-.2.8 1.2 3.4 3.9 6.1 7.3 7.3.3.1.6 0 .8-.2l1.4-1.4c.4-.4 1.1-.4 1.5 0l2 2c.4.4.4 1.1 0 1.5l-1.2 1.2c-.5.5-1.2.8-2 .7-6.2-.7-11.1-5.6-11.8-11.8-.1-.8.2-1.5.7-2l1.2-1.2Z" />
     </svg>
+  )
+}
+
+function cutOff(node) {
+  return [node, ...node.querySelectorAll("*")].some((el) => el.clientWidth > 0 && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1))
+}
+
+// Shows the full content in a floating box on mouse hover when the cell is cut short.
+export function HoverFull({ full, always = false, className = "", children }) {
+  const box = useRef(null)
+  const [spot, setSpot] = useState(null)
+
+  useEffect(() => {
+    if (!spot) return undefined
+    const hide = () => setSpot(null)
+    window.addEventListener("scroll", hide, true)
+    window.addEventListener("resize", hide)
+    return () => {
+      window.removeEventListener("scroll", hide, true)
+      window.removeEventListener("resize", hide)
+    }
+  }, [spot])
+
+  function show() {
+    const node = box.current
+    if (!node || !window.matchMedia("(hover: hover)").matches) return
+    if (!always && !cutOff(node)) return
+    const rect = node.getBoundingClientRect()
+    const width = Math.min(360, window.innerWidth - 16)
+    const left = Math.max(8, Math.min(rect.left - 10, window.innerWidth - width - 8))
+    const below = window.innerHeight - rect.bottom > 160
+    setSpot(below ? { left, width, top: rect.bottom + 6 } : { left, width, bottom: window.innerHeight - rect.top + 6 })
+  }
+
+  return (
+    <span ref={box} className={`hover-full ${className}`.trim()} onMouseEnter={show} onMouseLeave={() => setSpot(null)}>
+      {children}
+      {spot ? createPortal(<div className="hover-pop" style={spot}>{full}</div>, document.body) : null}
+    </span>
   )
 }
 

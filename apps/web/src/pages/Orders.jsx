@@ -8,7 +8,7 @@ import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
 import Select from "../select.jsx"
 import { TagList } from "../sources.jsx"
-import { Banner, ContactActions, CopyChip, CopyText, Empty, Pager, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Empty, HoverFull, Pager, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
 
 const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
@@ -245,6 +245,7 @@ export default function Orders() {
           />
           <Select
             label="Payout"
+            placeholder="Any payout"
             value={payout}
             onChange={(next) => { setPayout(next); setPage(1) }}
             options={PAYOUTS}
@@ -285,12 +286,11 @@ export default function Orders() {
                       <PaidBadge payout={order.payout} />
                     </span>
                     <small className="courier-meta">
-                      <span>{order.courier}</span>
-                      {order.consignmentId ? <CopyChip value={String(order.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : null}
-                      {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}                    </small>
+                      {order.consignmentId ? <CopyChip value={String(order.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : <span>{order.courier}</span>}
+                    </small>
                   </td>
                   <td data-label="Customer">
-                    <CopyText value={order.customerName} label="Name" />
+                    <CopyText value={order.customerName} label="Name" className="customer-name" />
                     <small>
                       <span className="phone-line">
                         <CopyText value={order.mobile} label="Number" />
@@ -298,8 +298,16 @@ export default function Orders() {
                       </span>
                     </small>
                   </td>
-                  <td data-label="Products"><ProductList items={order.items} /></td>
-                  <td data-label="Address"><CopyText value={order.address} label="Address" className="copy-address" /></td>
+                  <td data-label="Products">
+                    <HoverFull full={<ProductList items={order.items} max={Infinity} />} always={order.items.length > 2}>
+                      <ProductList items={order.items} max={2} />
+                    </HoverFull>
+                  </td>
+                  <td data-label="Address">
+                    <HoverFull full={order.address}>
+                      <CopyText value={order.address} label="Address" className="copy-address" />
+                    </HoverFull>
+                  </td>
                   <td data-label="Source">
                     <span className="source-cell">
                       {order.sourceName || "—"}
@@ -309,6 +317,7 @@ export default function Orders() {
                   <td data-label="Time">{when(order.orderedAt)}</td>
                   <td data-label="Status">
                     <StatusMenu order={order} onChanged={replaceOrder} />
+                    {order.courierStatus ? <small className="courier-state">{courierStatusLabel(order.courierStatus)}</small> : null}
                   </td>
                   <td data-label="Total">{taka(order.total)}</td>
                   <td data-label="Due" className={order.due > 0 ? "danger" : ""}>{taka(order.due)}</td>
