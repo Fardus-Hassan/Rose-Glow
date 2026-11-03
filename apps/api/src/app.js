@@ -274,7 +274,7 @@ export function mount(app) {
   app.get("/api/courier/payments", wrap(async (req, res) => {
     const limit = Math.min(Math.max(whole(req.query.limit, 20) || 20, 1), 200)
     const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
-    res.json(await paymentList({ limit, offset }))
+    res.json(await paymentList({ limit, offset, from: req.query.from, to: req.query.to }))
   }))
 
   app.post("/api/courier/payments/sync", wrap(async (req, res) => {

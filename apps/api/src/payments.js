@@ -8,6 +8,7 @@ const AUTO_GAP_MS = 30 * 60 * 1000
 const BUDGET_MS = 40000
 const MAX_PAGES = 500
 const LOCK_ID = 730021
+const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 function money(value) {
   if (value === null || value === undefined || value === "") return null
@@ -279,27 +280,44 @@ function shapePayment(row) {
   }
 }
 
-export async function paymentList({ limit, offset }) {
+function optionalDay(value) {
+  const day = String(value || "").trim()
+  if (!day) return null
+  if (!DAY.test(day)) throw fail(400, "Pick a valid date")
+  return day
+}
+
+export async function paymentList({ limit, offset, from, to }) {
+  const start = optionalDay(from)
+  const end = optionalDay(to)
+  if (start && end && start > end) throw fail(400, "The start date is after the end date")
+  const inRange = `($1::date IS NULL OR (p.paid_at AT TIME ZONE 'Asia/Dhaka')::date >= $1::date)
+    AND ($2::date IS NULL OR (p.paid_at AT TIME ZONE 'Asia/Dhaka')::date <= $2::date)`
   const [totals, rows, state] = await Promise.all([
     pool.query(
-      `SELECT COUNT(*)::int AS payouts, COALESCE(SUM(COALESCE(received, amount)), 0)::float8 AS amount, MAX(paid_at) AS last_paid,
-              (SELECT COUNT(*)::int FROM steadfast_payment_parcels) AS parcels
-       FROM steadfast_payments`,
+      `SELECT COUNT(*)::int AS payouts, COALESCE(SUM(COALESCE(p.received, p.amount)), 0)::float8 AS amount, MAX(p.paid_at) AS last_paid,
+              (SELECT COUNT(*)::int FROM steadfast_payment_parcels pp JOIN steadfast_payments p ON p.ref = pp.payment_ref WHERE ${inRange}) AS parcels
+       FROM steadfast_payments p
+       WHERE ${inRange}`,
+      [start, end],
     ),
     pool.query(
       `SELECT p.ref, p.label, p.amount::float8 AS amount, p.received::float8 AS received, p.status, p.method, p.paid_at, p.first_seen, p.detail_at,
               COUNT(pp.position)::int AS parcels, COUNT(pp.order_id)::int AS matched
        FROM steadfast_payments p
        LEFT JOIN steadfast_payment_parcels pp ON pp.payment_ref = p.ref
+       WHERE ${inRange}
        GROUP BY p.ref
        ORDER BY p.paid_at DESC NULLS LAST, p.first_seen DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
+       LIMIT $3 OFFSET $4`,
+      [start, end, limit, offset],
     ),
     readState(),
   ])
   const sum = totals.rows[0]
   return {
+    from: start,
+    to: end,
     payments: rows.rows.map(shapePayment),
     total: sum.payouts,
     totals: { payouts: sum.payouts, amount: Number(sum.amount), parcels: sum.parcels, lastPaid: sum.last_paid },

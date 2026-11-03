@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import toast from "react-hot-toast"
 import { api } from "./api.js"
+import DateRange from "./DateRange.jsx"
+import { rangeFor } from "./dates.js"
 import { taka, when } from "./format.js"
 import { useRoute } from "./route.jsx"
 import { CopyChip, Pager } from "./ui.jsx"
@@ -21,6 +23,7 @@ export default function PaymentsCard({ connected }) {
   const [data, setData] = useState(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [range, setRange] = useState(() => rangeFor("month"))
   const [syncing, setSyncing] = useState(false)
   const [openRef, setOpenRef] = useState("")
   const [error, setError] = useState("")
@@ -28,10 +31,14 @@ export default function PaymentsCard({ connected }) {
 
   const load = useCallback(async () => {
     const query = new URLSearchParams({ limit: String(pageSize), offset: String((page - 1) * pageSize) })
+    if (range?.from && range?.to) {
+      query.set("from", range.from)
+      query.set("to", range.to)
+    }
     const body = await api(`/api/courier/payments?${query}`)
     setData(body)
     return body
-  }, [page, pageSize])
+  }, [page, pageSize, range])
 
   const sync = useCallback(async (quiet = false) => {
     setSyncing(true)
@@ -80,13 +87,16 @@ export default function PaymentsCard({ connected }) {
             {data?.sync?.at ? ` Last checked ${when(data.sync.at)}.` : ""}
           </p>
         </div>
-        <button type="button" className="btn secondary" disabled={!connected || syncing} onClick={() => sync(false)}>
-          {syncing ? "Checking…" : "Check payments"}
-        </button>
+        <div className="payment-tools">
+          <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
+          <button type="button" className="btn secondary" disabled={!connected || syncing} onClick={() => sync(false)}>
+            {syncing ? "Checking…" : "Check payments"}
+          </button>
+        </div>
       </div>
       {error ? <p className="banner banner-bad">{error}</p> : null}
       {data?.sync?.error && !error ? <p className="banner banner-bad">Last check failed: {data.sync.error}</p> : null}
-      {totals && totals.payouts > 0 ? (
+      {totals && (totals.payouts > 0 || range) ? (
         <div className="payment-totals">
           <p><span>Paid to you</span><b>{taka(totals.amount)}</b></p>
           <p><span>Payments</span><b>{totals.payouts}</b></p>
@@ -96,7 +106,7 @@ export default function PaymentsCard({ connected }) {
       ) : null}
       {!data ? <p className="muted">Loading…</p> : null}
       {data && data.total === 0 ? (
-        <p className="muted">{!connected ? "Connect Steadfast to see payments." : syncing ? "Getting payments from Steadfast…" : "No payments from Steadfast yet."}</p>
+        <p className="muted">{!connected ? "Connect Steadfast to see payments." : syncing ? "Getting payments from Steadfast…" : range ? "No payments in these dates." : "No payments from Steadfast yet."}</p>
       ) : null}
       {data && data.payments.length > 0 ? (
         <div className="table-card">
