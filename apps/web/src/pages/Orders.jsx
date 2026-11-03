@@ -6,6 +6,7 @@ import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import DateRange from "../DateRange.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
+import PriceRange from "../PriceRange.jsx"
 import Select from "../select.jsx"
 import { TagList } from "../sources.jsx"
 import { Banner, ContactActions, CopyChip, CopyText, Empty, HoverFull, Pager, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
@@ -41,7 +42,9 @@ function readUrl() {
   const to = params.get("to") || ""
   const page = Number(params.get("page"))
   const rows = Number(params.get("rows"))
+  const amount = (key) => (/^\d{1,9}$/.test(params.get(key) || "") ? params.get(key) : "")
   return {
+    price: { min: amount("min"), max: amount("max") },
     status: FILTERS.some((item) => item.id === status) || /^sf:[a-z0-9_]{1,80}$/.test(status) ? status : "all",
     source: (params.get("source") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
     tags: (params.get("tags") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
@@ -53,12 +56,14 @@ function readUrl() {
   }
 }
 
-function writeUrl({ status, source, tags, payout, range, q, page, pageSize }) {
+function writeUrl({ status, source, tags, payout, price, range, q, page, pageSize }) {
   const params = new URLSearchParams()
   if (status !== "all") params.set("status", status)
   if (source.length) params.set("source", source.join(","))
   if (tags.length) params.set("tags", tags.join(","))
   if (payout) params.set("payout", payout)
+  if (price.min) params.set("min", price.min)
+  if (price.max) params.set("max", price.max)
   if (range?.from && range?.to) {
     params.set("from", range.from)
     params.set("to", range.to)
@@ -78,6 +83,7 @@ export default function Orders() {
   const [source, setSource] = useState(initial.source)
   const [tagPick, setTagPick] = useState(initial.tags)
   const [payout, setPayout] = useState(initial.payout)
+  const [price, setPrice] = useState(initial.price)
   const [range, setRange] = useState(initial.range)
   const [sources, setSources] = useState([])
   const [tags, setTags] = useState([])
@@ -121,8 +127,8 @@ export default function Orders() {
   }
 
   useEffect(() => {
-    writeUrl({ status, source, tags: tagPick, payout, range, q, page, pageSize })
-  }, [status, source, tagPick, payout, range, q, page, pageSize])
+    writeUrl({ status, source, tags: tagPick, payout, price, range, q, page, pageSize })
+  }, [status, source, tagPick, payout, price, range, q, page, pageSize])
 
   useEffect(() => {
     let live = true
@@ -143,6 +149,8 @@ export default function Orders() {
         query.set("from", range.from)
         query.set("to", range.to)
       }
+      if (price.min) query.set("min", price.min)
+      if (price.max) query.set("max", price.max)
       api(`/api/orders?${query}`)
         .then((body) => {
           if (!live) return
@@ -159,7 +167,7 @@ export default function Orders() {
         .finally(() => { if (live) setLoading(false) })
     }, 200)
     return () => { live = false; clearTimeout(handle) }
-  }, [status, source, tagPick, payout, range, q, page, pageSize, tick])
+  }, [status, source, tagPick, payout, price, range, q, page, pageSize, tick])
 
   useEffect(() => {
     let live = true
@@ -250,6 +258,7 @@ export default function Orders() {
             onChange={(next) => { setPayout(next); setPage(1) }}
             options={PAYOUTS}
           />
+          <PriceRange value={price} onChange={(next) => { setPrice(next); setPage(1) }} />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
         </div>
       </div>

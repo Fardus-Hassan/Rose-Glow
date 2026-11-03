@@ -135,9 +135,27 @@ const COURIER_STATUS_ID = /^[a-z0-9_]{1,80}$/
 const PAID_OUT = "EXISTS (SELECT 1 FROM steadfast_payment_parcels pp WHERE pp.order_id = o.id)"
 const DELIVERED_PARCEL = ["delivered", "partial_delivered", "partial_delivered_return_processing", "partial_delivered_return_rider_assigned", "partial_delivered_return_received"]
 
-export async function listOrders({ status, q, source, tags, payout, from, to, limit, offset }) {
+function priceBound(value) {
+  if (value === undefined || value === null || String(value).trim() === "") return null
+  const amount = Number(value)
+  if (!Number.isFinite(amount) || amount < 0) throw fail(400, "Price is not valid")
+  return amount
+}
+
+export async function listOrders({ status, q, source, tags, payout, from, to, minTotal, maxTotal, limit, offset }) {
   const params = []
   const where = []
+  const low = priceBound(minTotal)
+  const high = priceBound(maxTotal)
+  if (low != null && high != null && low > high) throw fail(400, "The lowest price is higher than the highest")
+  if (low != null) {
+    params.push(low)
+    where.push(`(SELECT pm.total FROM order_money pm WHERE pm.id = o.id) >= $${params.length}`)
+  }
+  if (high != null) {
+    params.push(high)
+    where.push(`(SELECT pm.total FROM order_money pm WHERE pm.id = o.id) <= $${params.length}`)
+  }
   if (source && source !== "all") {
     const picks = [...new Set(String(source).split(",").map((item) => item.trim()).filter(Boolean))]
     const none = picks.includes("none")

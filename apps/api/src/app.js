@@ -231,6 +231,8 @@ export function mount(app) {
       payout: req.query.payout || "",
       from: req.query.from || "",
       to: req.query.to || "",
+      minTotal: req.query.min,
+      maxTotal: req.query.max,
       limit,
       offset,
     }))
