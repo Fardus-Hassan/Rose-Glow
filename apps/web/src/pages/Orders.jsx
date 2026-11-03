@@ -314,7 +314,7 @@ export default function Orders() {
                       <TagList tags={order.tags} />
                     </span>
                   </td>
-                  <td data-label="Time">{when(order.orderedAt)}</td>
+                  <td data-label="Time"><TimeCell iso={order.orderedAt} /></td>
                   <td data-label="Status">
                     <StatusMenu order={order} onChanged={replaceOrder} />
                     {order.courierStatus ? <small className="courier-state">{courierStatusLabel(order.courierStatus)}</small> : null}
@@ -360,6 +360,18 @@ function OrderSummary({ summary }) {
         </p>
       ))}
     </div>
+  )
+}
+
+function TimeCell({ iso }) {
+  const text = when(iso)
+  const cut = text.lastIndexOf(", ")
+  if (cut < 0) return text
+  return (
+    <span className="time-cell">
+      <span>{text.slice(0, cut)}</span>
+      <small>{text.slice(cut + 2)}</small>
+    </span>
   )
 }
 
