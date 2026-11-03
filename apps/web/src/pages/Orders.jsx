@@ -28,6 +28,11 @@ function matchesFilter(order, filter) {
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
+const PAYOUTS = [
+  { value: "", label: "Any payout" },
+  { value: "paid", label: "Steadfast paid me" },
+  { value: "waiting", label: "Delivered, not paid yet" },
+]
 
 function readUrl() {
   const params = new URLSearchParams(window.location.search)
@@ -40,6 +45,7 @@ function readUrl() {
     status: FILTERS.some((item) => item.id === status) || /^sf:[a-z0-9_]{1,80}$/.test(status) ? status : "all",
     source: (params.get("source") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
     tags: (params.get("tags") || "").split(",").filter((item) => item === "none" || /^\d+$/.test(item)),
+    payout: PAYOUTS.some((item) => item.value === params.get("payout")) ? params.get("payout") : "",
     range: DAY.test(from) && DAY.test(to) && from <= to ? { from, to } : null,
     q: params.get("q") || "",
     page: Number.isInteger(page) && page > 1 ? page : 1,
@@ -47,11 +53,12 @@ function readUrl() {
   }
 }
 
-function writeUrl({ status, source, tags, range, q, page, pageSize }) {
+function writeUrl({ status, source, tags, payout, range, q, page, pageSize }) {
   const params = new URLSearchParams()
   if (status !== "all") params.set("status", status)
   if (source.length) params.set("source", source.join(","))
   if (tags.length) params.set("tags", tags.join(","))
+  if (payout) params.set("payout", payout)
   if (range?.from && range?.to) {
     params.set("from", range.from)
     params.set("to", range.to)
@@ -70,6 +77,7 @@ export default function Orders() {
   const [status, setStatus] = useState(initial.status)
   const [source, setSource] = useState(initial.source)
   const [tagPick, setTagPick] = useState(initial.tags)
+  const [payout, setPayout] = useState(initial.payout)
   const [range, setRange] = useState(initial.range)
   const [sources, setSources] = useState([])
   const [tags, setTags] = useState([])
@@ -113,8 +121,8 @@ export default function Orders() {
   }
 
   useEffect(() => {
-    writeUrl({ status, source, tags: tagPick, range, q, page, pageSize })
-  }, [status, source, tagPick, range, q, page, pageSize])
+    writeUrl({ status, source, tags: tagPick, payout, range, q, page, pageSize })
+  }, [status, source, tagPick, payout, range, q, page, pageSize])
 
   useEffect(() => {
     let live = true
@@ -126,6 +134,7 @@ export default function Orders() {
         status,
         source: source.length ? source.join(",") : "all",
         tags: tagPick.join(","),
+        payout,
         q,
         limit: String(pageSize),
         offset: String((page - 1) * pageSize),
@@ -150,7 +159,7 @@ export default function Orders() {
         .finally(() => { if (live) setLoading(false) })
     }, 200)
     return () => { live = false; clearTimeout(handle) }
-  }, [status, source, tagPick, range, q, page, pageSize, tick])
+  }, [status, source, tagPick, payout, range, q, page, pageSize, tick])
 
   useEffect(() => {
     let live = true
@@ -234,6 +243,12 @@ export default function Orders() {
             onChange={(next) => { setTagPick(next); setPage(1) }}
             options={[...tags.map((item) => ({ value: String(item.id), label: item.name })), { value: "none", label: "No tags" }]}
           />
+          <Select
+            label="Payout"
+            value={payout}
+            onChange={(next) => { setPayout(next); setPage(1) }}
+            options={PAYOUTS}
+          />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
         </div>
       </div>
@@ -272,6 +287,7 @@ export default function Orders() {
                       <span>{order.courier}</span>
                       {order.consignmentId ? <CopyChip value={String(order.consignmentId)} label="Consignment ID" tag="ID" className="consign" /> : null}
                       {order.courierStatus ? <span className="courier-state">{courierStatusLabel(order.courierStatus)}</span> : null}
+                      {order.payout ? <span className="paid-tag" title={`Steadfast paid this in ${order.payout.label}${order.payout.paidAt ? ` on ${when(order.payout.paidAt)}` : ""}`}>Paid</span> : null}
                     </small>
                   </td>
                   <td data-label="Customer">

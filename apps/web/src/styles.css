@@ -630,6 +630,28 @@ h1 .copy-chip.big svg { width: 20px; height: 20px; }
 .order-cell { display: inline-flex; align-items: center; gap: 8px; }
 .courier-meta { display: grid; justify-items: start; gap: 3px; margin-top: 6px; font-size: 0.76rem; }
 .courier-meta .courier-state { color: var(--gold); }
+.paid-tag { padding: 0 7px; border-radius: 999px; background: rgba(120, 200, 150, 0.14); color: var(--good); font-weight: 650; }
+.payout-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; color: var(--muted); font-size: 0.86rem; }
+.payout-line b { color: var(--ink); }
+.payment-totals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.payment-totals p { margin: 0; padding: 8px 10px; border-radius: 12px; background: var(--card-2); }
+.payment-totals span { display: block; color: var(--muted); font-size: 0.75rem; }
+.payment-totals b { font-variant-numeric: tabular-nums; }
+.payment-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.payment-facts b { overflow-wrap: anywhere; }
+.payment-sub { margin: 4px 0 0; font-size: 1rem; }
+.payment-parcels { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.payment-parcels li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--card-2); }
+.payment-parcels li > div:first-child { display: grid; justify-items: start; }
+.payment-parcels small { color: var(--muted); font-size: 0.74rem; }
+.payment-parcel-ids { display: grid; justify-items: end; gap: 2px; }
+.payment-parcels b { font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+@media (max-width: 640px) {
+  .payment-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payment-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .payment-parcels li { grid-template-columns: minmax(0, 1fr) auto; }
+  .payment-parcel-ids { grid-column: 1 / -1; grid-row: 2; justify-items: start; }
+}
 .product-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; min-width: 150px; max-width: 26ch; }
 .product-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; line-height: 1.35; }
 .product-list li b { font-weight: 600; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
@@ -1533,7 +1555,7 @@ tr.selected { background: var(--rose-soft); }
     border-radius: 18px;
     background: var(--card);
   }
-  .filter-tools .search-box, .filter-tools .range { grid-column: 1 / -1; width: 100%; }
+  .filter-tools .search-box { grid-column: 1 / -1; width: 100%; }
   .filter-tools input, .filter-tools .select, .range, .range-trigger { width: 100%; max-width: 100%; }
   .filter-tools .range-trigger { justify-content: center; overflow: hidden; text-overflow: ellipsis; }
   .filter-pills {

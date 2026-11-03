@@ -3,6 +3,7 @@ import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, up
 import { dashboard, orderTotals, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { createTag, deleteTag, listTags, updateTag } from "./tags.js"
+import { paymentDetail, paymentList, syncPayments, syncPaymentsSoon } from "./payments.js"
 import { fail, whole, wrap } from "./http.js"
 import { createOrder, deleteOrder, getOrder, listOrders, setCourierCharge, setReturnedPieces, updateOrder } from "./orders.js"
 import {
@@ -223,6 +224,7 @@ export function mount(app) {
       q: req.query.q || "",
       source: req.query.source || "all",
       tags: req.query.tags || "",
+      payout: req.query.payout || "",
       from: req.query.from || "",
       to: req.query.to || "",
       limit,
@@ -265,7 +267,24 @@ export function mount(app) {
   }))
 
   app.get("/api/courier/notifications", wrap(async (req, res) => {
+    syncPaymentsSoon()
     res.json(await notificationFeed(feedLimit(req.query.limit)))
+  }))
+
+  app.get("/api/courier/payments", wrap(async (req, res) => {
+    const limit = Math.min(Math.max(whole(req.query.limit, 20) || 20, 1), 200)
+    const offset = Math.max(whole(req.query.offset, 0) || 0, 0)
+    res.json(await paymentList({ limit, offset }))
+  }))
+
+  app.post("/api/courier/payments/sync", wrap(async (req, res) => {
+    res.json(await syncPayments({ force: true }))
+  }))
+
+  app.get("/api/courier/payments/:ref", wrap(async (req, res) => {
+    const ref = String(req.params.ref || "").trim()
+    if (!ref || ref.length > 80) throw fail(400, "That payment is not valid")
+    res.json(await paymentDetail(ref))
   }))
 
   app.post("/api/courier/notifications/read", wrap(async (req, res) => {

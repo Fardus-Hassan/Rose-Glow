@@ -44,6 +44,7 @@ function present(row, items = undefined) {
     sourceId: row.source_id,
     sourceName: row.source_name || "",
     tags: row.tags || [],
+    payout: row.payout || null,
     stockHeld: row.stock_held,
     consignmentId: row.consignment_id ? Number(row.consignment_id) : null,
     trackingCode: row.tracking_code || "",
@@ -80,7 +81,10 @@ const ORDER_SELECT = `
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
          m.total::float8 AS total, m.courier_cost::float8 AS courier_cost, m.cod_fee::float8 AS cod_fee, m.profit::float8 AS profit,
          (SELECT COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name) ORDER BY t.position, t.id), '[]'::json)
-          FROM order_tag_links l JOIN order_tags t ON t.id = l.tag_id WHERE l.order_id = o.id) AS tags
+          FROM order_tag_links l JOIN order_tags t ON t.id = l.tag_id WHERE l.order_id = o.id) AS tags,
+         (SELECT json_build_object('ref', p.ref, 'label', COALESCE(NULLIF(p.label, ''), p.ref), 'paidAt', p.paid_at, 'amount', pp.amount)
+          FROM steadfast_payment_parcels pp JOIN steadfast_payments p ON p.ref = pp.payment_ref
+          WHERE pp.order_id = o.id ORDER BY p.paid_at DESC NULLS LAST LIMIT 1) AS payout
   FROM orders o
   JOIN order_money m ON m.id = o.id
   LEFT JOIN order_sources src ON src.id = o.source_id
@@ -128,7 +132,10 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/
 
 const COURIER_STATUS_ID = /^[a-z0-9_]{1,80}$/
 
-export async function listOrders({ status, q, source, tags, from, to, limit, offset }) {
+const PAID_OUT = "EXISTS (SELECT 1 FROM steadfast_payment_parcels pp WHERE pp.order_id = o.id)"
+const DELIVERED_PARCEL = ["delivered", "partial_delivered", "partial_delivered_return_processing", "partial_delivered_return_rider_assigned", "partial_delivered_return_received"]
+
+export async function listOrders({ status, q, source, tags, payout, from, to, limit, offset }) {
   const params = []
   const where = []
   if (source && source !== "all") {
@@ -163,6 +170,11 @@ export async function listOrders({ status, q, source, tags, from, to, limit, off
     if (none) parts.push("NOT EXISTS (SELECT 1 FROM order_tag_links l WHERE l.order_id = o.id)")
     if (parts.length) where.push(`(${parts.join(" OR ")})`)
   }
+  if (payout === "paid") where.push(PAID_OUT)
+  else if (payout === "waiting") {
+    params.push(DELIVERED_PARCEL)
+    where.push(`(o.courier_status = ANY($${params.length}::text[]) AND NOT ${PAID_OUT})`)
+  } else if (payout) throw fail(400, "Payout filter is not valid")
   const hasFrom = Boolean(from)
   const hasTo = Boolean(to)
   if (hasFrom !== hasTo || (hasFrom && (!DAY.test(from) || !DAY.test(to) || from > to))) {

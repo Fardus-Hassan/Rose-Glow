@@ -527,7 +527,7 @@ async function requireKeys() {
   return keys
 }
 
-async function keysOrNull() {
+export async function keysOrNull() {
   const row = await accountRow()
   if (!row) return null
   try {

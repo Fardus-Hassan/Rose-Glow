@@ -257,6 +257,35 @@ CREATE TABLE IF NOT EXISTS order_tag_links (
 );
 CREATE INDEX IF NOT EXISTS order_tag_links_tag_idx ON order_tag_links (tag_id);
 
+-- Steadfast payouts. raw and detail keep Steadfast's whole reply, and rows are never deleted.
+CREATE TABLE IF NOT EXISTS steadfast_payments (
+  ref TEXT PRIMARY KEY,
+  label TEXT NOT NULL DEFAULT '',
+  amount NUMERIC(14,2),
+  status TEXT NOT NULL DEFAULT '',
+  method TEXT NOT NULL DEFAULT '',
+  paid_at TIMESTAMPTZ,
+  raw JSONB NOT NULL,
+  detail JSONB,
+  detail_at TIMESTAMPTZ,
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS steadfast_payments_paid_idx ON steadfast_payments (paid_at DESC NULLS LAST);
+CREATE TABLE IF NOT EXISTS steadfast_payment_parcels (
+  payment_ref TEXT NOT NULL REFERENCES steadfast_payments(ref) ON DELETE CASCADE,
+  position INTEGER NOT NULL,
+  consignment_id BIGINT,
+  invoice TEXT NOT NULL DEFAULT '',
+  tracking_code TEXT NOT NULL DEFAULT '',
+  amount NUMERIC(14,2),
+  order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+  raw JSONB NOT NULL,
+  PRIMARY KEY (payment_ref, position)
+);
+CREATE INDEX IF NOT EXISTS steadfast_payment_parcels_order_idx ON steadfast_payment_parcels (order_id);
+CREATE INDEX IF NOT EXISTS steadfast_payment_parcels_cid_idx ON steadfast_payment_parcels (consignment_id);
+
 -- The one place an order's money is worked out. Every report reads from here.
 -- courier_cost uses what Steadfast actually charged once known, else the charge typed on the order.
 -- Once Steadfast reports what it collected, its 1% COD charge replaces the typed one:

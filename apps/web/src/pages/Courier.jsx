@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
+import PaymentsCard from "../Payments.jsx"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { setSteadfastId, useSteadfastId } from "../steadfastId.js"
@@ -287,6 +288,8 @@ export default function Courier() {
           />
         ) : null}
       </article>
+
+      <PaymentsCard connected={Boolean(account?.connected)} />
     </section>
   )
 }

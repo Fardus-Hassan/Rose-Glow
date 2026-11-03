@@ -735,6 +735,12 @@ function ChargeBox({ order, onSaved, children }) {
           <small className="muted">{order.courierCod === null ? "Not yet" : order.codFee > 0 ? `1% COD ${taka(order.codFee)}` : "By Steadfast"}</small>
         </p>
       </div>
+      {order.payout ? (
+        <p className="payout-line">
+          <span className="paid-tag">Paid</span>
+          Steadfast paid this to you in <b>{order.payout.label}</b>{order.payout.paidAt ? ` on ${when(order.payout.paidAt)}` : ""}
+        </p>
+      ) : null}
       {open ? (
         <form className="charge-form" onSubmit={(event) => { event.preventDefault(); save(value) }}>
           <input type="number" min="0" step="1" inputMode="numeric" value={value} onChange={(event) => setValue(event.target.value)} placeholder="What Steadfast charged" required autoFocus />
