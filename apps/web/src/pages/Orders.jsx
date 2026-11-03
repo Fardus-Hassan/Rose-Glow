@@ -254,7 +254,7 @@ export default function Orders() {
         </div>
       </div>
 
-      <article className="card list-card" aria-busy={loading}>
+      <article className="card list-card order-list" aria-busy={loading}>
         {data?.summary ? <OrderSummary summary={data.summary} /> : null}
         <div className="table-card">
         {loading ? <p className="muted load-line">Loading…</p> : null}

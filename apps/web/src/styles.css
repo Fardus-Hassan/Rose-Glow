@@ -629,8 +629,8 @@ h1 .copy-chip.big svg { width: 20px; height: 20px; }
 .list-card td[data-label="Due"] { white-space: nowrap; }
 .order-cell { display: inline-flex; align-items: center; gap: 8px; }
 .courier-meta { display: grid; justify-items: start; gap: 3px; margin-top: 6px; font-size: 0.76rem; }
-.list-card .eye-btn { margin-left: 0; }
-.list-card .courier-state { display: block; margin-top: 3px; color: var(--gold); font-size: 0.72rem; line-height: 1.25; }
+.order-list .eye-btn { margin-left: 0; }
+.order-list .courier-state { display: block; margin-top: 3px; color: var(--gold); font-size: 0.72rem; line-height: 1.25; }
 .paid-badge {
   display: inline-flex; align-items: center; gap: 4px; flex: none;
   padding: 2px 9px 2px 4px; border-radius: 999px;
@@ -1207,6 +1207,8 @@ tr.selected { background: var(--rose-soft); }
 .order-summary b.good { color: var(--good); }
 .order-summary b.bad { color: var(--bad); }
 .list-card th.serial, .list-card td.serial { width: 1%; padding-right: 4px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cell-stack { display: grid; justify-items: start; gap: 1px; }
+.cell-stack small { display: block; color: var(--muted); font-size: 0.74rem; }
 .source-cell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .source-cell .tag-list { margin-top: 0; }
 .hover-full { display: block; min-width: 0; }
@@ -1220,26 +1222,26 @@ tr.selected { background: var(--rose-soft); }
 .hover-pop .product-list { max-width: none; min-width: 0; gap: 4px; }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-3px); } }
 @media (min-width: 1201px) {
-  .list-card th, .list-card td { padding: 8px 6px; vertical-align: middle; }
-  .list-card td[data-label="Address"] { min-width: 130px; }
-  .list-card .time-cell { display: grid; line-height: 1.3; }
-  .list-card .time-cell small { color: var(--muted); font-size: 0.78rem; }
-  .list-card td[data-label="Status"] { max-width: 150px; }
-  .list-card .eye-btn { width: 26px; height: 26px; }
-  .list-card .eye-btn svg { width: 15px; height: 15px; }
-  .list-card .courier-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 4px; }
-  .list-card .customer-name { font-weight: 600; }
-  .list-card .phone-line { flex-direction: row; align-items: center; gap: 6px; margin-top: 2px; }
-  .list-card .reach { gap: 5px; }
-  .list-card .reach-btn { width: 24px; height: 24px; min-height: 24px; flex: none; }
-  .list-card .reach-btn svg { width: 13px; height: 13px; }
-  .list-card .phone-line { gap: 8px; }
-  .list-card .product-list { gap: 1px; min-width: 110px; max-width: 150px; }
-  .list-card .product-list li { flex-wrap: nowrap; min-width: 0; line-height: 1.3; }
-  .list-card .product-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .list-card .product-list li b, .list-card .product-list li em { flex: none; }
-  .list-card .product-list li.muted { font-size: 0.78rem; }
-  .list-card td .copy-address { font-size: 0.9rem; line-height: 1.5; max-height: 3em; }
+  .order-list th, .order-list td { padding: 8px 6px; vertical-align: middle; }
+  .order-list td[data-label="Address"] { min-width: 130px; }
+  .order-list .time-cell { display: grid; line-height: 1.3; }
+  .order-list .time-cell small { color: var(--muted); font-size: 0.78rem; }
+  .order-list td[data-label="Status"] { max-width: 150px; }
+  .order-list .eye-btn { width: 26px; height: 26px; }
+  .order-list .eye-btn svg { width: 15px; height: 15px; }
+  .order-list .courier-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 4px; }
+  .order-list .customer-name { font-weight: 600; }
+  .order-list .phone-line { flex-direction: row; align-items: center; gap: 6px; margin-top: 2px; }
+  .order-list .reach { gap: 5px; }
+  .order-list .reach-btn { width: 24px; height: 24px; min-height: 24px; flex: none; }
+  .order-list .reach-btn svg { width: 13px; height: 13px; }
+  .order-list .phone-line { gap: 8px; }
+  .order-list .product-list { gap: 1px; min-width: 110px; max-width: 150px; }
+  .order-list .product-list li { flex-wrap: nowrap; min-width: 0; line-height: 1.3; }
+  .order-list .product-list li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .order-list .product-list li b, .order-list .product-list li em { flex: none; }
+  .order-list .product-list li.muted { font-size: 0.78rem; }
+  .order-list td .copy-address { font-size: 0.9rem; line-height: 1.5; max-height: 3em; }
 }
 @media (max-width: 520px) {
   .order-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 0; padding: 6px 2px; font-size: 0.76rem; }
@@ -2220,6 +2222,49 @@ tr.selected { background: var(--rose-soft); }
   .list-card .table-card td { display: block; width: auto; }
   .list-card .table-card thead { display: none; }
   .list-card .table-card tr {
+    margin: 0 0 10px;
+    padding: 8px 12px 10px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card-2);
+  }
+  .list-card .table-card td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    padding: 5px 0;
+    text-align: right;
+  }
+  .list-card .table-card td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: left;
+    flex: none;
+  }
+  .list-card .table-card td[data-label="Customer"] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+  .list-card .table-card td[data-label="Customer"]::before {
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+  .list-card .table-card td[data-label="Customer"] > .copy-text,
+  .list-card .table-card td[data-label="Customer"] small {
+    justify-self: end;
+    min-width: 0;
+    text-align: right;
+  }
+  .list-card .table-card td[data-label="Customer"] small { display: block; }
+  .list-card .table-card td[data-label="Order"] { flex-wrap: wrap; }
+  .list-card .table-card td { overflow-wrap: anywhere; }
+  .list-card .table-card td > * { min-width: 0; }
+  .list-card .cell-stack { justify-items: end; text-align: right; }
+  .order-list .table-card tr {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
@@ -2236,44 +2281,44 @@ tr.selected { background: var(--rose-soft); }
     border-radius: 14px;
     background: var(--card-2);
   }
-  .list-card .table-card td { display: block; min-width: 0; border: 0; padding: 0; text-align: left; white-space: normal; }
-  .list-card .table-card td::before { content: none; }
-  .list-card .table-card td.serial { grid-area: serial; padding: 3px 8px 0 0; font-size: 0.72rem; }
-  .list-card .table-card td.serial::before { content: "#"; }
-  .list-card .table-card td[data-label="Order"] { grid-area: order; }
-  .list-card .table-card td[data-label="Status"] { grid-area: status; justify-self: end; max-width: 46vw; text-align: right; }
-  .list-card .eye-btn { width: 28px; height: 28px; }
-  .list-card .eye-btn svg { width: 15px; height: 15px; }
-  .list-card .order-cell { gap: 6px; }
-  .list-card .courier-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 4px; }
-  .list-card .table-card td[data-label="Customer"] {
+  .order-list .table-card td { display: block; min-width: 0; border: 0; padding: 0; text-align: left; white-space: normal; }
+  .order-list .table-card td::before { content: none; }
+  .order-list .table-card td.serial { grid-area: serial; padding: 3px 8px 0 0; font-size: 0.72rem; }
+  .order-list .table-card td.serial::before { content: "#"; }
+  .order-list .table-card td[data-label="Order"] { grid-area: order; }
+  .order-list .table-card td[data-label="Status"] { grid-area: status; justify-self: end; max-width: 46vw; text-align: right; }
+  .order-list .eye-btn { width: 28px; height: 28px; }
+  .order-list .eye-btn svg { width: 15px; height: 15px; }
+  .order-list .order-cell { gap: 6px; }
+  .order-list .courier-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 4px; }
+  .order-list .table-card td[data-label="Customer"] {
     grid-area: cust;
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px;
     margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line);
   }
-  .list-card .customer-name { font-weight: 650; }
-  .list-card .phone-line { flex-direction: row; align-items: center; gap: 6px; }
-  .list-card .reach { gap: 5px; }
-  .list-card .reach-btn { width: 28px; height: 28px; min-height: 28px; }
-  .list-card .reach-btn svg { width: 15px; height: 15px; }
-  .list-card .table-card td[data-label="Products"] { grid-area: prod; margin-top: 6px; }
-  .list-card .product-list { display: flex; flex-wrap: wrap; gap: 4px; max-width: none; min-width: 0; }
-  .list-card .product-list li { padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 0.84rem; }
-  .list-card .product-list li b { font-size: 0.74rem; }
-  .list-card .table-card td[data-label="Address"] { grid-area: addr; margin-top: 6px; }
-  .list-card .table-card .copy-address { max-width: none; max-height: 3em; text-align: left; color: var(--muted); font-size: 0.84rem; line-height: 1.5; -webkit-line-clamp: 2; }
-  .list-card .time-cell, .list-card .time-cell span, .list-card .time-cell small { display: inline; font-size: inherit; color: inherit; white-space: nowrap; }
-  .list-card .time-cell span::after { content: ", "; }
-  .list-card .table-card td[data-label="Time"] { grid-area: time; justify-self: end; align-self: end; color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
-  .list-card .table-card td[data-label="Source"],
-  .list-card .table-card td[data-label="Total"],
-  .list-card .table-card td[data-label="Due"] { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 0.8rem; }
-  .list-card .table-card td[data-label="Source"] { grid-area: src; }
-  .list-card .table-card td[data-label="Source"] .source-cell { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
-  .list-card .table-card td[data-label="Total"] { grid-area: total; padding-left: 14px; font-weight: 650; text-align: right; white-space: nowrap; }
-  .list-card .table-card td[data-label="Due"] { grid-area: due; padding-left: 14px; font-weight: 650; text-align: right; white-space: nowrap; }
-  .list-card .table-card td[data-label="Total"]::before,
-  .list-card .table-card td[data-label="Due"]::before { content: attr(data-label) " "; color: var(--muted); font-weight: 400; font-size: 0.74rem; }
+  .order-list .customer-name { font-weight: 650; }
+  .order-list .phone-line { flex-direction: row; align-items: center; gap: 6px; }
+  .order-list .reach { gap: 5px; }
+  .order-list .reach-btn { width: 28px; height: 28px; min-height: 28px; }
+  .order-list .reach-btn svg { width: 15px; height: 15px; }
+  .order-list .table-card td[data-label="Products"] { grid-area: prod; margin-top: 6px; }
+  .order-list .product-list { display: flex; flex-wrap: wrap; gap: 4px; max-width: none; min-width: 0; }
+  .order-list .product-list li { padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 0.84rem; }
+  .order-list .product-list li b { font-size: 0.74rem; }
+  .order-list .table-card td[data-label="Address"] { grid-area: addr; margin-top: 6px; }
+  .order-list .table-card .copy-address { max-width: none; max-height: 3em; text-align: left; color: var(--muted); font-size: 0.84rem; line-height: 1.5; -webkit-line-clamp: 2; }
+  .order-list .time-cell, .order-list .time-cell span, .order-list .time-cell small { display: inline; font-size: inherit; color: inherit; white-space: nowrap; }
+  .order-list .time-cell span::after { content: ", "; }
+  .order-list .table-card td[data-label="Time"] { grid-area: time; justify-self: end; align-self: end; color: var(--muted); font-size: 0.74rem; white-space: nowrap; }
+  .order-list .table-card td[data-label="Source"],
+  .order-list .table-card td[data-label="Total"],
+  .order-list .table-card td[data-label="Due"] { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 0.8rem; }
+  .order-list .table-card td[data-label="Source"] { grid-area: src; }
+  .order-list .table-card td[data-label="Source"] .source-cell { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+  .order-list .table-card td[data-label="Total"] { grid-area: total; padding-left: 14px; font-weight: 650; text-align: right; white-space: nowrap; }
+  .order-list .table-card td[data-label="Due"] { grid-area: due; padding-left: 14px; font-weight: 650; text-align: right; white-space: nowrap; }
+  .order-list .table-card td[data-label="Total"]::before,
+  .order-list .table-card td[data-label="Due"]::before { content: attr(data-label) " "; color: var(--muted); font-weight: 400; font-size: 0.74rem; }
   .inv-table .table-card tr.inv-product,
   .inv-table .table-card tr.inv-combo {
     display: grid;

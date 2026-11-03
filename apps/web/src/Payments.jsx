@@ -117,14 +117,18 @@ export default function PaymentsCard({ connected }) {
                   <td data-label="Date">{payment.paidAt ? when(payment.paidAt) : "—"}</td>
                   <td data-label="Payment"><strong>{payment.label}</strong></td>
                   <td data-label="Received">
-                    {money(payment.received ?? payment.amount)}
-                    {payment.received !== null && payment.amount !== null && payment.amount !== payment.received ? <small>of {taka(payment.amount)}</small> : null}
+                    <span className="cell-stack">
+                      {money(payment.received ?? payment.amount)}
+                      {payment.received !== null && payment.amount !== null && payment.amount !== payment.received ? <small>of {taka(payment.amount)}</small> : null}
+                    </span>
                   </td>
                   <td data-label="Status">{payment.status || "—"}</td>
                   <td data-label="Method">{payment.method || "—"}</td>
                   <td data-label="Parcels">
-                    {payment.loaded ? payment.parcels : "…"}
-                    {payment.loaded && payment.parcels > payment.matched ? <small>{payment.parcels - payment.matched} booked outside Rose Glow</small> : null}
+                    <span className="cell-stack">
+                      {payment.loaded ? payment.parcels : "…"}
+                      {payment.loaded && payment.parcels > payment.matched ? <small>{payment.parcels - payment.matched} booked outside Rose Glow</small> : null}
+                    </span>
                   </td>
                 </tr>
               ))}

@@ -264,8 +264,10 @@ export default function Courier() {
                     <td data-label="Steadfast">{courierStatusLabel(parcel.courierStatus) || "Pending"}</td>
                     <td data-label="Order status">{statusLabel(parcel.status)}</td>
                     <td data-label="Charge">
-                      {taka(parcel.courierCost)}
-                      <small>{parcel.courierCharge === null ? "Estimate" : parcel.courierChargeBy === "manual" ? "You entered" : "Steadfast"}</small>
+                      <span className="cell-stack">
+                        {taka(parcel.courierCost)}
+                        <small>{parcel.courierCharge === null ? "Estimate" : parcel.courierChargeBy === "manual" ? "You entered" : "Steadfast"}</small>
+                      </span>
                     </td>
                     <td data-label="Collected">{parcel.courierCod === null ? "—" : taka(parcel.courierCod)}</td>
                   </tr>
