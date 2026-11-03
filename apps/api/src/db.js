@@ -332,10 +332,8 @@ CROSS JOIN LATERAL (
 
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position
-FROM (VALUES ('Facebook', 1), ('TikTok', 2), ('WhatsApp', 3), ('IMO', 4)) AS seed(name, position)
-WHERE NOT EXISTS (
-  SELECT 1 FROM order_sources existing WHERE lower(existing.name) = lower(seed.name)
-);
+FROM (VALUES ('Facebook', 1), ('TikTok', 2)) AS seed(name, position)
+WHERE NOT EXISTS (SELECT 1 FROM order_sources);
 `
 
 let pending = null
