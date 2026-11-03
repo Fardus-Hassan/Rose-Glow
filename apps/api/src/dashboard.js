@@ -97,6 +97,7 @@ export async function dashboard() {
   return {
     today: { ...today, withdrawn: withdrawn.today },
     month: { ...month, withdrawn: withdrawn.month, kept: month.net - withdrawn.month },
+    all: { ...allDue, withdrawn: withdrawn.all, kept: allDue.net - withdrawn.all },
     dueAll: allDue.due,
     books: {
       goods: booksMoney.goods,

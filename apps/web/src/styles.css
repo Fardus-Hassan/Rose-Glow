@@ -358,6 +358,12 @@ img, svg { display: block; }
   gap: 12px;
   margin-bottom: 16px;
 }
+.stats.six {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+}
+.stats.six .stat { min-height: 0; }
 .stat { padding: 14px 14px 12px; min-height: 128px; }
 .stat span, .stat p, .stat small { margin: 0; color: var(--muted); }
 .stat p { font-size: 0.95rem; }
@@ -1392,7 +1398,7 @@ tr.selected { background: var(--rose-soft); }
 .add-line.single { grid-template-columns: minmax(0, 1fr); }
 
 @media (max-width: 1100px) {
-  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats, .stats.six { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-flow: row; }
   .split, .order-layout, .detail, .chart-pair { grid-template-columns: 1fr; }
   .summary { position: static; }
   .order-create { grid-template-columns: minmax(0, 1fr) minmax(260px, 320px); }

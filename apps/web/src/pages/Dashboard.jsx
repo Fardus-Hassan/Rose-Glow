@@ -151,11 +151,17 @@ function Board({ data, go }) {
   const openCount = data.open.new + data.open.confirmed + data.open.courier
   return (
     <>
-      <div className="stats">
+      <div className={data.all ? "stats six" : "stats"}>
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
         <Stat kicker="Today" label="Net profit" value={taka(data.today.net)} note={netNote(data.today)} tone={data.today.net < 0 ? "bad" : ""} />
-        <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders · due ${taka(data.dueAll)}`} />
+        <Stat kicker="This month" label="Sales" value={taka(data.month.sales)} note={`${data.month.orders} orders · due ${taka(data.month.due)}`} />
         <Stat kicker="This month" label="Net profit" value={taka(data.month.net)} note={netNote(data.month)} extra={data.month.withdrawn > 0 ? `You took ${taka(data.month.withdrawn)} · ${taka(data.month.kept)} stays in` : ""} tone={data.month.net < 0 ? "bad" : ""} />
+        {data.all ? (
+          <>
+            <Stat kicker="All time" label="Sales" value={taka(data.all.sales)} note={`${data.all.orders} orders · due ${taka(data.dueAll)}`} />
+            <Stat kicker="All time" label="Net profit" value={taka(data.all.net)} note={netNote(data.all)} extra={data.all.withdrawn > 0 ? `You took ${taka(data.all.withdrawn)} · ${taka(data.all.kept)} stays in` : ""} tone={data.all.net < 0 ? "bad" : ""} />
+          </>
+        ) : null}
       </div>
 
       <article className="card dash-block">
