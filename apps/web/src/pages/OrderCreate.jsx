@@ -251,11 +251,12 @@ export default function OrderCreate() {
                 sources={sources}
                 onSources={setSources}
                 required
+                className="f-source"
               />
-              <Field label="Order time" className="span-2">
+              <Field label="Order time" className="f-time">
                 <input type="datetime-local" value={form.orderedAt} onChange={(event) => set("orderedAt", event.target.value)} required />
               </Field>
-              <TagField className="wide" value={form.tagIds} onChange={(tagIds) => set("tagIds", tagIds)} tags={tags} onTags={setTags} />
+              <TagField className="f-tags" value={form.tagIds} onChange={(tagIds) => set("tagIds", tagIds)} tags={tags} onTags={setTags} />
               <Field label="Address" className="wide">
                 <textarea rows={3} value={form.address} onChange={(event) => set("address", event.target.value)} required />
               </Field>

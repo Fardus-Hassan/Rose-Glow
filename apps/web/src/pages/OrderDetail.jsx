@@ -380,15 +380,14 @@ export default function OrderDetail({ id }) {
                     <input value={statusLabel(draft.status)} disabled />
                   )}
                 </Field>
-                <SourceField value={draft.sourceId} onChange={(value) => setDraftField("sourceId", value)} sources={sources} onSources={setSources} />
-                <Field label="Order time" className="span-2">
+                <SourceField value={draft.sourceId} onChange={(value) => setDraftField("sourceId", value)} sources={sources} onSources={setSources} className="f-source" />
+                <Field label="Order time" className="f-time">
                   <input type="datetime-local" value={draft.orderedAt} onChange={(event) => setDraftField("orderedAt", event.target.value)} required />
                 </Field>
+                <TagField className="f-tags" value={draft.tagIds} onChange={(value) => setDraftField("tagIds", value)} tags={tags} onTags={setTags} />
                 <Field label="Address" className="wide">
                   <textarea rows={3} value={draft.address} onChange={(event) => setDraftField("address", event.target.value)} disabled={Boolean(order.consignmentId)} required />
-                </Field>
-                <TagField className="wide" value={draft.tagIds} onChange={(value) => setDraftField("tagIds", value)} tags={tags} onTags={setTags} />
-              </div>
+                </Field>              </div>
             </article>
             <article className="card">
               <div className="add-line single">

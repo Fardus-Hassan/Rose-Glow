@@ -26,11 +26,11 @@ function AddButton({ noun, onClick }) {
   )
 }
 
-export function SourceField({ value, onChange, sources, onSources, required = false }) {
+export function SourceField({ value, onChange, sources, onSources, required = false, className = "span-2" }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <label className="field span-2">
+      <label className={`field ${className}`}>
         <span className="label-line">
           Source
           <AddButton noun="source" onClick={() => setOpen(true)} />
