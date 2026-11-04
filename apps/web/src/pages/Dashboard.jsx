@@ -155,21 +155,15 @@ function ParcelBlock({ go }) {
       {current && !total ? <p className="muted chart-empty">No parcels went to Steadfast in these dates.</p> : null}
       {current && total ? (
         <>
-          <div className="pstat-tiles">
-            {stages.map((stage) => (
-              <div key={stage.id} className={stage.parcels ? "pstat-tile" : "pstat-tile none"} style={{ "--stage": stage.color }}>
-                <span><i className="pstat-dot" />{stage.label}</span>
-                <strong>{stage.parcels}</strong>
-                <small>{taka(stage.amount)}</small>
-              </div>
-            ))}
-          </div>
           <div className="pstat-groups">
             {columns.map((column, index) => (
               <div key={index} className="pstat-col">
                 {column.map((stage) => (
                   <section key={stage.id} className="pstat-group" style={{ "--stage": stage.color }}>
-                    <h3><i className="pstat-dot" />{stage.label}</h3>
+                    <h3>
+                      <i className="pstat-dot" />{stage.label}
+                      <span className="pstat-total"><b>{stage.parcels} {stage.parcels === 1 ? "parcel" : "parcels"}</b>{taka(stage.amount)}</span>
+                    </h3>
                     <ul>
                       {stage.items.map((row) => (
                         <li key={row.id}>
