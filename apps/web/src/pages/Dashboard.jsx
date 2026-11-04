@@ -124,12 +124,13 @@ function ParcelBlock({ go }) {
     return {
       ...stage,
       items,
-      peak: Math.max(1, ...items.map((row) => row.parcels)),
       parcels: items.reduce((sum, row) => sum + row.parcels, 0),
       amount: items.reduce((sum, row) => sum + row.amount, 0),
     }
   })
   const total = stages.reduce((sum, stage) => sum + stage.parcels, 0)
+  const shown = stages.filter((stage) => stage.items.length)
+  const columns = [shown.slice(0, 1), shown.slice(1)].filter((column) => column.length)
 
   function open(id) {
     const query = new URLSearchParams({ status: `sf:${id}` })
@@ -145,7 +146,7 @@ function ParcelBlock({ go }) {
       <div className="card-head">
         <div>
           <h2>Parcels at Steadfast</h2>
-          <p className="muted small">How many parcels sit in each status, and what they are worth. Tap one to see the orders.</p>
+          <p className="muted small">Tap a status to see its orders</p>
         </div>
         <DateRange allowAll value={range} onChange={setRange} />
       </div>
@@ -154,38 +155,36 @@ function ParcelBlock({ go }) {
       {current && !total ? <p className="muted chart-empty">No parcels went to Steadfast in these dates.</p> : null}
       {current && total ? (
         <>
-          <div className="parcel-stages">
+          <div className="pstat-tiles">
             {stages.map((stage) => (
-              <div key={stage.id} className="parcel-stage" style={{ "--stage": stage.color }}>
-                <span><i />{stage.label}</span>
+              <div key={stage.id} className={stage.parcels ? "pstat-tile" : "pstat-tile none"} style={{ "--stage": stage.color }}>
+                <span><i className="pstat-dot" />{stage.label}</span>
                 <strong>{stage.parcels}</strong>
                 <small>{taka(stage.amount)}</small>
               </div>
             ))}
           </div>
-          <div className="parcel-split" aria-hidden="true">
-            {stages.filter((stage) => stage.parcels).map((stage) => (
-              <i key={stage.id} style={{ flexGrow: stage.parcels, background: stage.color }} />
-            ))}
-          </div>
-          <div className="parcel-groups">
-            {stages.filter((stage) => stage.items.length).map((stage) => (
-              <section key={stage.id} style={{ "--stage": stage.color }}>
-                <h3><i />{stage.label}<span>{stage.parcels} · {taka(stage.amount)}</span></h3>
-                <ul>
-                  {stage.items.map((row) => (
-                    <li key={row.id}>
-                      <button type="button" onClick={() => open(row.id)} aria-label={`${courierStatusLabel(row.id)}: ${row.parcels} parcels worth ${taka(row.amount)}. Open orders`}>
-                        <span className="parcel-name">{courierStatusLabel(row.id)}</span>
-                        <span className="parcel-bar"><i style={{ width: `${Math.max(3, (row.parcels / stage.peak) * 100)}%` }} /></span>
-                        <b className="parcel-count">{row.parcels}</b>
-                        <span className="parcel-amount">{taka(row.amount)}</span>
-                        <svg className="parcel-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+          <div className="pstat-groups">
+            {columns.map((column, index) => (
+              <div key={index} className="pstat-col">
+                {column.map((stage) => (
+                  <section key={stage.id} className="pstat-group" style={{ "--stage": stage.color }}>
+                    <h3><i className="pstat-dot" />{stage.label}</h3>
+                    <ul>
+                      {stage.items.map((row) => (
+                        <li key={row.id}>
+                          <button type="button" onClick={() => open(row.id)} aria-label={`${courierStatusLabel(row.id)}: ${row.parcels} parcels worth ${taka(row.amount)}. Open orders`}>
+                            <span className="pstat-name">{courierStatusLabel(row.id)}</span>
+                            <b className="pstat-count">{row.parcels}</b>
+                            <span className="pstat-amount">{taka(row.amount)}</span>
+                            <svg className="pstat-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
             ))}
           </div>
         </>
@@ -295,6 +294,8 @@ function Board({ data, go }) {
   const openCount = data.open.new + data.open.confirmed + data.open.courier
   return (
     <>
+      <ParcelBlock go={go} />
+
       <div className={data.all ? "stats six" : "stats"}>
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
         <Stat kicker="Today" label="Net profit" value={taka(data.today.net)} note={netNote(data.today)} tone={data.today.net < 0 ? "bad" : ""} />
@@ -344,8 +345,6 @@ function Board({ data, go }) {
           {(stats) => <CourierSuccess parcels={stats.parcels} range={courierRange} />}
         </ChartSlot>
       </article>
-
-      <ParcelBlock go={go} />
 
       <MoneyBlock />
 

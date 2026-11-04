@@ -1834,62 +1834,58 @@ tr.selected { background: var(--rose-soft); }
 .ad-charts .trend-kpis { margin-bottom: 6px; }
 .trend-kpis i.paid { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(#b5ead0, #3f9f74); }
 .money-focus { fill: rgba(255, 255, 255, 0.04); }
-.parcel-stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.parcel-stage { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--card-2); border-top: 3px solid var(--stage); }
-.parcel-stage span { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.82rem; }
-.parcel-stage strong { font-size: 1.5rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.parcel-stage small { color: var(--muted); font-variant-numeric: tabular-nums; }
-.parcel-stage i, .parcel-groups h3 i { width: 9px; height: 9px; border-radius: 3px; background: var(--stage); flex: none; }
-.parcel-split { display: flex; gap: 3px; height: 10px; margin: 12px 0 4px; }
-.parcel-split i { min-width: 6px; border-radius: 99px; }
-.parcel-groups { columns: 2; column-gap: 28px; margin-top: 8px; }
-.parcel-groups section { display: flow-root; min-width: 0; break-inside: avoid; padding: 10px 0 6px; }
-.parcel-groups h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding: 0 8px; font-size: 0.9rem; }
-.parcel-groups h3 span { margin-left: auto; color: var(--muted); font-weight: 500; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
-.parcel-groups ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.parcel-groups button {
+.pstat-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pstat-tile { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; background: var(--card-2); }
+.pstat-tile.none { opacity: 0.45; }
+.pstat-tile span { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 0.84rem; }
+.pstat-tile strong { font-size: 1.6rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.pstat-tile small { color: var(--muted); font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.pstat-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--stage); flex: none; }
+.pstat-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; margin-top: 14px; }
+.pstat-col { display: grid; gap: 12px; min-width: 0; }
+.pstat-group { min-width: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.pstat-group h3 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; font-size: 0.82rem; font-weight: 600; color: var(--muted); background: var(--card-2); }
+.pstat-group ul { list-style: none; margin: 0; padding: 0; }
+.pstat-group li + li { border-top: 1px solid var(--line); }
+.pstat-group button {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(40px, 1fr) 36px 80px 16px;
+  grid-template-columns: minmax(0, 1fr) auto 76px 14px;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 6px 8px;
+  gap: 12px;
+  min-height: 46px;
+  padding: 8px 14px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
 }
-.parcel-groups button:hover, .parcel-groups button:focus-visible { background: var(--card-2); }
-.parcel-groups button:hover .parcel-go { color: var(--rose); transform: translateX(2px); }
-.parcel-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
-.parcel-bar { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
-.parcel-bar i { display: block; height: 100%; border-radius: 99px; background: var(--stage); }
-.parcel-count { text-align: right; font-variant-numeric: tabular-nums; }
-.parcel-amount { text-align: right; color: var(--muted); font-size: 0.84rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.parcel-go { width: 16px; height: 16px; color: var(--muted); transition: transform 0.15s, color 0.15s; }
+.pstat-group button:hover, .pstat-group button:focus-visible { background: rgba(255, 255, 255, 0.035); }
+.pstat-group button:hover .pstat-go { color: var(--rose); transform: translateX(2px); }
+.pstat-name { min-width: 0; font-size: 0.92rem; line-height: 1.3; }
+.pstat-count {
+  min-width: 30px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--stage) 18%, transparent);
+  color: var(--stage);
+  font-size: 0.86rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.pstat-amount { text-align: right; color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pstat-go { width: 14px; height: 14px; color: var(--muted); transition: transform 0.15s, color 0.15s; }
 @media (max-width: 900px) {
-  .parcel-groups { columns: 1; }
+  .pstat-groups { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .parcel-block .card-head { flex-direction: column; align-items: stretch; }
   .parcel-block .card-head > :last-child { width: 100%; }
   .parcel-block .range-trigger { width: 100%; height: 40px; justify-content: center; }
-  .parcel-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .parcel-groups button {
-    grid-template-columns: minmax(0, 1fr) auto auto 16px;
-    grid-template-areas: "name count amount go" "bar bar bar go";
-    row-gap: 6px;
-    min-height: 52px;
-    padding: 8px 6px;
-  }
-  .parcel-name { grid-area: name; }
-  .parcel-bar { grid-area: bar; height: 6px; }
-  .parcel-count { grid-area: count; }
-  .parcel-amount { grid-area: amount; min-width: 64px; }
-  .parcel-go { grid-area: go; }
+  .pstat-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pstat-group button { min-height: 52px; gap: 10px; padding: 8px 12px; grid-template-columns: minmax(0, 1fr) auto 70px 14px; }
 }
 @media (max-width: 640px) {
   .money-block .card-head { flex-direction: column; align-items: stretch; }
