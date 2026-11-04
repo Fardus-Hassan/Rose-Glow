@@ -288,8 +288,6 @@ function Board({ data, go }) {
   const openCount = data.open.new + data.open.confirmed + data.open.courier
   return (
     <>
-      <ParcelBlock go={go} />
-
       <div className={data.all ? "stats six" : "stats"}>
         <Stat kicker="Today" label="Sales" value={taka(data.today.sales)} note={`${data.today.orders} orders · delivery ${taka(data.today.delivery)}`} />
         <Stat kicker="Today" label="Net profit" value={taka(data.today.net)} note={netNote(data.today)} tone={data.today.net < 0 ? "bad" : ""} />
@@ -302,6 +300,8 @@ function Board({ data, go }) {
           </>
         ) : null}
       </div>
+
+      <ParcelBlock go={go} />
 
       <article className="card dash-block">
         <div className="card-head">
