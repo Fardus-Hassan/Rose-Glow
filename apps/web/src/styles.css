@@ -1155,6 +1155,12 @@ input:-webkit-autofill {
 .filter-tools { display: flex; gap: 8px; align-items: center; flex: 1; justify-content: flex-end; min-width: min(100%, 280px); }
 .filter-tools .select { width: 170px; }
 .filter-tools .price-range { width: 150px; }
+@media (min-width: 861px) {
+  .filter-tools { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 720px; margin-left: auto; }
+  .filter-tools .search-box { grid-column: 1 / 4; grid-row: 1; width: 100%; }
+  .filter-tools > .range { grid-column: 4; grid-row: 1; }
+  .filter-tools .select, .filter-tools .price-range, .filter-tools > .range, .filter-tools .range-trigger { width: 100%; min-width: 0; }
+}
 .price-body { display: flex; flex-direction: column; min-height: 0; }
 .price-inputs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 8px; padding: 12px 12px 4px; }
 .price-inputs label { display: grid; gap: 5px; color: var(--muted); font-size: 0.8rem; }
