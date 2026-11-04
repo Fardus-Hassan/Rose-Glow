@@ -189,6 +189,18 @@ export default function Orders() {
   const statusCount = new Map(statusCounts.map((item) => [item.id, item.count]))
   const allCount = statusCounts.reduce((sum, item) => sum + item.count, 0)
   const countsReady = data !== null
+  const filtered = status !== "all" || source.length > 0 || tagPick.length > 0 || payout || price.min || price.max || range || q.trim()
+
+  function clearFilters() {
+    setStatus("all")
+    setSource([])
+    setTagPick([])
+    setPayout("")
+    setPrice({ min: "", max: "" })
+    setRange(null)
+    setQ("")
+    setPage(1)
+  }
 
   return (
     <section className="page">
@@ -260,6 +272,7 @@ export default function Orders() {
           />
           <PriceRange value={price} onChange={(next) => { setPrice(next); setPage(1) }} />
           <DateRange allowAll value={range} onChange={(next) => { setRange(next); setPage(1) }} />
+          {filtered ? <button type="button" className="btn secondary clear-filters" onClick={clearFilters}>Clear filters</button> : null}
         </div>
       </div>
 
