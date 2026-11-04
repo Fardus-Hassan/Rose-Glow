@@ -133,6 +133,26 @@ function checkRange(from, to) {
   if (daySpan(from, to) > 800) throw fail(400, "Keep the date range within 800 days")
 }
 
+export async function parcelStats(from, to) {
+  const ranged = Boolean(from || to)
+  if (ranged) checkRange(from, to)
+  const result = await pool.query(
+    `SELECT o.courier_status AS id, COUNT(*)::int AS parcels, COALESCE(SUM(m.total), 0)::float8 AS amount
+     FROM orders o
+     JOIN order_money m ON m.id = o.id
+     WHERE o.courier_status IS NOT NULL AND o.courier_status <> ''
+       AND ($1::date IS NULL OR (o.ordered_at AT TIME ZONE 'Asia/Dhaka')::date BETWEEN $1::date AND $2::date)
+     GROUP BY o.courier_status
+     ORDER BY parcels DESC`,
+    [ranged ? from : null, ranged ? to : null],
+  )
+  return {
+    from: ranged ? from : "",
+    to: ranged ? to : "",
+    statuses: result.rows.map((row) => ({ id: row.id, parcels: row.parcels, amount: Number(row.amount) })),
+  }
+}
+
 export async function moneyStats(from, to) {
   checkRange(from, to)
   const [saleRows, payoutRows] = await Promise.all([

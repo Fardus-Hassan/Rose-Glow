@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { STATUSES, statusLabel } from "@rose/shared"
+import { COURIER_STATUSES, STATUSES, courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import { AdPlatformBars, AdTrend, BooksMix, CourierSuccessChart, MoneyChart, ShareDonut, SourceChart, StockMix, TrendChart, successRate } from "../charts.jsx"
 import DateRange from "../DateRange.jsx"
@@ -86,6 +86,112 @@ function useAds(range) {
   }, [range.from, range.to])
   const current = report && report.from === range.from && report.to === range.to ? report : null
   return { report: current, error }
+}
+
+const PARCEL_STAGES = [
+  { id: "moving", label: "On the way", color: "#f0c14a", ids: ["pending", "in_review", "hold", "delivered_approval_pending", "partial_delivered_approval_pending", "cancelled_approval_pending", "unknown_approval_pending", "exceptional", "unknown"] },
+  { id: "delivered", label: "Delivered", color: "#7dcaa5", ids: ["delivered", "partial_delivered"] },
+  { id: "coming", label: "Coming back", color: "#e8956b", ids: ["cancelled", "cancelled_return_processing", "cancelled_return_rider_assigned", "partial_delivered_return_processing", "partial_delivered_return_rider_assigned"] },
+  { id: "back", label: "Returned to you", color: "#e06d78", ids: ["cancelled_return_received", "partial_delivered_return_received"] },
+]
+
+function stageOf(id) {
+  return PARCEL_STAGES.find((stage) => stage.ids.includes(id)) || PARCEL_STAGES[0]
+}
+
+function ParcelBlock({ go }) {
+  const [range, setRange] = useState(null)
+  const [report, setReport] = useState(null)
+  const [error, setError] = useState("")
+  useEffect(() => {
+    let live = true
+    setError("")
+    const query = new URLSearchParams(range ? { from: range.from, to: range.to } : {})
+    api(`/api/stats/parcels?${query}`)
+      .then((body) => { if (live) setReport(body) })
+      .catch((reason) => { if (live) setError(reason.message) })
+    return () => { live = false }
+  }, [range?.from, range?.to])
+  const current = report && report.from === (range?.from || "") && report.to === (range?.to || "") ? report : null
+  const rows = current?.statuses || []
+  const stages = PARCEL_STAGES.map((stage) => {
+    const items = rows
+      .filter((row) => stageOf(row.id) === stage)
+      .sort((a, b) => {
+        const order = Object.keys(COURIER_STATUSES)
+        return (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99)
+      })
+    return {
+      ...stage,
+      items,
+      peak: Math.max(1, ...items.map((row) => row.parcels)),
+      parcels: items.reduce((sum, row) => sum + row.parcels, 0),
+      amount: items.reduce((sum, row) => sum + row.amount, 0),
+    }
+  })
+  const total = stages.reduce((sum, stage) => sum + stage.parcels, 0)
+
+  function open(id) {
+    const query = new URLSearchParams({ status: `sf:${id}` })
+    if (range) {
+      query.set("from", range.from)
+      query.set("to", range.to)
+    }
+    go(`/orders?${query}`)
+  }
+
+  return (
+    <article className="card dash-block parcel-block">
+      <div className="card-head">
+        <div>
+          <h2>Parcels at Steadfast</h2>
+          <p className="muted small">How many parcels sit in each status, and what they are worth. Tap one to see the orders.</p>
+        </div>
+        <DateRange allowAll value={range} onChange={setRange} />
+      </div>
+      <Banner message={error} />
+      {!current && !error ? <p className="muted load-line">Loading…</p> : null}
+      {current && !total ? <p className="muted chart-empty">No parcels went to Steadfast in these dates.</p> : null}
+      {current && total ? (
+        <>
+          <div className="parcel-stages">
+            {stages.map((stage) => (
+              <div key={stage.id} className="parcel-stage" style={{ "--stage": stage.color }}>
+                <span><i />{stage.label}</span>
+                <strong>{stage.parcels}</strong>
+                <small>{taka(stage.amount)}</small>
+              </div>
+            ))}
+          </div>
+          <div className="parcel-split" aria-hidden="true">
+            {stages.filter((stage) => stage.parcels).map((stage) => (
+              <i key={stage.id} style={{ flexGrow: stage.parcels, background: stage.color }} />
+            ))}
+          </div>
+          <div className="parcel-groups">
+            {stages.filter((stage) => stage.items.length).map((stage) => (
+              <section key={stage.id} style={{ "--stage": stage.color }}>
+                <h3><i />{stage.label}<span>{stage.parcels} · {taka(stage.amount)}</span></h3>
+                <ul>
+                  {stage.items.map((row) => (
+                    <li key={row.id}>
+                      <button type="button" onClick={() => open(row.id)} aria-label={`${courierStatusLabel(row.id)}: ${row.parcels} parcels worth ${taka(row.amount)}. Open orders`}>
+                        <span className="parcel-name">{courierStatusLabel(row.id)}</span>
+                        <span className="parcel-bar"><i style={{ width: `${Math.max(3, (row.parcels / stage.peak) * 100)}%` }} /></span>
+                        <b className="parcel-count">{row.parcels}</b>
+                        <span className="parcel-amount">{taka(row.amount)}</span>
+                        <svg className="parcel-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </article>
+  )
 }
 
 function MoneyBlock() {
@@ -238,6 +344,8 @@ function Board({ data, go }) {
           {(stats) => <CourierSuccess parcels={stats.parcels} range={courierRange} />}
         </ChartSlot>
       </article>
+
+      <ParcelBlock go={go} />
 
       <MoneyBlock />
 
