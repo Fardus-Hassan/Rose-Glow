@@ -505,32 +505,42 @@ export async function createOrder(body) {
     const fresh = await catalogMaps(client)
     const built = linesFrom(merged, fresh.byId, fresh.parts)
     await applyNeeds(client, built.needs, hold)
+    const freed = await client.query(`SELECT id FROM freed_order_ids ORDER BY id FOR UPDATE LIMIT 1`)
+    const reuseId = freed.rows[0]?.id
+    const values = [
+      fields.customerName,
+      fields.phone,
+      fields.address,
+      fields.courier,
+      fields.status,
+      fields.orderedAt,
+      fields.deliveryCharge,
+      fields.deliveryPaidBy,
+      fields.discount,
+      fields.paidAmount,
+      fields.paymentMethod,
+      fields.note,
+      hold,
+      fields.codCharge,
+      fields.codPaidBy,
+      fields.sourceId,
+      fields.privateNote || "",
+    ]
     const inserted = await client.query(
-      `INSERT INTO orders
-        (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at, private_note)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $5 = 'courier' THEN now() END, $17)
-       RETURNING id`,
-      [
-        fields.customerName,
-        fields.phone,
-        fields.address,
-        fields.courier,
-        fields.status,
-        fields.orderedAt,
-        fields.deliveryCharge,
-        fields.deliveryPaidBy,
-        fields.discount,
-        fields.paidAmount,
-        fields.paymentMethod,
-        fields.note,
-        hold,
-        fields.codCharge,
-        fields.codPaidBy,
-        fields.sourceId,
-        fields.privateNote || "",
-      ],
+      reuseId
+        ? `INSERT INTO orders
+            (id, customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at, private_note)
+           OVERRIDING SYSTEM VALUE
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, CASE WHEN $6 = 'courier' THEN now() END, $18)
+           RETURNING id`
+        : `INSERT INTO orders
+            (customer_name, mobile, address, courier, status, ordered_at, delivery_charge, delivery_paid_by, discount, paid_amount, payment_method, note, stock_held, cod_charge, cod_paid_by, source_id, courier_sent_at, private_note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, CASE WHEN $5 = 'courier' THEN now() END, $17)
+           RETURNING id`,
+      reuseId ? [reuseId, ...values] : values,
     )
     orderId = inserted.rows[0].id
+    if (reuseId) await client.query(`DELETE FROM freed_order_ids WHERE id = $1`, [reuseId])
     for (const line of built.lines) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, unit_cost, is_gift)
@@ -821,10 +831,14 @@ export async function deleteOrder(id) {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    const current = await client.query(`SELECT id, stock_held FROM orders WHERE id = $1 FOR UPDATE`, [id])
-    if (!current.rows[0]) throw fail(404, "Order was not found")
-    if (current.rows[0].stock_held) await moveSavedStock(client, id, 1)
+    const current = await client.query(`SELECT id, stock_held, consignment_id, courier_tries FROM orders WHERE id = $1 FOR UPDATE`, [id])
+    const row = current.rows[0]
+    if (!row) throw fail(404, "Order was not found")
+    if (row.stock_held) await moveSavedStock(client, id, 1)
+    const latest = await client.query(`SELECT MAX(id)::int AS max FROM orders`)
+    const reusable = !row.consignment_id && !row.courier_tries && row.id === latest.rows[0].max
     await client.query(`DELETE FROM orders WHERE id = $1`, [id])
+    if (reusable) await client.query(`INSERT INTO freed_order_ids (id) VALUES ($1) ON CONFLICT DO NOTHING`, [row.id])
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }

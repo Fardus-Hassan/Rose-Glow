@@ -115,6 +115,9 @@ CREATE TABLE IF NOT EXISTS order_stock (
   PRIMARY KEY (order_id, product_id)
 );
 
+CREATE TABLE IF NOT EXISTS freed_order_ids (
+  id INTEGER PRIMARY KEY
+);
 CREATE INDEX IF NOT EXISTS orders_ordered_at_idx ON orders (ordered_at DESC);
 CREATE INDEX IF NOT EXISTS orders_status_idx ON orders (status);
 
