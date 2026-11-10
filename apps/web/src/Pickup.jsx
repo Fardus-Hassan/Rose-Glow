@@ -121,12 +121,12 @@ export default function PickupCard() {
             />
           </label>
           <label className="field">
-            <span>Thana</span>
+            <span>Area</span>
             <Select
-              label="Thana"
+              label="Area"
               search
               required
-              placeholder={stations ? "Choose a thana" : "Loading thanas…"}
+              placeholder={stations ? "Choose an area" : "Loading areas…"}
               disabled={!stations}
               value={form.stationId}
               onChange={(stationId) => setForm({ ...form, stationId })}

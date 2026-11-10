@@ -38,11 +38,11 @@ export async function savePickupPlace(body) {
   const address = String(body?.address || "").trim().replace(/\s+/g, " ")
   const phone = mobile(body?.phone)
   if (!addressId || addressId <= 0 || addressId > 1000000000) throw fail(400, "Enter the pickup address number from Steadfast")
-  if (!stationId || stationId <= 0) throw fail(400, "Choose a thana")
+  if (!stationId || stationId <= 0) throw fail(400, "Choose an area")
   if (!address || address.length > 255) throw fail(400, "Enter the pickup address, up to 255 characters")
   if (!phone) throw fail(400, "Enter an 11-digit mobile number")
   const station = (await stations(keys)).find((item) => item.id === stationId)
-  if (!station) throw fail(400, "That thana is not in Steadfast's list")
+  if (!station) throw fail(400, "That area is not in Steadfast's list")
   await pool.query(
     `INSERT INTO pickup_places (id, address_id, police_station_id, thana, district, address, phone, updated_at)
      VALUES (1, $1, $2, $3, $4, $5, $6, now())
@@ -117,7 +117,7 @@ async function stations(keys) {
   if (stationsCache && Date.now() - stationsCache.at < 6 * 60 * 60 * 1000) return stationsCache.list
   const data = await steadfast(keys, "/police_stations")
   const list = readStations(data)
-  if (!list.length) throw fail(502, "Steadfast did not return any thana")
+  if (!list.length) throw fail(502, "Steadfast did not return any area")
   stationsCache = { at: Date.now(), list }
   return list
 }
@@ -126,7 +126,7 @@ function readStations(data) {
   const list = firstList(data)
   if (!list) {
     console.error("police_stations", JSON.stringify(data).slice(0, 500))
-    throw fail(502, "Could not read Steadfast's thana list")
+    throw fail(502, "Could not read Steadfast's area list")
   }
   return list.flatMap((row) => {
     const id = Number(row?.id)
