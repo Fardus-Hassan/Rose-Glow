@@ -613,7 +613,7 @@ export default function OrderDetail({ id }) {
 function ItemsCard({ order, onSaved }) {
   const [counts, setCounts] = useState(null)
   const [busy, setBusy] = useState(false)
-  const partial = order.status === "delivered" && String(order.courierStatus || "").startsWith("partial_delivered")
+  const partial = ["delivered", "returned"].includes(order.status) && String(order.courierStatus || "").startsWith("partial_delivered")
   const editing = counts !== null
 
   function start() {
@@ -621,6 +621,15 @@ function ItemsCard({ order, onSaved }) {
   }
 
   async function save(undo = false) {
+    const allBack = !undo && order.items.every((item) => Number(counts?.[item.id] || 0) >= item.quantity)
+    if (allBack) {
+      const sure = await askConfirm({
+        title: "Nothing was kept?",
+        message: "Every piece goes back to stock. This stops being a sale. Only Steadfast's charge stays as a loss.",
+        yes: "Yes, full return",
+      })
+      if (!sure) return
+    }
     setBusy(true)
     try {
       const items = order.items.map((item) => ({ id: item.id, returned: Number(counts?.[item.id] || 0) }))
@@ -684,7 +693,7 @@ function ItemsCard({ order, onSaved }) {
         <div className="return-actions">
           <button type="button" className="btn small-btn" disabled={busy} onClick={() => save(false)}>{busy ? "Saving…" : "Save"}</button>
           <button type="button" className="btn secondary small-btn" disabled={busy} onClick={() => setCounts(null)}>Cancel</button>
-          <small className="muted">The pieces go back to stock. The order closes at what Steadfast collected.</small>
+          <small className="muted">The pieces go back to stock. If every piece came back, the sale comes off and only the courier charge remains.</small>
         </div>
       ) : null}
     </article>

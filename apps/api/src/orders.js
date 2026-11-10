@@ -716,7 +716,7 @@ export async function setReturnedPieces(id, body) {
     const found = await client.query(`SELECT id, status, courier_status FROM orders WHERE id = $1 FOR UPDATE`, [id])
     const order = found.rows[0]
     if (!order) throw fail(404, "Order was not found")
-    if (order.status !== "delivered" || !isPartial(order.courier_status)) {
+    if (!["delivered", "returned"].includes(order.status) || !isPartial(order.courier_status)) {
       throw fail(400, "Only a partly delivered order can have pieces come back")
     }
     const lines = await client.query(
@@ -734,8 +734,6 @@ export async function setReturnedPieces(id, body) {
         if (back === null || back < 0 || back > line.quantity) throw fail(400, "Enter how many pieces came back")
         next.set(lineId, back)
       }
-      const kept = lines.rows.reduce((sum, line) => sum + line.quantity - next.get(line.id), 0)
-      if (kept <= 0) throw fail(400, "If every piece came back, the parcel is a return. Leave at least one piece kept.")
     }
     const { parts } = await catalogMaps(client)
     const products = await client.query(`SELECT id, is_combo FROM products WHERE id = ANY($1::int[])`, [lines.rows.map((row) => row.product_id)])
@@ -769,7 +767,15 @@ export async function setReturnedPieces(id, body) {
     for (const line of lines.rows) {
       await client.query(`UPDATE order_items SET returned_qty = $2 WHERE id = $1`, [line.id, next.get(line.id)])
     }
-    await client.query(`UPDATE orders SET return_settled = $2 WHERE id = $1`, [id, !undo])
+    const kept = lines.rows.reduce((sum, line) => sum + line.quantity - next.get(line.id), 0)
+    const fullReturn = !undo && kept <= 0
+    await client.query(
+      `UPDATE orders SET return_settled = $2,
+         status = CASE WHEN $3 THEN 'returned' WHEN $4 AND status = 'returned' THEN 'delivered' ELSE status END,
+         stock_held = CASE WHEN $3 THEN false WHEN $4 AND status = 'returned' THEN true ELSE stock_held END
+       WHERE id = $1`,
+      [id, !undo, fullReturn, undo || kept > 0],
+    )
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
