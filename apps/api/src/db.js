@@ -330,6 +330,34 @@ CROSS JOIN LATERAL (
          END AS total
 ) b;
 
+CREATE TABLE IF NOT EXISTS pickup_places (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  address_id INTEGER NOT NULL CHECK (address_id > 0),
+  police_station_id INTEGER NOT NULL CHECK (police_station_id > 0),
+  thana TEXT NOT NULL,
+  district TEXT NOT NULL DEFAULT '',
+  address TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS pickup_requests (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  steadfast_id BIGINT,
+  address_id INTEGER NOT NULL,
+  police_station_id INTEGER NOT NULL,
+  thana TEXT NOT NULL DEFAULT '',
+  address TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  estim_qty INTEGER,
+  still_open BOOLEAN NOT NULL DEFAULT false,
+  req_status INTEGER,
+  raw JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pickup_requests_recent_idx ON pickup_requests (created_at DESC);
+
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position
 FROM (VALUES ('Facebook', 1), ('TikTok', 2)) AS seed(name, position)

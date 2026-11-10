@@ -26,6 +26,7 @@ import {
 } from "./courier.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
+import { pickupStations, pickupView, requestPickup, savePickupPlace } from "./pickup.js"
 import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
 
 function feedLimit(value) {
@@ -268,6 +269,22 @@ export function mount(app) {
 
   app.post("/api/courier/balance", wrap(async (req, res) => {
     res.json(await refreshBalance())
+  }))
+
+  app.get("/api/courier/pickup", wrap(async (req, res) => {
+    res.json(await pickupView())
+  }))
+
+  app.get("/api/courier/pickup/stations", wrap(async (req, res) => {
+    res.json(await pickupStations())
+  }))
+
+  app.put("/api/courier/pickup/place", wrap(async (req, res) => {
+    res.json(await savePickupPlace(req.body || {}))
+  }))
+
+  app.post("/api/courier/pickup", wrap(async (req, res) => {
+    res.json(await requestPickup(req.body || {}))
   }))
 
   app.get("/api/courier/parcels", wrap(async (req, res) => {

@@ -3,6 +3,7 @@ import toast from "react-hot-toast"
 import { courierStatusLabel, statusLabel } from "@rose/shared"
 import { api } from "../api.js"
 import PaymentsCard from "../Payments.jsx"
+import PickupCard from "../Pickup.jsx"
 import { taka, when } from "../format.js"
 import { useRoute } from "../route.jsx"
 import { setSteadfastId, useSteadfastId } from "../steadfastId.js"
@@ -227,6 +228,8 @@ export default function Courier() {
 
 
       <UserIdForm />
+
+      <PickupCard />
 
       <article className="card list-card parcel-card">
         <div className="card-head">

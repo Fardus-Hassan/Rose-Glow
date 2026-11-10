@@ -101,6 +101,42 @@ img, svg { display: block; }
 .user-id-line { display: flex; gap: 8px; flex: 1 1 320px; max-width: 460px; }
 .user-id-line input { flex: 1; min-width: 0; letter-spacing: 0.04em; }
 .courier-page .user-id-line .btn { width: auto; flex: none; }
+.pickup-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end; }
+.pickup-form .wide { grid-column: 1 / -1; }
+.pickup-form .wide.small, .pickup-card .muted.small { margin: 0; }
+.pickup-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.pickup-place {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.pickup-place p { margin: 0; }
+.pickup-place small { display: block; margin-top: 3px; color: var(--muted); }
+.pickup-place .btn { flex: none; }
+.pickup-send { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.pickup-send .btn { min-height: 46px; }
+.pickup-card .muted.small { margin-top: 8px; }
+.pickup-history { margin-top: 16px; }
+.pickup-history h3 { margin: 0 0 8px; font-size: 0.95rem; }
+.pickup-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pickup-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.pickup-list p { margin: 2px 0 0; color: var(--muted); font-size: 0.86rem; overflow-wrap: anywhere; }
+.pickup-list time { color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+.pill-open { background: rgba(125, 202, 165, 0.18); color: #d7f5e6; }
+.pill-earlier { background: rgba(190, 180, 170, 0.12); color: #ddd4cc; }
 .mark {
   width: 44px;
   height: 44px;
@@ -1595,6 +1631,13 @@ tr.selected { background: var(--rose-soft); }
     overflow-x: clip;
   }
   .courier-page form .btn { width: 100%; }
+  .pickup-form, .pickup-send { grid-template-columns: 1fr; }
+  .pickup-actions { flex-direction: column; }
+  .pickup-place { flex-direction: column; }
+  .pickup-place .btn, .pickup-send .btn { width: 100%; }
+  .pickup-list li { grid-template-columns: 1fr auto; align-items: start; }
+  .pickup-list li > div { grid-column: 1 / -1; grid-row: 2; }
+  .pickup-list time { grid-column: 2; grid-row: 1; }
   .books-line .span-2 { grid-column: 1 / -1; }
   .books-kpis { grid-template-columns: 1fr 1fr; }
   .expense-list { scroll-margin-top: 72px; }
