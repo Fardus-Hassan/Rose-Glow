@@ -449,11 +449,12 @@ async function applyRemote(order, status, note, idempotencyKey) {
      RETURNING id`,
     [order.id, status],
   )
-  if (!updated.rows[0]) return
-  const label = courierStatusLabel(status)
-  const text = note ? `${order.number}: ${note}` : `${order.number} · ${order.customerName}: ${label}`
-  await remember(order, status, order.consignmentId, text, idempotencyKey || `status:${order.id}:${status}`)
-  if (status === "delivered") await markPaid(order.id)
+  if (updated.rows[0]) {
+    const label = courierStatusLabel(status)
+    const text = note ? `${order.number}: ${note}` : `${order.number} · ${order.customerName}: ${label}`
+    await remember(order, status, order.consignmentId, text, idempotencyKey || `status:${order.id}:${status}`)
+    if (status === "delivered") await markPaid(order.id)
+  }
   const local = localStatusFor(status)
   if (!local || local === order.status) return
   const allowed = local === "returned"

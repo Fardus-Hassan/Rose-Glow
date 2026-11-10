@@ -61,7 +61,7 @@ function present(row, items = undefined) {
     cost,
     gifts,
     total,
-    due: total - paid,
+    due: row.status === "cancelled" || row.status === "returned" ? 0 : total - paid,
     profit: Number(row.profit),
     ...(items ? { items } : {}),
   }
