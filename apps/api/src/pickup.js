@@ -33,11 +33,9 @@ export async function pickupStations() {
 export async function savePickupPlace(body) {
   const keys = await keysOrNull()
   if (!keys) throw fail(400, "Add the Steadfast keys on the Courier page first")
-  const addressId = whole(body?.addressId)
   const stationId = whole(body?.policeStationId)
   const address = String(body?.address || "").trim().replace(/\s+/g, " ")
   const phone = mobile(body?.phone)
-  if (!addressId || addressId <= 0 || addressId > 1000000000) throw fail(400, "Enter the pickup address number from Steadfast")
   if (!stationId || stationId <= 0) throw fail(400, "Choose an area")
   if (!address || address.length > 255) throw fail(400, "Enter the pickup address, up to 255 characters")
   if (!phone) throw fail(400, "Enter an 11-digit mobile number")
@@ -45,16 +43,15 @@ export async function savePickupPlace(body) {
   if (!station) throw fail(400, "That area is not in Steadfast's list")
   await pool.query(
     `INSERT INTO pickup_places (id, address_id, police_station_id, thana, district, address, phone, updated_at)
-     VALUES (1, $1, $2, $3, $4, $5, $6, now())
+     VALUES (1, NULL, $1, $2, $3, $4, $5, now())
      ON CONFLICT (id) DO UPDATE SET
-       address_id = EXCLUDED.address_id,
        police_station_id = EXCLUDED.police_station_id,
        thana = EXCLUDED.thana,
        district = EXCLUDED.district,
        address = EXCLUDED.address,
        phone = EXCLUDED.phone,
        updated_at = now()`,
-    [addressId, station.id, station.name, station.district, address, phone],
+    [station.id, station.name, station.district, address, phone],
   )
   return pickupView()
 }
@@ -65,6 +62,7 @@ export async function requestPickup(body) {
   const place = await pool.query(`SELECT * FROM pickup_places WHERE id = 1`)
   const saved = place.rows[0]
   if (!saved) throw fail(400, "Save the pickup place first")
+  if (!saved.address_id) throw fail(400, "Steadfast does not show the address number, so the rider request cannot be sent yet")
   const qty = whole(body?.estimQty)
   const note = String(body?.note || "").trim()
   if (!qty || qty < 1 || qty > 500) throw fail(400, "Enter how many parcels are waiting, from 1 to 500")

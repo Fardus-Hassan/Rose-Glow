@@ -5,7 +5,7 @@ import { when } from "./format.js"
 import Select from "./select.jsx"
 import { askConfirm } from "./ui.jsx"
 
-const EMPTY = { addressId: "", stationId: "", address: "", phone: "" }
+const EMPTY = { stationId: "", address: "", phone: "" }
 
 export default function PickupCard() {
   const [view, setView] = useState(null)
@@ -41,7 +41,6 @@ export default function PickupCard() {
   function startEdit() {
     const place = view?.place
     setForm(place ? {
-      addressId: String(place.addressId),
       stationId: String(place.policeStationId),
       address: place.address,
       phone: place.phone,
@@ -56,7 +55,6 @@ export default function PickupCard() {
       const next = await api("/api/courier/pickup/place", {
         method: "PUT",
         body: {
-          addressId: form.addressId,
           policeStationId: form.stationId,
           address: form.address,
           phone: form.phone,
@@ -111,16 +109,6 @@ export default function PickupCard() {
       {view?.connected && editing ? (
         <form className="pickup-form" onSubmit={savePlace}>
           <label className="field">
-            <span>Pickup address number</span>
-            <input
-              inputMode="numeric"
-              value={form.addressId}
-              onChange={(event) => setForm({ ...form, addressId: event.target.value.replace(/\D/g, "").slice(0, 10) })}
-              placeholder="From Steadfast"
-              required
-            />
-          </label>
-          <label className="field">
             <span>Area</span>
             <Select
               label="Area"
@@ -137,7 +125,6 @@ export default function PickupCard() {
               }))}
             />
           </label>
-          <p className="muted small wide">In the Steadfast panel, open Pickup Addresses and use the number of the saved address.</p>
           <label className="field wide">
             <span>Address</span>
             <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} maxLength={255} required />
@@ -159,7 +146,6 @@ export default function PickupCard() {
             <div>
               <p>{place.address}</p>
               <small>{[place.thana, place.district].filter(Boolean).join(", ")} · {place.phone}</small>
-              <small>Address number {place.addressId}</small>
             </div>
             <button type="button" className="btn secondary" onClick={startEdit}>Change</button>
           </div>
@@ -172,11 +158,11 @@ export default function PickupCard() {
               <span>Note for the rider</span>
               <input value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder="Optional" />
             </label>
-            <button type="button" className="btn" disabled={busy || !qty} onClick={send}>{busy ? "Sending…" : "Request pickup"}</button>
+            <button type="button" className="btn" disabled={busy || !qty || !place.addressId} onClick={send}>{busy ? "Sending…" : "Request pickup"}</button>
           </div>
           <p className="muted small">
-            {view.inReview ? `${view.inReview} parcel${view.inReview === 1 ? " is" : "s are"} in review. ` : ""}
-            Sending again while one request is open does not call a second rider.
+            {place.addressId ? "Sending again while one request is open does not call a second rider." : "The place can be saved. Steadfast does not show the address number, so Request pickup stays off."}
+            {view.inReview && place.addressId ? ` ${view.inReview} in review.` : ""}
           </p>
         </>
       ) : null}

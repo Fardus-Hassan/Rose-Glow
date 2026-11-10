@@ -332,7 +332,7 @@ CROSS JOIN LATERAL (
 
 CREATE TABLE IF NOT EXISTS pickup_places (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  address_id INTEGER NOT NULL CHECK (address_id > 0),
+  address_id INTEGER CHECK (address_id > 0),
   police_station_id INTEGER NOT NULL CHECK (police_station_id > 0),
   thana TEXT NOT NULL,
   district TEXT NOT NULL DEFAULT '',
@@ -357,6 +357,7 @@ CREATE TABLE IF NOT EXISTS pickup_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS pickup_requests_recent_idx ON pickup_requests (created_at DESC);
+ALTER TABLE pickup_places ALTER COLUMN address_id DROP NOT NULL;
 
 INSERT INTO order_sources (name, position)
 SELECT seed.name, seed.position
