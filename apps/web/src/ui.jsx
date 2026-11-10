@@ -8,14 +8,15 @@ import { when } from "./format.js"
 const confirmListeners = new Set()
 
 // Opens the app's own yes/no box (ConfirmHost must be mounted). Resolves true on yes.
-export function askConfirm({ title, message = "", yes = "Yes", no = "No", danger = false }) {
+export function askConfirm({ title, message = "", yes = "Yes", no = "No", danger = false, note = false, noteLabel = "Note" }) {
   return new Promise((resolve) => {
-    confirmListeners.forEach((show) => show({ title, message, yes, no, danger, resolve }))
+    confirmListeners.forEach((show) => show({ title, message, yes, no, danger, note, noteLabel, resolve }))
   })
 }
 
 export function ConfirmHost() {
   const [ask, setAsk] = useState(null)
+  const [note, setNote] = useState("")
 
   useEffect(() => {
     confirmListeners.add(setAsk)
@@ -35,7 +36,9 @@ export function ConfirmHost() {
   })
 
   function finish(answer) {
-    ask?.resolve(answer)
+    const typed = note.trim()
+    ask?.resolve(answer && ask.note ? { ok: true, note: typed } : answer)
+    setNote("")
     setAsk(null)
   }
 
@@ -45,6 +48,12 @@ export function ConfirmHost() {
       <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(event) => event.stopPropagation()}>
         <h2 id="confirm-title">{ask.title}</h2>
         {ask.message ? <p className="muted">{ask.message}</p> : null}
+        {ask.note ? (
+          <label className="field">
+            <span>{ask.noteLabel}</span>
+            <textarea rows={3} value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} placeholder="Only you see this" />
+          </label>
+        ) : null}
         <div className="actions">
           <button type="button" className="btn secondary" onClick={() => finish(false)}>{ask.no}</button>
           <button type="button" className={ask.danger ? "btn danger" : "btn"} onClick={() => finish(true)} autoFocus>{ask.yes}</button>
@@ -52,6 +61,30 @@ export function ConfirmHost() {
       </div>
     </div>
   )
+}
+
+export function statusQuestion(order, next) {
+  const current = order?.status
+  if (!order || next === current) return null
+  if (next === "cancelled") {
+    const out = current === "courier" || order.consignmentId
+    return {
+      title: "Mark as Cancelled?",
+      message: out
+        ? "Stock stays out until the parcel is back. You can write why."
+        : "The pieces go back to stock. You can write why.",
+      yes: "Yes, cancel",
+      danger: true,
+      note: true,
+    }
+  }
+  const courier = courierStatusQuestion(order, next)
+  if (courier) return courier
+  return {
+    title: `Move to ${statusLabel(next)}?`,
+    message: "The order status will change.",
+    yes: "Yes, change it",
+  }
 }
 
 // The question to ask before a hand status change that touches the courier, or null if none is needed.

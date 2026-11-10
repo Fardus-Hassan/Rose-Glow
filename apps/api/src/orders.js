@@ -6,8 +6,9 @@ const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
 const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
 
 function assertHandStatus(next, current) {
+  if (next === "cancelled" && ["new", "confirmed", "courier"].includes(current)) return
   if (MANUAL_IDS.has(next) || next === current) return
-  throw fail(400, "You can set New, Confirmed, or In courier. Steadfast updates the rest.")
+  throw fail(400, "You can set New, Confirmed, In courier, or Cancelled.")
 }
 const PAYMENT_IDS = new Set(PAYMENTS.map((item) => item.id))
 
@@ -622,7 +623,9 @@ export async function updateOrder(id, body) {
     assertHandStatus(fields.status, current.rows[0].status)
     if (current.rows[0].consignment_id) await assertBookedUnchanged(client, id, current.rows[0], fields, replacing, body)
     const held = current.rows[0].stock_held
-    const hold = fields.status === current.rows[0].status ? held : holdsStock(fields.status)
+    const from = current.rows[0].status
+    const keepOut = fields.status === "cancelled" && from !== "cancelled" && (from === "courier" || current.rows[0].consignment_id)
+    const hold = fields.status === from ? held : (keepOut ? held : holdsStock(fields.status))
     let goods
     let built = null
     if (replacing) {

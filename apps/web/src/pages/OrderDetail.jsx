@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { MANUAL_STATUSES, PAYMENTS, courierStatusLabel, holdsStock, statusLabel } from "@rose/shared"
+
+const STATUS_CHOICES = [...MANUAL_STATUSES, { id: "cancelled", label: "Cancelled" }]
 import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
@@ -8,7 +10,7 @@ import { useRoute } from "../route.jsx"
 import Select, { productOptions } from "../select.jsx"
 import { SourceField, TagField, TagList } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
-import { Banner, ContactActions, CopyChip, CopyText, Field, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Field, PaidBadge, StatusPill, askConfirm, statusQuestion } from "../ui.jsx"
 
 export default function OrderDetail({ id }) {
   const { go } = useRoute()
@@ -126,14 +128,17 @@ export default function OrderDetail({ id }) {
 
   async function changeStatus(status) {
     if (!order || status === order.status || saving) return
-    const question = courierStatusQuestion(order, status)
-    if (question && !await askConfirm(question)) return
+    const question = statusQuestion(order, status)
+    const answer = question ? await askConfirm(question) : true
+    if (!answer) return
+    const typed = typeof answer === "object" ? answer.note : ""
+    const privateNote = typed ? [order.privateNote, typed].filter(Boolean).join("\n") : undefined
     setSaving(true)
     setError("")
     try {
       const body = await api(`/api/orders/${order.id}`, {
         method: "PATCH",
-        body: payload(order, { status }),
+        body: payload(order, { status, ...(privateNote !== undefined ? { privateNote } : {}) }),
       })
       setOrder(body.order)
       api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
@@ -141,8 +146,9 @@ export default function OrderDetail({ id }) {
         toast.error(body.order.courierError)
         return
       }
-      const back = !holdsStock(status) && holdsStock(order.status)
-      toast.success(back ? `Marked ${statusLabel(status)}. Stock is back.` : `Status is now ${statusLabel(status)}`)
+      const keptOut = status === "cancelled" && (order.status === "courier" || order.consignmentId)
+      const back = !keptOut && !holdsStock(status) && holdsStock(order.status)
+      toast.success(keptOut ? "Marked Cancelled. Stock stays out until the parcel is back." : back ? `Marked ${statusLabel(status)}. Stock is back.` : `Status is now ${statusLabel(status)}`)
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)
@@ -162,8 +168,11 @@ export default function OrderDetail({ id }) {
       setError(`Not enough ${product?.name || "stock"}`)
       return
     }
-    const question = courierStatusQuestion({ ...order, courier: draft.courier }, draft.status)
-    if (question && !await askConfirm(question)) return
+    const question = draft.status === order.status ? null : statusQuestion({ ...order, courier: draft.courier }, draft.status)
+    const answer = question ? await askConfirm(question) : true
+    if (!answer) return
+    const typed = typeof answer === "object" ? answer.note : ""
+    const privateNote = typed ? [draft.privateNote, typed].filter(Boolean).join("\n") : draft.privateNote
     setSaving(true)
     setError("")
     try {
@@ -182,7 +191,7 @@ export default function OrderDetail({ id }) {
           deliveryPaidBy: draft.deliveryPaidBy,
           discount: numberOrZero(draft.discount),
           note: draft.note,
-          privateNote: draft.privateNote,
+          privateNote,
           sourceId: draft.sourceId || null,
           tagIds: draft.tagIds.map(Number),
           items: lines.map((line) => ({ productId: line.productId, quantity: line.quantity, gift: line.gift })),
@@ -370,12 +379,12 @@ export default function OrderDetail({ id }) {
                   />
                 </Field>
                 <Field label="Status">
-                  {MANUAL_STATUSES.some((status) => status.id === draft.status) ? (
+                  {STATUS_CHOICES.some((status) => status.id === draft.status) ? (
                     <Select
                       label="Status"
                       value={draft.status}
                       onChange={(value) => setDraftField("status", value)}
-                      options={MANUAL_STATUSES.map((status) => ({ value: status.id, label: status.label }))}
+                      options={STATUS_CHOICES.map((status) => ({ value: status.id, label: status.label }))}
                     />
                   ) : (
                     <input value={statusLabel(draft.status)} disabled />
@@ -476,7 +485,7 @@ export default function OrderDetail({ id }) {
       ) : (
         <>
           <div className="status-rail" role="group" aria-label="Status">
-            {MANUAL_STATUSES.some((status) => status.id === order.status) ? MANUAL_STATUSES.map((status) => (
+            {STATUS_CHOICES.some((status) => status.id === order.status) ? STATUS_CHOICES.map((status) => (
               <button
                 key={status.id}
                 type="button"

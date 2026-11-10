@@ -9,9 +9,10 @@ import { ParcelEye } from "../ParcelModal.jsx"
 import PriceRange from "../PriceRange.jsx"
 import Select from "../select.jsx"
 import { TagList } from "../sources.jsx"
-import { Banner, ContactActions, CopyChip, CopyText, Empty, HoverFull, Pager, PaidBadge, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
+import { Banner, ContactActions, CopyChip, CopyText, Empty, HoverFull, Pager, PaidBadge, StatusPill, askConfirm, statusQuestion } from "../ui.jsx"
 
-const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES]
+const FILTERS = [{ id: "all", label: "All" }, ...MANUAL_STATUSES, { id: "cancelled", label: "Cancelled" }, { id: "returned", label: "Returned" }]
+const STATUS_CHOICES = [...MANUAL_STATUSES, { id: "cancelled", label: "Cancelled" }]
 const PAGE_SIZES = [10, 20, 50, 100, 200]
 
 function shiftCount(list, from, to) {
@@ -427,7 +428,7 @@ function StatusMenu({ order, onChanged }) {
       const rect = trigger.current?.getBoundingClientRect()
       if (!rect) return
       const width = 168
-      const height = 252
+      const height = 320
       let left = rect.left
       if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8
       if (left < 8) left = 8
@@ -465,11 +466,12 @@ function StatusMenu({ order, onChanged }) {
       setOpen(false)
       return
     }
-    const question = courierStatusQuestion(order, nextStatus)
-    if (question) {
-      setOpen(false)
-      if (!await askConfirm(question)) return
-    }
+    const question = statusQuestion(order, nextStatus)
+    setOpen(false)
+    const answer = question ? await askConfirm(question) : true
+    if (!answer) return
+    const typed = typeof answer === "object" ? answer.note : ""
+    const privateNote = typed ? [order.privateNote, typed].filter(Boolean).join("\n") : undefined
     setBusy(true)
     try {
       const body = await api(`/api/orders/${order.id}`, {
@@ -490,6 +492,7 @@ function StatusMenu({ order, onChanged }) {
           codPaidBy: order.codPaidBy || "free",
           codCharge: order.codCharge || 0,
           note: order.note,
+          ...(privateNote !== undefined ? { privateNote } : {}),
         },
       })
       onChanged(body.order)
@@ -498,8 +501,9 @@ function StatusMenu({ order, onChanged }) {
         setOpen(false)
         return
       }
-      const restored = !holdsStock(nextStatus) && holdsStock(order.status)
-      toast.success(restored ? `Marked ${statusLabel(nextStatus)}. Stock is back.` : `Status is now ${statusLabel(nextStatus)}`)
+      const keptOut = nextStatus === "cancelled" && (order.status === "courier" || order.consignmentId)
+      const restored = !keptOut && !holdsStock(nextStatus) && holdsStock(order.status)
+      toast.success(keptOut ? "Marked Cancelled. Stock stays out until the parcel is back." : restored ? `Marked ${statusLabel(nextStatus)}. Stock is back.` : `Status is now ${statusLabel(nextStatus)}`)
       setOpen(false)
     } catch (reason) {
       toast.error(reason.message)
@@ -527,7 +531,7 @@ function StatusMenu({ order, onChanged }) {
       </button>
       {open && spot ? (
         <ul className="status-pop" role="listbox" style={{ top: spot.top, left: spot.left }}>
-          {MANUAL_STATUSES.map((item) => (
+          {STATUS_CHOICES.map((item) => (
             <li key={item.id}>
               <button type="button" className={item.id === order.status ? "active" : ""} role="option" aria-selected={item.id === order.status} onClick={() => choose(item.id)}>
                 <StatusPill status={item.id} />
