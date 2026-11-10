@@ -4,7 +4,7 @@ import { pool } from "./db.js"
 import { fail } from "./http.js"
 import { getOrder, setOrderStatus } from "./orders.js"
 import { open, sameText, seal } from "./secret.js"
-import { isDuplicate, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
+import { isDuplicate, normalizeCourierStatus, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
 
 const EARLY = new Set(["in_review", "pending"])
 const CANCELLED = new Set(["cancelled", "cancelled_return_processing", "cancelled_return_rider_assigned"])
@@ -303,7 +303,7 @@ export async function receiveWebhook(req) {
     if (note) await remember(order, order.courierStatus || "tracking", order.consignmentId, `${order.number}: ${note}`, idem || `track:${order.id}:${note}:${event.updated_at || ""}`)
     return { ok: true }
   }
-  const status = String(event.status || "").trim().toLowerCase()
+  const status = normalizeCourierStatus(event.status)
   if (!status) return { ok: true }
   await recordMoney(order.id, status, { charge: amount(event.delivery_charge), cod: amount(event.cod_amount) })
   await applyRemote(order, status, note, idem)

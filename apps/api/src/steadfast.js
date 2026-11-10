@@ -66,9 +66,15 @@ export function readBalance(data) {
   return Number.isFinite(number) ? Math.round(number * 100) / 100 : null
 }
 
+export function normalizeCourierStatus(value) {
+  const status = String(value || "").trim().toLowerCase()
+  if (status === "cancelled_return_proccessing") return "cancelled_return_processing"
+  return status
+}
+
 export function readStatus(data) {
   const value = data.return_status || data.delivery_status || data.consignment?.status || data.status_name || ""
-  const status = String(value || "").trim().toLowerCase()
+  const status = normalizeCourierStatus(value)
   if (!status || status === "200" || status === "success") return ""
   return status
 }

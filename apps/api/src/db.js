@@ -233,6 +233,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_cod NUMERIC(12,2) CHECK (cou
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS cod_booked NUMERIC(12,2) CHECK (cod_booked >= 0);
 ALTER TABLE courier_events ADD COLUMN IF NOT EXISTS payload JSONB;
 
+UPDATE orders SET courier_status = 'cancelled_return_processing'
+WHERE courier_status = 'cancelled_return_proccessing';
+UPDATE courier_events SET status = 'cancelled_return_processing'
+WHERE status = 'cancelled_return_proccessing';
 UPDATE orders SET status = 'cancelled'
 WHERE status IN ('new', 'confirmed', 'courier', 'delivered')
   AND courier_status IN ('cancelled', 'cancelled_return_processing', 'cancelled_return_rider_assigned');
