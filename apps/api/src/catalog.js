@@ -9,26 +9,39 @@ function availableFor(product, components) {
   return components.reduce((min, item) => Math.min(min, Math.floor(item.stockQty / item.quantity)), Infinity)
 }
 
-function shape(row, components = []) {
+function shape(row, components = [], variants = []) {
   const isCombo = row.is_combo
   const costPrice = isCombo
     ? components.reduce((sum, item) => sum + item.costPrice * item.quantity, 0)
     : Number(row.cost_price)
+  const stockQty = variants.length
+    ? variants.reduce((sum, item) => sum + item.stockQty, 0)
+    : row.stock_qty
   return {
     id: row.id,
     name: row.name,
+    sku: row.sku || "",
+    parentId: row.parent_id || null,
     costPrice,
     sellPrice: Number(row.sell_price),
-    stockQty: row.stock_qty,
+    stockQty,
     isCombo,
     components,
-    available: availableFor(row, components),
+    variants,
+    available: variants.length ? stockQty : availableFor(row, components),
   }
+}
+
+export function readSku(value) {
+  const sku = String(value ?? "").trim()
+  if (sku.length > 40) throw fail(400, "SKU is too long")
+  if (sku && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$/.test(sku)) throw fail(400, "SKU can use letters, numbers, and dashes")
+  return sku
 }
 
 export async function loadCatalog(client = pool) {
   const products = await client.query(`
-    SELECT id, name, cost_price::float8 AS cost_price, sell_price::float8 AS sell_price, stock_qty, is_combo
+    SELECT id, name, sku, parent_id, cost_price::float8 AS cost_price, sell_price::float8 AS sell_price, stock_qty, is_combo
     FROM products
     ORDER BY is_combo, lower(name), id
   `)
@@ -52,7 +65,16 @@ export async function loadCatalog(client = pool) {
     })
     grouped.set(link.combo_id, list)
   }
-  return products.rows.map((row) => shape(row, grouped.get(row.id) || []))
+  const variants = new Map()
+  for (const row of products.rows) {
+    if (!row.parent_id || row.is_combo) continue
+    const list = variants.get(row.parent_id) || []
+    list.push(shape(row))
+    variants.set(row.parent_id, list)
+  }
+  return products.rows
+    .filter((row) => !row.parent_id)
+    .map((row) => shape(row, grouped.get(row.id) || [], variants.get(row.id) || []))
 }
 
 function readComponents(body, catalog) {
@@ -63,8 +85,10 @@ function readComponents(body, catalog) {
   for (const item of body.items) {
     const productId = whole(item.productId)
     const quantity = whole(item.quantity)
-    const product = catalog.find((entry) => entry.id === productId)
-    if (!product || product.isCombo) throw fail(400, "A combo cannot contain another combo")
+    const product = catalog.find((entry) => entry.id === productId && !entry.parentId)
+    const variant = catalog.flatMap((entry) => entry.variants || []).find((entry) => entry.id === productId)
+    const piece = variant || product
+    if (!piece || piece.isCombo || (product && product.variants?.length)) throw fail(400, "Choose a product or a variant, not the group")
     if (!quantity || quantity <= 0 || quantity > 99) throw fail(400, "Enter a valid quantity for the combo")
     merged.set(productId, (merged.get(productId) || 0) + quantity)
   }
@@ -79,6 +103,7 @@ export async function createProduct(body) {
   const costPrice = money(body.costPrice)
   const sellPrice = money(body.sellPrice)
   const stockQty = whole(body.stockQty, 0)
+  const sku = readSku(body.sku)
   if (!name) throw fail(400, "Enter a product name")
   if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
   if (stockQty === null || stockQty < 0 || stockQty > 100000) throw fail(400, "Enter stock as a whole number")
@@ -87,10 +112,10 @@ export async function createProduct(body) {
   try {
     await client.query("BEGIN")
     const inserted = await client.query(
-      `INSERT INTO products (name, cost_price, sell_price, stock_qty, is_combo)
-       VALUES ($1, $2, $3, $4, FALSE)
+      `INSERT INTO products (name, sku, cost_price, sell_price, stock_qty, is_combo)
+       VALUES ($1, $2, $3, $4, $5, FALSE)
        RETURNING id`,
-      [name, costPrice, sellPrice, stockQty],
+      [name, sku, costPrice, sellPrice, stockQty],
     )
     productId = inserted.rows[0].id
     if (stockQty > 0) {
@@ -106,6 +131,7 @@ export async function createProduct(body) {
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    if (error?.code === "23505") throw fail(400, "That SKU is already used")
     throw error
   } finally {
     client.release()
@@ -118,18 +144,71 @@ export async function updateProduct(id, body) {
   const name = cleanName(body.name)
   const costPrice = money(body.costPrice)
   const sellPrice = money(body.sellPrice)
+  const sku = body.sku === undefined ? null : readSku(body.sku)
   if (!name) throw fail(400, "Enter a product name")
   if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
-  const updated = await pool.query(
-    `UPDATE products
-     SET name = $2, cost_price = $3, sell_price = $4
-     WHERE id = $1 AND is_combo = FALSE
-     RETURNING id`,
-    [id, name, costPrice, sellPrice],
-  )
+  let updated
+  try {
+    updated = await pool.query(
+      `UPDATE products
+       SET name = $2, sku = COALESCE($3, sku), cost_price = $4, sell_price = $5
+       WHERE id = $1 AND is_combo = FALSE
+       RETURNING id`,
+      [id, name, sku, costPrice, sellPrice],
+    )
+  } catch (error) {
+    if (error?.code === "23505") throw fail(400, "That SKU is already used")
+    throw error
+  }
   if (!updated.rows[0]) throw fail(404, "Product was not found")
   const catalog = await loadCatalog()
-  return catalog.find((item) => item.id === id)
+  return catalog.find((item) => item.id === id) || catalog.flatMap((item) => item.variants || []).find((item) => item.id === id)
+}
+
+export async function createVariant(parentId, body) {
+  const name = cleanName(body.name)
+  const sku = readSku(body.sku)
+  const costPrice = money(body.costPrice)
+  const sellPrice = money(body.sellPrice)
+  const stockQty = whole(body.stockQty, 0)
+  if (!name) throw fail(400, "Enter a variant name")
+  if (!sku) throw fail(400, "Enter a SKU for the variant")
+  if (costPrice === null || sellPrice === null) throw fail(400, "Enter a valid price")
+  if (stockQty === null || stockQty < 0 || stockQty > 100000) throw fail(400, "Enter stock as a whole number")
+  const parent = await pool.query(`SELECT id, is_combo, parent_id FROM products WHERE id = $1`, [parentId])
+  const row = parent.rows[0]
+  if (!row || row.is_combo || row.parent_id) throw fail(404, "Product was not found")
+  const client = await pool.connect()
+  let variantId
+  try {
+    await client.query("BEGIN")
+    const inserted = await client.query(
+      `INSERT INTO products (name, sku, parent_id, cost_price, sell_price, stock_qty, is_combo)
+       VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+       RETURNING id`,
+      [name, sku, parentId, costPrice, sellPrice, stockQty],
+    )
+    variantId = inserted.rows[0].id
+    if (stockQty > 0) {
+      await writePurchase(client, {
+        productId: variantId,
+        boughtOn: dhakaToday(),
+        quantity: stockQty,
+        unitCost: costPrice,
+        note: "",
+        addStock: false,
+      })
+    }
+    await client.query("COMMIT")
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    if (error?.code === "23505") throw fail(400, "That SKU is already used")
+    throw error
+  } finally {
+    client.release()
+  }
+  const catalog = await loadCatalog()
+  return catalog.find((item) => item.id === parentId)
 }
 
 export async function adjustStock(id, body) {
@@ -137,6 +216,8 @@ export async function adjustStock(id, body) {
   if (delta === null || delta === 0 || Math.abs(delta) > 100000) {
     throw fail(400, "Enter how many pieces to add or remove")
   }
+  const parent = await pool.query(`SELECT 1 FROM products WHERE parent_id = $1 LIMIT 1`, [id])
+  if (parent.rows[0]) throw fail(400, "This product has variants. Change the stock on the variant")
   const updated = await pool.query(
     `UPDATE products
      SET stock_qty = stock_qty + $2
@@ -219,7 +300,18 @@ export async function deleteProduct(id) {
   const catalog = await loadCatalog()
   const product = catalog.find((item) => item.id === id)
   if (!product) throw fail(404, "Product was not found")
-  const usedInCombo = catalog.some((item) => item.components.some((part) => part.productId === id))
+  const variantIds = (product.variants || []).map((item) => item.id)
+  if (variantIds.length) {
+    const childUsed = await pool.query(
+      `SELECT 1 FROM order_items WHERE product_id = ANY($1::int[])
+       UNION ALL
+       SELECT 1 FROM order_stock WHERE product_id = ANY($1::int[])
+       LIMIT 1`,
+      [variantIds],
+    )
+    if (childUsed.rows[0]) throw fail(400, "A variant of this product has orders, so it cannot be deleted")
+  }
+  const usedInCombo = catalog.some((item) => item.components.some((part) => part.productId === id || variantIds.includes(part.productId)))
   if (usedInCombo) throw fail(400, "This product is in a combo. Remove it from the combo first")
   const used = await pool.query(
     `SELECT 1 FROM order_items WHERE product_id = $1

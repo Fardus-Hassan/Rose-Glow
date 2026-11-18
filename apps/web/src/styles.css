@@ -1422,11 +1422,14 @@ tr.selected { background: var(--rose-soft); }
 .inv-form h2 { font-size: 0.95rem; }
 .inv-line {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 100px 100px 80px auto;
+  grid-template-columns: minmax(0, 1.6fr) minmax(90px, 0.7fr) 100px 100px 80px auto;
   gap: 8px;
   align-items: center;
 }
 .inv-line.short { grid-template-columns: minmax(0, 1fr) 100px auto; }
+.variant-box { display: grid; gap: 8px; padding: 8px 0 4px; }
+.variant-line { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(90px, 0.8fr) 90px 90px 52px 72px auto; gap: 8px; align-items: center; }
+.variant-row td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .inv-line input, .inv-line .btn, .inv-form .add-line input, .inv-form .add-line .select-trigger { min-height: 40px; }
 .inv-combo-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .combo-parts { display: grid; gap: 8px; }
@@ -1695,8 +1698,8 @@ tr.selected { background: var(--rose-soft); }
   }
   .filter-pills::-webkit-scrollbar { display: none; }
   .inv-head { flex-direction: column; align-items: flex-start; }
-  .inv-line, .inv-line.short { grid-template-columns: 1fr 1fr; }
-  .inv-line .btn { grid-column: 1 / -1; }
+  .inv-line, .inv-line.short, .variant-line { grid-template-columns: 1fr 1fr; }
+  .inv-line .btn, .variant-line .btn { grid-column: 1 / -1; }
   .inv-table .card-head { flex-direction: column; align-items: flex-start; }
   .inv-table .card-head p { text-align: left; }
   .inv-table input, .inv-table .btn, .inv-table .text-btn,

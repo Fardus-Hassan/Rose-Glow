@@ -1,5 +1,5 @@
 import { migrate, pool } from "./db.js"
-import { loadCatalog, adjustStock, createCombo, createProduct, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
+import { loadCatalog, adjustStock, createCombo, createProduct, createVariant, deleteProduct, updateCombo, updateProduct } from "./catalog.js"
 import { dashboard, moneyStats, orderTotals, parcelStats, rangeStats } from "./dashboard.js"
 import { createSource, deleteSource, listSources, updateSource } from "./sources.js"
 import { createTag, deleteTag, listTags, updateTag } from "./tags.js"
@@ -28,6 +28,7 @@ import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurch
 import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
 import { pickupStations, pickupView, requestPickup, savePickupPlace } from "./pickup.js"
 import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
+import { assertShopKey, importShopOrder, listUnmatched, retryShopOrder } from "./shop.js"
 
 function feedLimit(value) {
   return Math.min(Math.max(whole(value, 20) || 20, 1), 1000)
@@ -104,12 +105,29 @@ export function mount(app) {
     res.json({ products: await loadCatalog() })
   }))
 
+  app.get("/api/shop/inbox", wrap(async (req, res) => {
+    res.json({ unmatched: await listUnmatched() })
+  }))
+
+  app.post("/api/shop/orders", wrap(async (req, res) => {
+    assertShopKey(req.get("x-shop-key"))
+    res.status(201).json({ order: await importShopOrder(req.body || {}) })
+  }))
+
+  app.post("/api/shop/inbox/:number/retry", wrap(async (req, res) => {
+    res.json({ order: await retryShopOrder(req.params.number) })
+  }))
+
   app.post("/api/products", wrap(async (req, res) => {
     res.status(201).json({ product: await createProduct(req.body || {}) })
   }))
 
   app.patch("/api/products/:id", wrap(async (req, res) => {
     res.json({ product: await updateProduct(idFrom(req), req.body || {}) })
+  }))
+
+  app.post("/api/products/:id/variants", wrap(async (req, res) => {
+    res.status(201).json({ product: await createVariant(idFrom(req), req.body || {}) })
   }))
 
   app.post("/api/products/:id/stock", wrap(async (req, res) => {

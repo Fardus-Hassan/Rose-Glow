@@ -98,6 +98,7 @@ export default function Orders() {
   const [tick, setTick] = useState(0)
   const quiet = useRef(false)
   const [error, setError] = useState("")
+  const [unmatched, setUnmatched] = useState([])
 
   function replaceOrder(next) {
     const previous = data?.orders.find((item) => item.id === next.id)
@@ -152,6 +153,7 @@ export default function Orders() {
       }
       if (price.min) query.set("min", price.min)
       if (price.max) query.set("max", price.max)
+      api("/api/shop/inbox").then((body) => { if (live) setUnmatched(body.unmatched || []) }).catch(() => {})
       api(`/api/orders?${query}`)
         .then((body) => {
           if (!live) return
@@ -213,6 +215,25 @@ export default function Orders() {
         <button type="button" className="btn" onClick={() => go("/orders/new")}>New order</button>
       </div>
       <Banner message={error} />
+      {unmatched.length ? (
+        <article className="card" style={{ marginBottom: 12, padding: 12 }}>
+          <h2>Website orders waiting for a SKU</h2>
+          <p className="muted small">Add the same SKU on the variant in Inventory, then try again. Orders that match already show under source Website.</p>
+          <ul>
+            {unmatched.map((item) => (
+              <li key={item.shopOrderNumber} className="variant-line">
+                <strong>{item.shopOrderNumber}</strong>
+                <span>{item.detail}</span>
+                <button type="button" className="btn secondary" onClick={() => {
+                  api(`/api/shop/inbox/${encodeURIComponent(item.shopOrderNumber)}/retry`, { method: "POST" })
+                    .then(() => setTick((value) => value + 1))
+                    .catch((reason) => setError(reason.message))
+                }}>Try again</button>
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
       <div className="filters">
         <div className="filter-groups">
           <div className="filter-pills">
@@ -305,6 +326,7 @@ export default function Orders() {
                   <td data-label="Order">
                     <span className="order-cell">
                       <CopyChip value={order.number} label="Order number" className="order-no" />
+                      {order.shopOrderNumber ? <small className="courier-meta">Website {order.shopOrderNumber}</small> : null}
                       {order.consignmentId ? <ParcelEye orderId={order.id} /> : null}
                       <PaidBadge payout={order.payout} />
                     </span>

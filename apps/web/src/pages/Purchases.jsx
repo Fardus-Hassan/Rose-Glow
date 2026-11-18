@@ -3,6 +3,7 @@ import toast from "react-hot-toast"
 import { api } from "../api.js"
 import { todayISO } from "../dates.js"
 import { dayLabel, taka } from "../format.js"
+import { sellableProducts } from "../products.js"
 import { useRoute } from "../route.jsx"
 import Select from "../select.jsx"
 import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
@@ -81,7 +82,7 @@ export default function Purchases() {
     api("/api/products")
       .then((body) => {
         if (!live) return
-        setProducts((body.products || []).filter((item) => !item.isCombo))
+        setProducts(sellableProducts(body.products || []).filter((item) => !item.isCombo))
         setProductsReady(true)
       })
       .catch((reason) => { if (live) setError(reason.message) })

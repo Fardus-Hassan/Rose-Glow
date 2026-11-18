@@ -7,6 +7,7 @@ import { api, fromInputValue, toInputValue } from "../api.js"
 import { paymentLabel, taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
+import { sellableProducts } from "../products.js"
 import Select, { productOptions } from "../select.jsx"
 import { SourceField, TagField, TagList } from "../sources.jsx"
 import { ParcelEye } from "../ParcelModal.jsx"
@@ -56,7 +57,7 @@ export default function OrderDetail({ id }) {
         if (!live) return
         setSources(sourceBody.sources)
         setTags(tagBody.tags)
-        setProducts(catalog.products)
+        setProducts(sellableProducts(catalog.products))
         setCouriers(courierBody.couriers)
       })
       .catch(() => {})
@@ -141,7 +142,7 @@ export default function OrderDetail({ id }) {
         body: payload(order, { status, ...(privateNote !== undefined ? { privateNote } : {}) }),
       })
       setOrder(body.order)
-      api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
+      api("/api/products").then((catalog) => setProducts(sellableProducts(catalog.products))).catch(() => {})
       if (body.order.courierError && !body.order.consignmentId) {
         toast.error(body.order.courierError)
         return
@@ -202,7 +203,7 @@ export default function OrderDetail({ id }) {
       setDraft(null)
       if (body.order.courierError && !body.order.consignmentId) toast.error(body.order.courierError)
       else toast.success("Updated")
-      api("/api/products").then((catalog) => setProducts(catalog.products)).catch(() => {})
+      api("/api/products").then((catalog) => setProducts(sellableProducts(catalog.products))).catch(() => {})
     } catch (reason) {
       setError(reason.message)
       toast.error(reason.message)

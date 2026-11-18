@@ -26,6 +26,7 @@ function present(row, items = undefined) {
   return {
     id: row.id,
     number: `RG-${String(row.id).padStart(4, "0")}`,
+    shopOrderNumber: row.shop_order_number || "",
     customerName: row.customer_name,
     mobile: row.mobile,
     address: row.address,
@@ -77,6 +78,7 @@ const ORDER_SELECT = `
          o.cod_paid_by,
          o.paid_amount::float8 AS paid_amount,
          o.payment_method, o.note, o.private_note, o.courier_tries, o.source_id, src.name AS source_name, o.stock_held,
+         o.shop_order_number,
          o.consignment_id, o.tracking_code, o.tracking_url, o.courier_status, o.courier_error,
          o.courier_charge::float8 AS courier_charge, o.courier_charge_by, o.courier_cod::float8 AS courier_cod, o.return_settled,
          m.goods::float8 AS goods, m.cost::float8 AS cost, m.gifts::float8 AS gifts,
@@ -213,7 +215,7 @@ export async function listOrders({ status, q, source, tags, payout, from, to, mi
     params.push(term)
     const raw = `$${params.length}`
     where.push(`(o.customer_name ILIKE ${like} ESCAPE '\\' OR o.mobile ILIKE ${like} ESCAPE '\\' OR CAST(o.id AS TEXT) = ${exact}
-      OR CAST(o.consignment_id AS TEXT) = ${raw} OR o.tracking_code ILIKE ${raw})`)
+      OR CAST(o.consignment_id AS TEXT) = ${raw} OR o.tracking_code ILIKE ${raw} OR o.shop_order_number ILIKE ${like} ESCAPE '\\')`)
   }
   const sharedParams = [...params]
   const sharedWhere = [...where]
@@ -300,11 +302,14 @@ export async function listOrders({ status, q, source, tags, payout, from, to, mi
 
 async function catalogMaps(client) {
   const products = await client.query(`
-    SELECT id, name, cost_price::float8 AS cost_price, sell_price::float8 AS sell_price, stock_qty, is_combo
+    SELECT id, name, sku, parent_id, cost_price::float8 AS cost_price, sell_price::float8 AS sell_price, stock_qty, is_combo
     FROM products
   `)
   const links = await client.query(`SELECT combo_id, product_id, quantity FROM combo_items`)
   const byId = new Map(products.rows.map((row) => [row.id, row]))
+  for (const row of products.rows) {
+    if (row.parent_id && byId.get(row.parent_id)) byId.get(row.parent_id).has_variants = true
+  }
   const parts = new Map()
   for (const link of links.rows) {
     const list = parts.get(link.combo_id) || []
@@ -349,9 +354,11 @@ function readOrderFields(body, { partial = false } = {}) {
 function linesFrom(items, byId, parts) {
   const lines = []
   const needs = new Map()
-  for (const { productId, quantity, gift } of items) {
+  for (const item of items) {
+    const { productId, quantity, gift } = item
     const product = byId.get(productId)
     if (!product) throw fail(400, "Product was not found")
+    if (product.has_variants) throw fail(400, `Choose a variant of ${product.name}`)
     if (quantity <= 0 || quantity > 999) throw fail(400, "Enter a valid quantity")
     let unitCost = 0
     const recipe = product.is_combo ? parts.get(product.id) || [] : [{ productId: product.id, quantity: 1 }]
@@ -362,11 +369,14 @@ function linesFrom(items, byId, parts) {
       unitCost += Number(piece.cost_price) * part.quantity
       needs.set(part.productId, (needs.get(part.productId) || 0) + part.quantity * quantity)
     }
+    const asked = item.unitPrice
+    const unitPrice = gift ? 0 : (asked === undefined || asked === null || asked === "" ? Number(product.sell_price) : Number(asked))
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) throw fail(400, "Enter a valid price")
     lines.push({
       productId: product.id,
-      productName: product.name,
+      productName: noteText(item.name, 160) || (product.parent_id ? product.name : product.name),
       quantity,
-      unitPrice: gift ? 0 : Number(product.sell_price),
+      unitPrice,
       unitCost,
       gift,
     })
@@ -478,7 +488,15 @@ function mergedItems(body) {
     if (!productId || !quantity || quantity <= 0) throw fail(400, "Enter a valid quantity")
     const key = lineKey(productId, gift)
     const found = merged.get(key)
-    merged.set(key, { productId, gift, quantity: (found?.quantity || 0) + quantity })
+    const unitPrice = item.unitPrice
+    const name = item.name
+    merged.set(key, {
+      productId,
+      gift,
+      quantity: (found?.quantity || 0) + quantity,
+      unitPrice: found?.unitPrice ?? unitPrice,
+      name: found?.name || name,
+    })
   }
   return [...merged.values()]
 }
@@ -556,6 +574,10 @@ export async function createOrder(body) {
       )
     }
     await writeOrderTags(client, orderId, fields.tagIds)
+    const shopOrderNumber = noteText(body.shopOrderNumber, 40)
+    if (shopOrderNumber) {
+      await client.query(`UPDATE orders SET shop_order_number = $2 WHERE id = $1`, [orderId, shopOrderNumber])
+    }
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }

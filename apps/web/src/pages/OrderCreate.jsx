@@ -5,6 +5,7 @@ import { api, fromInputValue, nowInput } from "../api.js"
 import { taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
 import { useRoute } from "../route.jsx"
+import { sellableProducts } from "../products.js"
 import Select, { productOptions } from "../select.jsx"
 import { SourceField, TagField } from "../sources.jsx"
 import { Banner, Field, StatusPill, askConfirm, courierStatusQuestion } from "../ui.jsx"
@@ -107,7 +108,7 @@ export default function OrderCreate() {
     Promise.all([api("/api/products"), api("/api/sources"), api("/api/courier/active"), api("/api/tags")])
       .then(([catalog, sourceBody, courierBody, tagBody]) => {
         if (!live) return
-        setProducts(catalog.products)
+        setProducts(sellableProducts(catalog.products))
         setSources(sourceBody.sources)
         setTags(tagBody.tags)
         setCouriers(courierBody.couriers)

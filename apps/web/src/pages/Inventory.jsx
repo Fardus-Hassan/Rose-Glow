@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { LOW_STOCK_AT } from "@rose/shared"
 import { api } from "../api.js"
+import { sellableProducts } from "../products.js"
 import { taka } from "../format.js"
 import Select from "../select.jsx"
 import { Banner, Empty, Pager, askConfirm } from "../ui.jsx"
@@ -32,8 +33,9 @@ export default function Inventory() {
 
   const singles = products?.filter((item) => !item.isCombo) || []
   const combos = products?.filter((item) => item.isCombo) || []
-  const pieces = singles.reduce((sum, item) => sum + item.stockQty, 0)
-  const low = singles.filter((item) => item.stockQty <= LOW_STOCK_AT).length
+  const leaves = sellableProducts(products).filter((item) => !item.isCombo)
+  const pieces = leaves.reduce((sum, item) => sum + item.stockQty, 0)
+  const low = leaves.filter((item) => item.stockQty <= LOW_STOCK_AT).length
   const shownProducts = singles.slice((productPage - 1) * productPageSize, productPage * productPageSize)
   const shownCombos = combos.slice((comboPage - 1) * comboPageSize, comboPage * comboPageSize)
 
@@ -108,7 +110,7 @@ export default function Inventory() {
       </article>
 
       <div className="inv-forms">
-        <ComboForm singles={singles} onDone={reload} onError={setError} />
+        <ComboForm singles={leaves} onDone={reload} onError={setError} />
         <article className="card inv-table list-card" id="combo-list">
           <div className="card-head">
             <h2>Combos</h2>
@@ -167,6 +169,7 @@ function ProductForm({ onDone, onError }) {
         method: "POST",
         body: {
           name: form.get("name"),
+          sku: form.get("sku"),
           costPrice: form.get("costPrice"),
           sellPrice: form.get("sellPrice"),
           stockQty: form.get("stockQty") || 0,
@@ -185,6 +188,7 @@ function ProductForm({ onDone, onError }) {
       <h2>Add product</h2>
       <div className="inv-line">
         <input name="name" required placeholder="Name" aria-label="Name" />
+        <input name="sku" placeholder="SKU" aria-label="SKU" />
         <input name="costPrice" type="number" min="0" step="1" required placeholder="Cost" aria-label="Cost price" />
         <input name="sellPrice" type="number" min="0" step="1" required placeholder="Sell" aria-label="Selling price" />
         <input name="stockQty" type="number" min="0" step="1" defaultValue="0" placeholder="Pieces" aria-label="Pieces" />
@@ -271,7 +275,7 @@ function ProductRow({ product, onDone, onError }) {
     try {
       await api(`/api/products/${product.id}`, {
         method: "PATCH",
-        body: { name: form.get("name"), costPrice: form.get("costPrice"), sellPrice: form.get("sellPrice") },
+        body: { name: form.get("name"), sku: form.get("sku"), costPrice: form.get("costPrice"), sellPrice: form.get("sellPrice") },
       })
       setEditing(false)
       await onDone("Product updated")
@@ -294,11 +298,12 @@ function ProductRow({ product, onDone, onError }) {
   }
 
   return (
+    <>
     <tr className="inv-product">
       <td data-label="Product">
         {editing
-          ? <input form={formId} name="name" defaultValue={product.name} required aria-label="Name" />
-          : <strong>{product.name}</strong>}
+          ? <><input form={formId} name="name" defaultValue={product.name} required aria-label="Name" /><input form={formId} name="sku" defaultValue={product.sku || ""} aria-label="SKU" placeholder="SKU" /></>
+          : <><strong>{product.name}</strong>{product.sku ? <small className="courier-meta">{product.sku}</small> : null}</>}
       </td>
       <td data-label="Cost" className="num">
         {editing
@@ -314,8 +319,8 @@ function ProductRow({ product, onDone, onError }) {
       <td data-label="Stock" className="num">
         <b className={product.stockQty === 0 ? "danger" : product.stockQty <= LOW_STOCK_AT ? "warn" : ""}>{product.stockQty}</b>
       </td>
-      <td data-label="Add / remove" className={editing ? "inv-skip" : ""}>
-        {editing ? null : (
+      <td data-label="Add / remove" className={editing || product.variants?.length ? "inv-skip" : ""}>
+        {editing || product.variants?.length ? null : (
           <form className="adjust" onSubmit={adjust}>
             <input type="number" step="1" value={delta} onChange={(event) => setDelta(event.target.value)} placeholder="+/-" aria-label={`Add or remove ${product.name}`} />
             <button className="btn secondary" type="submit" disabled={saving || delta === ""}>Apply</button>
@@ -336,6 +341,94 @@ function ProductRow({ product, onDone, onError }) {
         )}
       </td>
     </tr>
+    <tr className="variant-row">
+      <td colSpan={7}>
+        <VariantEditor product={product} onDone={onDone} onError={onError} />
+      </td>
+    </tr>
+  </>
+)
+}
+
+function VariantEditor({ product, onDone, onError }) {
+  const [saving, setSaving] = useState(false)
+
+  async function add(event) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setSaving(true)
+    onError("")
+    try {
+      await api(`/api/products/${product.id}/variants`, {
+        method: "POST",
+        body: {
+          name: form.get("name"),
+          sku: form.get("sku"),
+          costPrice: form.get("costPrice"),
+          sellPrice: form.get("sellPrice"),
+          stockQty: form.get("stockQty") || 0,
+        },
+      })
+      event.currentTarget.reset()
+      await onDone("Variant added")
+    } catch (reason) {
+      onError(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function adjust(variant, delta) {
+    setSaving(true)
+    onError("")
+    try {
+      await api(`/api/products/${variant.id}/stock`, { method: "POST", body: { delta: Number(delta) } })
+      await onDone("Stock updated")
+    } catch (reason) {
+      onError(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="variant-box">
+      {(product.variants || []).map((variant) => (
+        <form key={variant.id} className="variant-line" onSubmit={async (event) => {
+          event.preventDefault()
+          const form = new FormData(event.currentTarget)
+          setSaving(true)
+          onError("")
+          try {
+            await api(`/api/products/${variant.id}`, {
+              method: "PATCH",
+              body: { name: form.get("name"), sku: form.get("sku"), costPrice: form.get("costPrice"), sellPrice: form.get("sellPrice") },
+            })
+            await onDone("Variant updated")
+          } catch (reason) {
+            onError(reason.message)
+          } finally {
+            setSaving(false)
+          }
+        }}>
+          <input name="name" defaultValue={variant.name} aria-label="Variant name" required />
+          <input name="sku" defaultValue={variant.sku} aria-label="Variant SKU" required />
+          <input name="costPrice" type="number" min="0" step="1" defaultValue={variant.costPrice} aria-label="Variant cost" required />
+          <input name="sellPrice" type="number" min="0" step="1" defaultValue={variant.sellPrice} aria-label="Variant sell" required />
+          <b>{variant.stockQty}</b>
+          <input type="number" step="1" placeholder="+/-" aria-label={`Stock for ${variant.name}`} onBlur={(event) => { if (event.target.value) { adjust(variant, event.target.value); event.target.value = "" } }} />
+          <button className="btn secondary" type="submit" disabled={saving}>Save</button>
+        </form>
+      ))}
+      <form className="variant-line" onSubmit={add}>
+        <input name="name" placeholder="Variant, e.g. Gold 6" aria-label="New variant name" required />
+        <input name="sku" placeholder="SKU" aria-label="New variant SKU" required />
+        <input name="costPrice" type="number" min="0" step="1" placeholder="Cost" aria-label="New variant cost" required />
+        <input name="sellPrice" type="number" min="0" step="1" placeholder="Sell" aria-label="New variant sell" required />
+        <input name="stockQty" type="number" min="0" step="1" defaultValue="0" aria-label="New variant stock" />
+        <button className="btn secondary" type="submit" disabled={saving}>Add variant</button>
+      </form>
+    </div>
   )
 }
 

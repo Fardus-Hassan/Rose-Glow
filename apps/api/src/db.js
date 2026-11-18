@@ -60,6 +60,9 @@ CREATE TABLE IF NOT EXISTS products (
   is_combo BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT NOT NULL DEFAULT '';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES products(id) ON DELETE CASCADE;
+CREATE UNIQUE INDEX IF NOT EXISTS products_sku_unique ON products (lower(sku)) WHERE sku <> '';
 
 CREATE TABLE IF NOT EXISTS combo_items (
   combo_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -93,6 +96,16 @@ CREATE TABLE IF NOT EXISTS orders (
   cod_paid_by TEXT NOT NULL DEFAULT 'free' CHECK (cod_paid_by IN ('free','customer')),
   note TEXT NOT NULL DEFAULT '',
   stock_held BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shop_order_number TEXT NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX IF NOT EXISTS orders_shop_order_unique ON orders (shop_order_number) WHERE shop_order_number <> '';
+CREATE TABLE IF NOT EXISTS shop_inbox (
+  shop_order_number TEXT PRIMARY KEY,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('imported','unmatched')),
+  detail TEXT NOT NULL DEFAULT '',
+  order_id INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
