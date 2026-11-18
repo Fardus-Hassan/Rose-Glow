@@ -93,23 +93,29 @@ export async function importShopOrder(body) {
   const deliveryCharge = money(body.deliveryCharge ?? body.shippingFee) ?? 0
   const discount = money(body.discount) ?? 0
   const sourceId = await websiteSource()
-  const order = await createOrder({
-    customerName: body.customerName,
-    mobile: shopMobile(body.mobile || body.customerPhone),
-    address,
-    courier: "Steadfast",
-    status: "new",
-    orderedAt: new Date().toISOString(),
-    deliveryCharge,
-    deliveryPaidBy: deliveryCharge > 0 ? "customer" : "free",
-    discount,
-    paidAmount: 0,
-    paymentMethod: "cod",
-    note: noteText(body.note, 400),
-    sourceId,
-    shopOrderNumber,
-    items: lines,
-  })
+  let order
+  try {
+    order = await createOrder({
+      customerName: body.customerName,
+      mobile: shopMobile(body.mobile || body.customerPhone),
+      address,
+      courier: "Steadfast",
+      status: "new",
+      orderedAt: new Date().toISOString(),
+      deliveryCharge,
+      deliveryPaidBy: deliveryCharge > 0 ? "customer" : "free",
+      discount,
+      paidAmount: 0,
+      paymentMethod: "cod",
+      note: noteText(body.note, 400),
+      sourceId,
+      shopOrderNumber,
+      items: lines,
+    })
+  } catch (error) {
+    await remember(shopOrderNumber, body, "unmatched", error.message || "Could not import", null)
+    throw error
+  }
   await remember(shopOrderNumber, body, "imported", "", order.id)
   return order
 }
