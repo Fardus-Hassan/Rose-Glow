@@ -65,7 +65,7 @@ export async function adReport({ from, to, limit, offset }) {
   if (!DAY.test(String(from || "")) || !DAY.test(String(to || "")) || from > to) throw fail(400, "The date is not valid")
   const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000
   if (span > 800) throw fail(400, "Keep the date range within 800 days")
-  const [spendRows, orderRows, entryRows, countRow, daySpendRows, dayOrderRows] = await Promise.all([
+  const [spendRows, orderRows, entryRows, countRow, daySpendRows, dayOrderRows, costRows] = await Promise.all([
     pool.query(
       `SELECT source_id, SUM(amount)::float8 AS spend
        FROM ad_spends
@@ -117,6 +117,13 @@ export async function adReport({ from, to, limit, offset }) {
        GROUP BY 1`,
       [from, to],
     ),
+    pool.query(
+      `SELECT id, source_id, to_char(spent_on, 'YYYY-MM-DD') AS spent_on, amount::float8 AS amount, note
+       FROM ad_spends
+       WHERE spent_on BETWEEN $1::date AND $2::date
+       ORDER BY spent_on DESC, id DESC`,
+      [from, to],
+    ),
   ])
   const dayMap = new Map()
   const dayOf = (date) => dayMap.get(date) || dayMap.set(date, { date, spend: 0, orders: 0, sales: 0, profit: 0 }).get(date)
@@ -145,6 +152,18 @@ export async function adReport({ from, to, limit, offset }) {
     const item = platforms.get(row.source_id)
     if (item) item.spend = Number(row.spend)
   }
+  const costsBySource = new Map()
+  for (const row of costRows.rows) {
+    const costs = costsBySource.get(row.source_id) || []
+    costs.push({
+      id: row.id,
+      spentOn: row.spent_on,
+      sourceId: row.source_id,
+      amount: Number(row.amount),
+      note: row.note,
+    })
+    costsBySource.set(row.source_id, costs)
+  }
 
   const list = [...platforms.values()]
     .filter((item) => item.spend > 0 || item.orders > 0)
@@ -154,6 +173,7 @@ export async function adReport({ from, to, limit, offset }) {
       afterAds: item.profit - item.spend,
       perOrder: item.spend > 0 && item.orders > 0 ? Math.round(item.spend / item.orders) : null,
       back: rate(item.sales, item.spend),
+      costs: costsBySource.get(item.id) || [],
     }))
     .sort((a, b) => b.spend - a.spend || b.orders - a.orders || a.position - b.position)
 

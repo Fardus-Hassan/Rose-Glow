@@ -232,6 +232,25 @@ export default function Ads() {
                   <div><dt>After ads</dt><dd className={item.afterAds < 0 ? "bad" : "good"}>{taka(item.afterAds)}</dd></div>
                 </dl>
                 {item.paid ? <p className="muted small">{item.orders ? backText(item.back) : "No orders yet from this spend"}</p> : null}
+                {item.costs?.length === 1 ? (
+                  <div className="row-actions ad-card-actions">
+                    <button type="button" className="text-btn" onClick={() => editRow({ ...item.costs[0], sourceName: item.name })}>Edit</button>
+                    <button type="button" className="text-btn danger" onClick={() => remove({ ...item.costs[0], sourceName: item.name })}>Remove</button>
+                  </div>
+                ) : null}
+                {item.costs?.length > 1 ? (
+                  <ul className="ad-card-costs">
+                    {item.costs.map((cost) => (
+                      <li key={cost.id}>
+                        <span>{dayLabel(cost.spentOn)} · {taka(cost.amount)}{cost.note ? ` · ${cost.note}` : ""}</span>
+                        <div className="row-actions">
+                          <button type="button" className="text-btn" onClick={() => editRow({ ...cost, sourceName: item.name })}>Edit</button>
+                          <button type="button" className="text-btn danger" onClick={() => remove({ ...cost, sourceName: item.name })}>Remove</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>
