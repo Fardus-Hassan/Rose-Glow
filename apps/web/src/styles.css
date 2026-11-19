@@ -97,6 +97,10 @@ img, svg { display: block; }
   font-weight: 700;
   letter-spacing: 0.06em;
 }
+.connection-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin-bottom: 16px; }
+.connection-toggle h2 { margin: 0; }
+.connection-toggle p { margin: 4px 0 0; }
+.connection-toggle .btn { flex: none; width: auto; }
 .user-id-card { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
 .user-id-line { display: flex; gap: 8px; flex: 1 1 320px; max-width: 460px; }
 .user-id-line input { flex: 1; min-width: 0; letter-spacing: 0.04em; }

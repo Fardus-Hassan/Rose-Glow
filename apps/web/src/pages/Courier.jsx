@@ -69,6 +69,7 @@ export default function Courier() {
   const [apiKey, setApiKey] = useState("")
   const [secretKey, setSecretKey] = useState("")
   const [webhookToken, setWebhookToken] = useState("")
+  const [keysOpen, setKeysOpen] = useState(false)
 
   function applyAccount(next) {
     setAccount(next)
@@ -182,7 +183,17 @@ export default function Courier() {
       <p className="lede">Add the keys and a parcel is booked when an order is marked In courier. Status changes show up in the bell. Steadfast has no test mode, so this is a real parcel.</p>
       <Banner message={error} />
 
-      <div className="split">
+      <div className="card connection-toggle">
+        <div>
+          <h2>Steadfast connection</h2>
+          <p className="muted small">Keys, webhook, and user ID.</p>
+        </div>
+        <button type="button" className="btn secondary" onClick={() => setKeysOpen((open) => !open)}>
+          {keysOpen ? "Hide" : "Show"}
+        </button>
+      </div>
+
+      {keysOpen ? <div className="split">
         <form className="card stack tight" onSubmit={save}>
           <h2>{account?.connected ? "Change keys" : "Credentials"}</h2>
           {account?.connected ? <p className="muted">Saved key ends in {account.keyHint}. A new key replaces the old one.</p> : null}
@@ -224,10 +235,9 @@ export default function Courier() {
             </div>
           ) : null}
         </aside>
-      </div>
+      </div> : null}
 
-
-      <UserIdForm />
+      {keysOpen ? <UserIdForm /> : null}
 
       <PickupCard />
 
