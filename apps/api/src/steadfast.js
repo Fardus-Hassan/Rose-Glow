@@ -2,9 +2,9 @@ import { fail } from "./http.js"
 
 const BASE = "https://portal.packzy.com/api/v1"
 
-export async function steadfast(keys, path, { method = "GET", body } = {}) {
+export async function steadfast(keys, path, { method = "GET", body, timeoutMs = 20000 } = {}) {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 20000)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetch(`${BASE}${path}`, {
       method,

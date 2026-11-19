@@ -340,9 +340,10 @@ SELECT o.id, o.status, o.source_id, o.ordered_at, o.paid_amount, o.discount,
        CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END AS bill_delivery,
        CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END AS bill_cod,
        COALESCE(o.courier_charge, o.delivery_charge) + f.cod_fee AS courier_cost,
-       o.status NOT IN ('cancelled', 'returned') AS counted,
+       o.status <> 'cancelled' AND NOT (o.status = 'returned' AND t.goods = 0) AS counted,
        b.total,
-       CASE WHEN o.status IN ('cancelled', 'returned') THEN -COALESCE(o.courier_charge, 0)
+       CASE WHEN o.status = 'cancelled' OR (o.status = 'returned' AND t.goods = 0)
+            THEN -COALESCE(o.courier_charge, 0)
             ELSE b.total - t.cost - COALESCE(o.courier_charge, o.delivery_charge) - f.cod_fee
        END AS profit,
        f.cod_fee
@@ -361,7 +362,7 @@ CROSS JOIN LATERAL (
   WHERE oi.order_id = o.id
 ) t
 CROSS JOIN LATERAL (
-  SELECT CASE WHEN o.return_settled THEN o.paid_amount
+  SELECT CASE WHEN o.status = 'cancelled' OR (o.status = 'returned' AND t.goods = 0) THEN 0
               ELSE t.goods - o.discount
                 + CASE WHEN o.delivery_paid_by = 'customer' THEN o.delivery_charge ELSE 0 END
                 + CASE WHEN o.cod_paid_by = 'customer' THEN o.cod_charge ELSE 0 END

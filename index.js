@@ -3,6 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { mount } from "./apps/api/src/app.js"
+import { startCourierSync } from "./apps/api/src/courier.js"
 
 const app = express()
 app.use(express.json({ limit: "100kb" }))
@@ -34,6 +35,7 @@ if (!process.env.VERCEL) {
   const port = Number(process.env.PORT || 4000)
   app.listen(port, "0.0.0.0", () => {
     console.log(`Rose Glow http://127.0.0.1:${port}`)
+    startCourierSync()
   })
 }
 

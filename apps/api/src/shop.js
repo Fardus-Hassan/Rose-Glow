@@ -120,6 +120,43 @@ export async function importShopOrder(body) {
   return order
 }
 
+export async function pushShopReturn(orderId) {
+  const key = process.env.SHOP_INGEST_KEY || ""
+  const base = (process.env.ECOM_URL || "https://ecom.200.234.44.244.sslip.io").replace(/\/$/, "")
+  if (!key) return
+  const order = await pool.query(`SELECT shop_order_number FROM orders WHERE id = $1`, [orderId])
+  const shopOrderNumber = order.rows[0]?.shop_order_number || ""
+  if (!shopOrderNumber) return
+  const lines = await pool.query(
+    `SELECT p.sku, oi.returned_qty
+     FROM order_items oi
+     JOIN products p ON p.id = oi.product_id
+     WHERE oi.order_id = $1 AND p.sku <> ''`,
+    [orderId],
+  )
+  const number = `RG-${String(orderId).padStart(4, "0")}`
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    const response = await fetch(`${base}/api/ledger/returns`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Shop-Key": key },
+      body: JSON.stringify({
+        orderNumber: number,
+        shopOrderNumber,
+        returned: true,
+        items: lines.rows.map((row) => ({ sku: row.sku, returned: row.returned_qty })),
+      }),
+      signal: controller.signal,
+    })
+    if (!response.ok) console.error("Shop did not take the return", response.status)
+  } catch (error) {
+    console.error("Shop did not take the return", error)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function retryShopOrder(number) {
   const shopOrderNumber = noteText(number, 40)
   const row = await pool.query(`SELECT payload FROM shop_inbox WHERE shop_order_number = $1`, [shopOrderNumber])

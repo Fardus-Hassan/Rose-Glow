@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import { courierStatusLabel } from "@rose/shared"
 import { pool } from "./db.js"
 import { fail } from "./http.js"
-import { getOrder, setOrderStatus } from "./orders.js"
+import { getOrder, returnEveryPiece, setOrderStatus } from "./orders.js"
 import { open, sameText, seal } from "./secret.js"
 import { isDuplicate, normalizeCourierStatus, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
 
@@ -245,12 +245,27 @@ export async function parcelList({ limit, offset }) {
 }
 
 export async function notificationFeed(limit) {
-  try {
-    await syncParcels()
-  } catch (error) {
-    console.error(error)
-  }
   return listNotifications(limit)
+}
+
+let courierSyncTimer = null
+let courierSyncRunning = false
+
+export function startCourierSync() {
+  if (courierSyncTimer) return
+  const tick = async () => {
+    if (courierSyncRunning) return
+    courierSyncRunning = true
+    try {
+      await syncParcels()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      courierSyncRunning = false
+    }
+  }
+  setTimeout(tick, 20000)
+  courierSyncTimer = setInterval(tick, 60000)
 }
 
 // courier_events is also the parcel history (tracking steps, charge, webhook dedupe), so old rows stay and only leave the bell.
@@ -387,38 +402,41 @@ async function place(keys, order) {
 }
 
 async function fetchStatus(keys, consignmentId) {
+  const fast = { timeoutMs: 8000 }
   try {
-    return await steadfast(keys, `/status_with_return_status_by_cid/${consignmentId}`)
+    return await steadfast(keys, `/status_with_return_status_by_cid/${consignmentId}`, fast)
   } catch (error) {
     if (error.steadfastStatus !== 404 && error.status !== 404) throw error
-    return steadfast(keys, `/status_by_cid/${consignmentId}`)
+    return steadfast(keys, `/status_by_cid/${consignmentId}`, fast)
   }
 }
 
 async function syncParcels() {
-  if (!await claimSync()) return
   const keys = await keysOrNull()
   if (!keys) return
-  const result = await pool.query(
+  const moving = await pool.query(
     `SELECT id, customer_name, consignment_id, courier_status, status
      FROM orders
      WHERE consignment_id IS NOT NULL
        AND NOT (courier_status = ANY($1::text[]) AND status = 'returned')
        AND NOT (courier_status = 'unknown' AND status = 'cancelled')
-       AND (
-         courier_status IS NULL
-         OR courier_status <> ALL($2::text[])
-         OR courier_checked_at IS NULL
-         OR courier_checked_at < now() - interval '10 minutes'
-       )
-     ORDER BY
-       CASE WHEN courier_status = ANY($2::text[]) THEN 1 ELSE 0 END,
-       courier_checked_at NULLS FIRST,
-       id
-     LIMIT 20`,
+       AND (courier_status IS NULL OR courier_status <> ALL($2::text[]))
+     ORDER BY courier_checked_at NULLS FIRST, id
+     LIMIT 6`,
     [SYNC_DONE, QUIET],
   )
-  for (const row of result.rows) {
+  const quiet = await pool.query(
+    `SELECT id, customer_name, consignment_id, courier_status, status
+     FROM orders
+     WHERE consignment_id IS NOT NULL
+       AND courier_status = ANY($1::text[])
+       AND NOT (courier_status = ANY($2::text[]) AND status = 'returned')
+       AND (courier_checked_at IS NULL OR courier_checked_at < now() - interval '20 minutes')
+     ORDER BY courier_checked_at NULLS FIRST, id
+     LIMIT 2`,
+    [QUIET, SYNC_DONE],
+  )
+  for (const row of [...moving.rows, ...quiet.rows]) {
     try {
       const data = await fetchStatus(keys, row.consignment_id)
       const status = readStatus(data)
@@ -430,28 +448,6 @@ async function syncParcels() {
     } catch (error) {
       console.error(error)
     }
-  }
-}
-
-async function claimSync() {
-  const client = await pool.connect()
-  try {
-    await client.query("BEGIN")
-    await client.query(`INSERT INTO courier_sync (id, synced_at) VALUES (1, '1970-01-01') ON CONFLICT (id) DO NOTHING`)
-    const row = await client.query(`SELECT synced_at FROM courier_sync WHERE id = 1 FOR UPDATE`)
-    const last = new Date(row.rows[0].synced_at).getTime()
-    if (Date.now() - last < 55000) {
-      await client.query("COMMIT")
-      return false
-    }
-    await client.query(`UPDATE courier_sync SET synced_at = now() WHERE id = 1`)
-    await client.query("COMMIT")
-    return true
-  } catch (error) {
-    try { await client.query("ROLLBACK") } catch { /* already closed */ }
-    throw error
-  } finally {
-    client.release()
   }
 }
 
@@ -479,6 +475,10 @@ async function applyRemote(order, status, note, idempotencyKey) {
     await remember(order, status, order.consignmentId, text, idempotencyKey || `status:${order.id}:${status}`)
     if (status === "delivered") await markPaid(order.id)
   }
+  if (status === "cancelled_return_received") {
+    await returnEveryPiece(order.id)
+    return
+  }
   const local = localStatusFor(status)
   if (!local || local === order.status) return
   const allowed = local === "returned"
@@ -487,6 +487,10 @@ async function applyRemote(order, status, note, idempotencyKey) {
   const received = status === "cancelled_return_received" || status === "partial_delivered_return_received"
   const keepStock = local === "cancelled" || (local === "returned" && !received)
   await setOrderStatus(order.id, local, allowed, { keepStock })
+  if (local === "returned") {
+    const { pushShopReturn } = await import("./shop.js")
+    await pushShopReturn(order.id)
+  }
 }
 
 async function markPaid(orderId) {

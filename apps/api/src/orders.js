@@ -2,6 +2,11 @@ import { MANUAL_STATUSES, PAYMENTS, STATUSES, holdsStock } from "@rose/shared"
 import { pool } from "./db.js"
 import { cleanName, fail, mobile, money, noteText, when, whole } from "./http.js"
 import { readTagIds, writeOrderTags } from "./tags.js"
+
+async function tellShop(id) {
+  const { pushShopReturn } = await import("./shop.js")
+  await pushShopReturn(id)
+}
 const STATUS_IDS = new Set(STATUSES.map((item) => item.id))
 const MANUAL_IDS = new Set(MANUAL_STATUSES.map((item) => item.id))
 
@@ -63,7 +68,7 @@ function present(row, items = undefined) {
     cost,
     gifts,
     total,
-    due: row.status === "cancelled" || row.status === "returned" ? 0 : total - paid,
+    due: row.status === "cancelled" || (row.status === "returned" && goods <= 0) ? 0 : Math.max(0, total - paid),
     profit: Number(row.profit),
     ...(items ? { items } : {}),
   }
@@ -809,7 +814,7 @@ export async function setReturnedPieces(id, body) {
          status = CASE WHEN $3 THEN 'returned' WHEN $4 AND status = 'returned' THEN 'delivered' ELSE status END,
          stock_held = CASE WHEN $3 THEN false WHEN $4 AND status = 'returned' THEN true ELSE stock_held END
        WHERE id = $1`,
-      [id, !undo, fullReturn, undo || kept > 0],
+      [id, !undo, fullReturn, undo],
     )
     await client.query("COMMIT")
   } catch (error) {
@@ -818,7 +823,72 @@ export async function setReturnedPieces(id, body) {
   } finally {
     client.release()
   }
+  await tellShop(id)
   return getOrder(id)
+}
+
+export async function returnEveryPiece(id) {
+  const client = await pool.connect()
+  try {
+    await client.query("BEGIN")
+    const found = await client.query(`SELECT id FROM orders WHERE id = $1 FOR UPDATE`, [id])
+    if (!found.rows[0]) throw fail(404, "Order was not found")
+    const lines = await client.query(
+      `SELECT id, product_id, quantity, returned_qty FROM order_items WHERE order_id = $1 ORDER BY id FOR UPDATE`,
+      [id],
+    )
+    const next = new Map(lines.rows.map((line) => [line.id, line.quantity]))
+    await applyReturnedQuantities(client, id, lines.rows, next)
+    await client.query(
+      `UPDATE orders SET return_settled = true, status = 'returned', stock_held = false WHERE id = $1`,
+      [id],
+    )
+    await client.query("COMMIT")
+  } catch (error) {
+    try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    throw error
+  } finally {
+    client.release()
+  }
+  await tellShop(id)
+  return getOrder(id)
+}
+
+async function applyReturnedQuantities(client, id, lines, next) {
+  const { parts } = await catalogMaps(client)
+  const products = lines.length
+    ? await client.query(`SELECT id, is_combo FROM products WHERE id = ANY($1::int[])`, [lines.map((row) => row.product_id)])
+    : { rows: [] }
+  const combo = new Map(products.rows.map((row) => [row.id, row.is_combo]))
+  const moves = new Map()
+  for (const line of lines) {
+    const delta = next.get(line.id) - line.returned_qty
+    if (!delta) continue
+    const recipe = combo.get(line.product_id) ? parts.get(line.product_id) || [] : [{ productId: line.product_id, quantity: 1 }]
+    for (const part of recipe) moves.set(part.productId, (moves.get(part.productId) || 0) + part.quantity * delta)
+  }
+  const ids = [...moves.keys()].sort((a, b) => a - b)
+  if (ids.length) {
+    const locked = await client.query(`SELECT id, name, stock_qty FROM products WHERE id = ANY($1::int[]) ORDER BY id FOR UPDATE`, [ids])
+    const stock = new Map(locked.rows.map((row) => [row.id, row]))
+    for (const productId of ids) {
+      const pieces = moves.get(productId)
+      const product = stock.get(productId)
+      if (!product) throw fail(400, "A stocked product no longer exists")
+      if (pieces < 0 && product.stock_qty < -pieces) {
+        throw fail(400, `${product.name} has only ${product.stock_qty} in stock, so those pieces cannot be taken back out.`)
+      }
+      await client.query(`UPDATE products SET stock_qty = stock_qty + $2 WHERE id = $1`, [productId, pieces])
+      const held = await client.query(`SELECT quantity FROM order_stock WHERE order_id = $1 AND product_id = $2`, [id, productId])
+      const left = (held.rows[0]?.quantity || 0) - pieces
+      if (left <= 0) await client.query(`DELETE FROM order_stock WHERE order_id = $1 AND product_id = $2`, [id, productId])
+      else if (held.rows[0]) await client.query(`UPDATE order_stock SET quantity = $3 WHERE order_id = $1 AND product_id = $2`, [id, productId, left])
+      else await client.query(`INSERT INTO order_stock (order_id, product_id, quantity) VALUES ($1, $2, $3)`, [id, productId, left])
+    }
+  }
+  for (const line of lines) {
+    await client.query(`UPDATE order_items SET returned_qty = $2 WHERE id = $1`, [line.id, next.get(line.id)])
+  }
 }
 
 export async function setOrderStatus(id, status, allowedFrom, { keepStock = false } = {}) {
