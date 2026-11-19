@@ -7,8 +7,18 @@ import { open, sameText, seal } from "./secret.js"
 import { isDuplicate, normalizeCourierStatus, readBalance, readConsignment, readStatus, readSteps, steadfast } from "./steadfast.js"
 
 const EARLY = new Set(["in_review", "pending"])
-const CANCELLED = new Set(["cancelled", "cancelled_return_processing", "cancelled_return_rider_assigned"])
+const CANCELLED = new Set(["cancelled"])
+const RETURNING = new Set([
+  "cancelled_return_processing",
+  "cancelled_return_rider_assigned",
+  "cancelled_return_received",
+  "partial_delivered_return_processing",
+  "partial_delivered_return_rider_assigned",
+  "partial_delivered_return_received",
+])
 const FINAL = new Set(["delivered", "partial_delivered", "cancelled_return_received", "partial_delivered_return_received"])
+const SYNC_DONE = ["cancelled_return_received", "partial_delivered_return_received"]
+const QUIET = ["delivered", "partial_delivered"]
 
 export function isSteadfast(name) {
   return String(name || "").trim().toLowerCase() === "steadfast"
@@ -393,16 +403,29 @@ async function syncParcels() {
     `SELECT id, customer_name, consignment_id, courier_status, status
      FROM orders
      WHERE consignment_id IS NOT NULL
-       AND (courier_status IS NULL OR courier_status <> ALL($1::text[]))
-     ORDER BY courier_status_at NULLS FIRST, id
-     LIMIT 12`,
-    [[...FINAL]],
+       AND NOT (courier_status = ANY($1::text[]) AND status = 'returned')
+       AND NOT (courier_status = 'unknown' AND status = 'cancelled')
+       AND (
+         courier_status IS NULL
+         OR courier_status <> ALL($2::text[])
+         OR courier_checked_at IS NULL
+         OR courier_checked_at < now() - interval '10 minutes'
+       )
+     ORDER BY
+       CASE WHEN courier_status = ANY($2::text[]) THEN 1 ELSE 0 END,
+       courier_checked_at NULLS FIRST,
+       id
+     LIMIT 20`,
+    [SYNC_DONE, QUIET],
   )
   for (const row of result.rows) {
     try {
       const data = await fetchStatus(keys, row.consignment_id)
       const status = readStatus(data)
-      if (!status) continue
+      if (!status) {
+        await pool.query(`UPDATE orders SET courier_checked_at = now() WHERE id = $1`, [row.id])
+        continue
+      }
       await applyRemote(shapeOrder(row), status, "")
     } catch (error) {
       console.error(error)
@@ -442,6 +465,7 @@ async function keepPayload(orderId, status, payload) {
 }
 
 async function applyRemote(order, status, note, idempotencyKey) {
+  await pool.query(`UPDATE orders SET courier_checked_at = now() WHERE id = $1`, [order.id])
   const updated = await pool.query(
     `UPDATE orders
      SET courier_status = $2, courier_status_at = now(), courier_error = NULL
@@ -460,8 +484,9 @@ async function applyRemote(order, status, note, idempotencyKey) {
   const allowed = local === "returned"
     ? ["new", "confirmed", "courier", "delivered", "cancelled"]
     : ["new", "confirmed", "courier", "cancelled"]
-  // A cancelled parcel is still on its way back, so its pieces stay held until the return is received.
-  await setOrderStatus(order.id, local, allowed, { keepStock: local === "cancelled" })
+  const received = status === "cancelled_return_received" || status === "partial_delivered_return_received"
+  const keepStock = local === "cancelled" || (local === "returned" && !received)
+  await setOrderStatus(order.id, local, allowed, { keepStock })
 }
 
 async function markPaid(orderId) {
@@ -476,8 +501,8 @@ async function markPaid(orderId) {
 
 function localStatusFor(status) {
   if (status === "delivered" || status === "partial_delivered") return "delivered"
-  if (status === "cancelled_return_received") return "returned"
-  if (CANCELLED.has(status)) return "cancelled"
+  if (RETURNING.has(status)) return "returned"
+  if (CANCELLED.has(status) || status === "unknown") return "cancelled"
   return ""
 }
 

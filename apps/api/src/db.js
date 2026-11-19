@@ -259,6 +259,19 @@ WHERE status IN ('new', 'confirmed', 'courier', 'delivered')
 UPDATE orders SET status = 'returned'
 WHERE status = 'cancelled' AND courier_status = 'cancelled_return_received' AND NOT stock_held;
 
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_checked_at TIMESTAMPTZ;
+UPDATE orders SET status = 'returned'
+WHERE courier_status IN (
+  'cancelled_return_processing',
+  'cancelled_return_rider_assigned',
+  'partial_delivered_return_processing',
+  'partial_delivered_return_rider_assigned'
+)
+AND status IS DISTINCT FROM 'returned';
+UPDATE orders SET status = 'cancelled'
+WHERE courier_status = 'unknown'
+  AND status IN ('new', 'confirmed', 'courier', 'delivered');
+
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS returned_qty INTEGER NOT NULL DEFAULT 0 CHECK (returned_qty >= 0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS return_settled BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS private_note TEXT NOT NULL DEFAULT '';
