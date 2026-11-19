@@ -14,6 +14,7 @@ export default function PickupCard() {
   const [stations, setStations] = useState(null)
   const [qty, setQty] = useState("")
   const [note, setNote] = useState("")
+  const [addressId, setAddressId] = useState("")
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function PickupCard() {
         setView(body)
         if (!body.place) setEditing(true)
         setQty(body.inReview ? String(body.inReview) : "")
+        if (body.place?.addressId) setAddressId(String(body.place.addressId))
       })
       .catch((reason) => { if (live) toast.error(reason.message) })
     return () => { live = false }
@@ -62,7 +64,26 @@ export default function PickupCard() {
       })
       setView(next)
       setEditing(false)
+      if (next.place?.addressId) setAddressId(String(next.place.addressId))
       toast.success("Pickup place saved")
+    } catch (reason) {
+      toast.error(reason.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveAddressId(event) {
+    event.preventDefault()
+    setBusy(true)
+    try {
+      const next = await api("/api/courier/pickup/address", {
+        method: "PUT",
+        body: { addressId },
+      })
+      setView(next)
+      if (next.place?.addressId) setAddressId(String(next.place.addressId))
+      toast.success("Address number saved")
     } catch (reason) {
       toast.error(reason.message)
     } finally {
@@ -149,6 +170,19 @@ export default function PickupCard() {
             </div>
             <button type="button" className="btn secondary" onClick={startEdit}>Change</button>
           </div>
+          <form className="pickup-id" onSubmit={saveAddressId}>
+            <label className="field">
+              <span>Steadfast address number</span>
+              <input
+                inputMode="numeric"
+                value={addressId}
+                onChange={(event) => setAddressId(event.target.value.replace(/\D/g, "").slice(0, 10))}
+                placeholder="Paste the number from Steadfast"
+                required
+              />
+            </label>
+            <button className="btn secondary" type="submit" disabled={busy || !addressId}>{busy ? "Saving…" : "Save number"}</button>
+          </form>
           <div className="pickup-send">
             <label className="field">
               <span>Parcels</span>
@@ -161,7 +195,7 @@ export default function PickupCard() {
             <button type="button" className="btn" disabled={busy || !qty || !place.addressId} onClick={send}>{busy ? "Sending…" : "Request pickup"}</button>
           </div>
           <p className="muted small">
-            {place.addressId ? "Sending again while one request is open does not call a second rider." : "The place can be saved. Steadfast does not show the address number, so Request pickup stays off."}
+            {place.addressId ? "Sending again while one request is open does not call a second rider." : "Paste the address number from Steadfast, then save it. Request pickup stays off until that number is saved."}
             {view.inReview && place.addressId ? ` ${view.inReview} in review.` : ""}
           </p>
         </>

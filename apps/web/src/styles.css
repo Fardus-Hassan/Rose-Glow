@@ -118,6 +118,8 @@ img, svg { display: block; }
 .pickup-place p { margin: 0; }
 .pickup-place small { display: block; margin-top: 3px; color: var(--muted); }
 .pickup-place .btn { flex: none; }
+.pickup-id { display: flex; gap: 8px; align-items: end; margin-bottom: 14px; }
+.pickup-id .field { flex: 1; max-width: 320px; }
 .pickup-send { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; gap: 10px; align-items: end; }
 .pickup-send .btn { min-height: 46px; }
 .pickup-card .muted.small { margin-top: 8px; }
@@ -1680,8 +1682,9 @@ tr.selected { background: var(--rose-soft); }
   .courier-page form .btn { width: 100%; }
   .pickup-form, .pickup-send { grid-template-columns: 1fr; }
   .pickup-actions { flex-direction: column; }
-  .pickup-place { flex-direction: column; }
-  .pickup-place .btn, .pickup-send .btn { width: 100%; }
+  .pickup-place, .pickup-id { flex-direction: column; align-items: stretch; }
+  .pickup-id .field { max-width: none; }
+  .pickup-place .btn, .pickup-id .btn, .pickup-send .btn { width: 100%; }
   .pickup-list li { grid-template-columns: 1fr auto; align-items: start; }
   .pickup-list li > div { grid-column: 1 / -1; grid-row: 2; }
   .pickup-list time { grid-column: 2; grid-row: 1; }

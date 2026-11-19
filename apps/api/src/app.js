@@ -26,7 +26,7 @@ import {
 } from "./courier.js"
 import { createExpense, createPurchase, deleteExpense, deletePurchase, listPurchases, updateExpense, updatePurchase } from "./purchases.js"
 import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
-import { pickupStations, pickupView, requestPickup, savePickupPlace } from "./pickup.js"
+import { pickupStations, pickupView, requestPickup, savePickupAddressId, savePickupPlace } from "./pickup.js"
 import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
 import { assertShopKey, importShopOrder, listUnmatched, retryShopOrder } from "./shop.js"
 import { changePassword, clearSession, login, openToGuests, passwordHash, signedIn } from "./auth.js"
@@ -321,6 +321,10 @@ export function mount(app) {
 
   app.put("/api/courier/pickup/place", wrap(async (req, res) => {
     res.json(await savePickupPlace(req.body || {}))
+  }))
+
+  app.put("/api/courier/pickup/address", wrap(async (req, res) => {
+    res.json(await savePickupAddressId(req.body || {}))
   }))
 
   app.post("/api/courier/pickup", wrap(async (req, res) => {

@@ -56,6 +56,17 @@ export async function savePickupPlace(body) {
   return pickupView()
 }
 
+export async function savePickupAddressId(body) {
+  const keys = await keysOrNull()
+  if (!keys) throw fail(400, "Add the Steadfast keys on the Courier page first")
+  const place = await pool.query(`SELECT id FROM pickup_places WHERE id = 1`)
+  if (!place.rows[0]) throw fail(400, "Save the pickup place first")
+  const addressId = whole(body?.addressId)
+  if (!addressId || addressId <= 0 || addressId > 2147483647) throw fail(400, "Enter the address number from Steadfast")
+  await pool.query(`UPDATE pickup_places SET address_id = $1, updated_at = now() WHERE id = 1`, [addressId])
+  return pickupView()
+}
+
 export async function requestPickup(body) {
   const keys = await keysOrNull()
   if (!keys) throw fail(400, "Add the Steadfast keys on the Courier page first")
