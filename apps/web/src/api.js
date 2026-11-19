@@ -10,6 +10,9 @@ export async function api(path, options = {}) {
     throw new Error("Cannot reach the server")
   }
   const data = await response.json().catch(() => ({}))
+  if (response.status === 401 && !path.startsWith("/api/auth/")) {
+    window.dispatchEvent(new Event("rg-signed-out"))
+  }
   if (!response.ok) throw new Error(data.error || "Something went wrong")
   return data
 }

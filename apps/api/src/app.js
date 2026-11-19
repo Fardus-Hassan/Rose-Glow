@@ -29,6 +29,7 @@ import { adReport, adSpendTotal, createAd, deleteAd, updateAd } from "./ads.js"
 import { pickupStations, pickupView, requestPickup, savePickupPlace } from "./pickup.js"
 import { createWithdrawal, deleteWithdrawal, listWithdrawals, updateWithdrawal } from "./withdrawals.js"
 import { assertShopKey, importShopOrder, listUnmatched, retryShopOrder } from "./shop.js"
+import { changePassword, clearSession, login, openToGuests, passwordHash, signedIn } from "./auth.js"
 
 function feedLimit(value) {
   return Math.min(Math.max(whole(value, 20) || 20, 1), 1000)
@@ -43,7 +44,28 @@ function idFrom(req) {
 export function mount(app) {
   app.use("/api", wrap(async (req, res, next) => {
     await migrate()
-    next()
+    if (openToGuests(req)) return next()
+    const hash = await passwordHash()
+    if (signedIn(req, hash)) return next()
+    throw fail(401, "Sign in to continue")
+  }))
+
+  app.get("/api/auth/session", wrap(async (req, res) => {
+    const hash = await passwordHash()
+    res.json({ ok: signedIn(req, hash) })
+  }))
+
+  app.post("/api/auth/login", wrap(async (req, res) => {
+    res.json(await login(req, res))
+  }))
+
+  app.post("/api/auth/logout", wrap(async (req, res) => {
+    clearSession(res)
+    res.json({ ok: true })
+  }))
+
+  app.post("/api/auth/password", wrap(async (req, res) => {
+    res.json(await changePassword(req, res))
   }))
 
   app.get("/api/health", wrap(async (req, res) => {

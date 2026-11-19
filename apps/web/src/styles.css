@@ -146,6 +146,50 @@ img, svg { display: block; }
   border: 1px solid rgba(242, 209, 208, 0.22);
 }
 .side-nav { display: grid; gap: 4px; margin-top: 22px; }
+.side-foot {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px 0;
+}
+.side-foot a, .side-foot button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 8px 0;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+.side-foot a.active, .side-foot a:hover, .side-foot button:hover { color: var(--rose); }
+.gate {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.gate-card, .gate-form {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 28px 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+}
+.gate-card { justify-items: start; }
+.gate-card .mark { width: 56px; height: 56px; }
+.gate-card h1 {
+  font-family: var(--display);
+  color: var(--rose);
+  font-weight: 560;
+}
+.gate-card p { margin: 0; color: var(--muted); }
+.gate-wait { margin: 0; color: var(--rose); font-family: var(--display); font-size: 1.6rem; }
+.gate-link { padding-inline: 0; min-height: 36px; }
+@media (min-width: 861px) {
+  .gate-link { display: none; }
+}
 .side-nav a, .tabbar a {
   display: flex;
   align-items: center;

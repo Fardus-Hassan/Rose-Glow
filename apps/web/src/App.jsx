@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
+import { api } from "./api.js"
 import BalancePill from "./balance.jsx"
+import { Login, Password } from "./gate.jsx"
 import { orderNo } from "./format.js"
 import Notifications from "./notifications.jsx"
 import Ads from "./pages/Ads.jsx"
@@ -48,6 +50,29 @@ function Brand({ go }) {
 export default function App() {
   const [key, setKey] = useState(locationKey)
   const [visit, setVisit] = useState(0)
+  const [auth, setAuth] = useState("check")
+
+  useEffect(() => {
+    let gone = false
+    api("/api/auth/session")
+      .then((data) => { if (!gone) setAuth(data.ok ? "in" : "out") })
+      .catch(() => { if (!gone) setAuth("out") })
+    const onOut = () => setAuth("out")
+    window.addEventListener("rg-signed-out", onOut)
+    return () => {
+      gone = true
+      window.removeEventListener("rg-signed-out", onOut)
+    }
+  }, [])
+
+  async function logout() {
+    try {
+      await api("/api/auth/logout", { method: "POST" })
+    } catch {
+      /* the cookie is cleared when the server answers */
+    }
+    setAuth("out")
+  }
 
   useEffect(() => {
     const onPop = () => setKey(locationKey())
@@ -80,7 +105,17 @@ export default function App() {
   else if (path === "/purchases") page = <Purchases />
   else if (path === "/ads") page = <Ads />
   else if (path === "/courier") page = <Courier />
+  else if (path === "/password") page = <Password />
   else if (path !== "/") page = <Missing go={go} />
+
+  if (auth === "check") {
+    return (
+      <div className="gate">
+        <p className="gate-wait">Rose Glow</p>
+      </div>
+    )
+  }
+  if (auth === "out") return <Login onIn={() => setAuth("in")} />
 
   return (
     <RouteContext.Provider value={{ go, path }}>
@@ -101,6 +136,10 @@ export default function App() {
               </a>
             ))}
           </nav>
+          <div className="side-foot">
+            <a href="/password" className={path === "/password" ? "active" : ""} onClick={(event) => { event.preventDefault(); go("/password") }}>Password</a>
+            <button type="button" onClick={logout}>Log out</button>
+          </div>
         </aside>
 
         <div className="workspace">
@@ -109,6 +148,8 @@ export default function App() {
             <Crumbs path={path} go={go} />
             <TopSearch />
             <div className="topbar-actions">
+              <button type="button" className="text-btn gate-link" onClick={() => go("/password")}>Password</button>
+              <button type="button" className="text-btn gate-link" onClick={logout}>Log out</button>
               <BalancePill />
               <Notifications />
             </div>
@@ -146,6 +187,7 @@ function crumbsFor(path) {
   if (path === "/") return [home]
   if (path === "/orders") return [home, orders, { label: "All orders" }]
   if (path === "/orders/new") return [home, orders, { label: "New order" }]
+  if (path === "/password") return [home, { label: "Password" }]
   if (order) return [home, orders, { label: orderNo(order[1]) }]
   const item = NAV.find((entry) => entry.href === path)
   return [home, { label: item ? item.label : "Not found" }]
