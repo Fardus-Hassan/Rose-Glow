@@ -185,14 +185,34 @@ function ProductForm({ onDone, onError }) {
   }
   return (
     <form className="card inv-form" onSubmit={submit}>
-      <h2>Add product</h2>
-      <div className="inv-line">
-        <input name="name" required placeholder="Name" aria-label="Name" />
-        <input name="sku" placeholder="SKU" aria-label="SKU" />
-        <input name="costPrice" type="number" min="0" step="1" required placeholder="Cost" aria-label="Cost price" />
-        <input name="sellPrice" type="number" min="0" step="1" required placeholder="Sell" aria-label="Selling price" />
-        <input name="stockQty" type="number" min="0" step="1" defaultValue="0" placeholder="Pieces" aria-label="Pieces" />
-        <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+      <div className="card-head">
+        <div>
+          <h2>Add product</h2>
+          <p className="muted small">Use the same SKU as the website variant when that product is sold online.</p>
+        </div>
+      </div>
+      <div className="inv-fields">
+        <label className="field">
+          <span>Name</span>
+          <input name="name" required placeholder="Ball chain" />
+        </label>
+        <label className="field">
+          <span>SKU</span>
+          <input name="sku" placeholder="RG-CHAIN-01" autoComplete="off" spellCheck="false" />
+        </label>
+        <label className="field">
+          <span>Cost</span>
+          <input name="costPrice" type="number" min="0" step="1" required placeholder="0" />
+        </label>
+        <label className="field">
+          <span>Sell</span>
+          <input name="sellPrice" type="number" min="0" step="1" required placeholder="0" />
+        </label>
+        <label className="field">
+          <span>Stock</span>
+          <input name="stockQty" type="number" min="0" step="1" defaultValue="0" />
+        </label>
+        <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Add product"}</button>
       </div>
     </form>
   )
@@ -230,11 +250,22 @@ function ComboForm({ singles, onDone, onError }) {
 
   return (
     <form className="card inv-form" onSubmit={submit}>
-      <h2>Make a combo</h2>
-      <div className="inv-line short">
-        <input name="name" required placeholder="Combo name" aria-label="Combo name" />
-        <input name="sellPrice" type="number" min="0" step="1" required placeholder="Sell" aria-label="Selling price" />
-        <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+      <div className="card-head">
+        <div>
+          <h2>Make a combo</h2>
+          <p className="muted small">Sell two or more pieces together. Stock comes from the products inside.</p>
+        </div>
+      </div>
+      <div className="inv-fields short">
+        <label className="field">
+          <span>Name</span>
+          <input name="name" required placeholder="Bridal set" />
+        </label>
+        <label className="field">
+          <span>Sell</span>
+          <input name="sellPrice" type="number" min="0" step="1" required placeholder="0" />
+        </label>
+        <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save combo"}</button>
       </div>
       <ComboParts parts={parts} setParts={setParts} singles={singles} />
       <div className="inv-combo-foot">
@@ -247,10 +278,11 @@ function ComboForm({ singles, onDone, onError }) {
 
 function ProductRow({ product, onDone, onError }) {
   const [editing, setEditing] = useState(false)
+  const [variantsOpen, setVariantsOpen] = useState(false)
   const [delta, setDelta] = useState("")
   const [saving, setSaving] = useState(false)
-  const formId = `product-${product.id}`
   const profit = product.sellPrice - product.costPrice
+  const variantCount = product.variants?.length || 0
 
   async function adjust(event) {
     event.preventDefault()
@@ -301,26 +333,25 @@ function ProductRow({ product, onDone, onError }) {
     <>
     <tr className="inv-product">
       <td data-label="Product">
-        {editing
-          ? <><input form={formId} name="name" defaultValue={product.name} required aria-label="Name" /><input form={formId} name="sku" defaultValue={product.sku || ""} aria-label="SKU" placeholder="SKU" /></>
-          : <><strong>{product.name}</strong>{product.sku ? <small className="courier-meta">{product.sku}</small> : null}</>}
+        <strong>{product.name}</strong>
+        {product.sku ? <small className="courier-meta">{product.sku}</small> : null}
+        <button
+          type="button"
+          className={`text-btn inv-variants${variantsOpen ? " on" : ""}`}
+          onClick={() => { setVariantsOpen((open) => !open); setEditing(false) }}
+        >
+          {variantsOpen ? "Hide variants" : variantCount ? `${variantCount} variant${variantCount === 1 ? "" : "s"}` : "Add variants"}
+        </button>
       </td>
-      <td data-label="Cost" className="num">
-        {editing
-          ? <input form={formId} name="costPrice" type="number" min="0" step="1" defaultValue={product.costPrice} required aria-label="Cost price" />
-          : taka(product.costPrice)}
-      </td>
-      <td data-label="Sell" className="num">
-        {editing
-          ? <input form={formId} name="sellPrice" type="number" min="0" step="1" defaultValue={product.sellPrice} required aria-label="Selling price" />
-          : taka(product.sellPrice)}
-      </td>
+      <td data-label="Cost" className="num">{taka(product.costPrice)}</td>
+      <td data-label="Sell" className="num">{taka(product.sellPrice)}</td>
       <td data-label="Profit" className={profit < 0 ? "num danger" : "num"}>{taka(profit)}</td>
       <td data-label="Stock" className="num">
         <b className={product.stockQty === 0 ? "danger" : product.stockQty <= LOW_STOCK_AT ? "warn" : ""}>{product.stockQty}</b>
+        {variantCount ? <small>from variants</small> : null}
       </td>
-      <td data-label="Add / remove" className={editing || product.variants?.length ? "inv-skip" : ""}>
-        {editing || product.variants?.length ? null : (
+      <td data-label="Add / remove" className={variantCount ? "inv-skip" : ""}>
+        {variantCount ? null : (
           <form className="adjust" onSubmit={adjust}>
             <input type="number" step="1" value={delta} onChange={(event) => setDelta(event.target.value)} placeholder="+/-" aria-label={`Add or remove ${product.name}`} />
             <button className="btn secondary" type="submit" disabled={saving || delta === ""}>Apply</button>
@@ -328,30 +359,54 @@ function ProductRow({ product, onDone, onError }) {
         )}
       </td>
       <td data-label="Actions">
-        {editing ? (
-          <form id={formId} className="row-actions" onSubmit={save}>
-            <button className="btn secondary" type="submit" disabled={saving}>Save</button>
-            <button type="button" className="text-btn" onClick={() => setEditing(false)}>Cancel</button>
+        <div className="row-actions">
+          <button type="button" className="text-btn" onClick={() => { setEditing((open) => !open); setVariantsOpen(false) }}>{editing ? "Close" : "Edit"}</button>
+          <button type="button" className="text-btn danger" onClick={remove}>Delete</button>
+        </div>
+      </td>
+    </tr>
+    {editing ? (
+      <tr className="inv-edit">
+        <td className="inv-span" colSpan={7}>
+          <form className="inv-edit-form" onSubmit={save}>
+            <div className="inv-fields">
+              <label className="field">
+                <span>Name</span>
+                <input name="name" defaultValue={product.name} required />
+              </label>
+              <label className="field">
+                <span>SKU</span>
+                <input name="sku" defaultValue={product.sku || ""} autoComplete="off" spellCheck="false" />
+              </label>
+              <label className="field">
+                <span>Cost</span>
+                <input name="costPrice" type="number" min="0" step="1" defaultValue={product.costPrice} required />
+              </label>
+              <label className="field">
+                <span>Sell</span>
+                <input name="sellPrice" type="number" min="0" step="1" defaultValue={product.sellPrice} required />
+              </label>
+              <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+              <button className="btn secondary" type="button" onClick={() => setEditing(false)}>Cancel</button>
+            </div>
           </form>
-        ) : (
-          <div className="row-actions">
-            <button type="button" className="text-btn" onClick={() => setEditing(true)}>Edit</button>
-            <button type="button" className="text-btn" onClick={remove}>Delete</button>
-          </div>
-        )}
-      </td>
-    </tr>
-    <tr className="variant-row">
-      <td colSpan={7}>
-        <VariantEditor product={product} onDone={onDone} onError={onError} />
-      </td>
-    </tr>
+        </td>
+      </tr>
+    ) : null}
+    {variantsOpen ? (
+      <tr className="inv-edit variant-row">
+        <td className="inv-span" colSpan={7}>
+          <VariantEditor product={product} onDone={onDone} onError={onError} />
+        </td>
+      </tr>
+    ) : null}
   </>
 )
 }
 
 function VariantEditor({ product, onDone, onError }) {
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
 
   async function add(event) {
     event.preventDefault()
@@ -378,12 +433,36 @@ function VariantEditor({ product, onDone, onError }) {
     }
   }
 
-  async function adjust(variant, delta) {
+  async function adjust(event, variant) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const next = form.get("delta")
+    if (!next) return
     setSaving(true)
     onError("")
     try {
-      await api(`/api/products/${variant.id}/stock`, { method: "POST", body: { delta: Number(delta) } })
+      await api(`/api/products/${variant.id}/stock`, { method: "POST", body: { delta: Number(next) } })
+      event.currentTarget.reset()
       await onDone("Stock updated")
+    } catch (reason) {
+      onError(reason.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveVariant(event, variant) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    setSaving(true)
+    onError("")
+    try {
+      await api(`/api/products/${variant.id}`, {
+        method: "PATCH",
+        body: { name: form.get("name"), sku: form.get("sku"), costPrice: form.get("costPrice"), sellPrice: form.get("sellPrice") },
+      })
+      setEditingId(null)
+      await onDone("Variant updated")
     } catch (reason) {
       onError(reason.message)
     } finally {
@@ -393,40 +472,71 @@ function VariantEditor({ product, onDone, onError }) {
 
   return (
     <div className="variant-box">
-      {(product.variants || []).map((variant) => (
-        <form key={variant.id} className="variant-line" onSubmit={async (event) => {
-          event.preventDefault()
-          const form = new FormData(event.currentTarget)
-          setSaving(true)
-          onError("")
-          try {
-            await api(`/api/products/${variant.id}`, {
-              method: "PATCH",
-              body: { name: form.get("name"), sku: form.get("sku"), costPrice: form.get("costPrice"), sellPrice: form.get("sellPrice") },
-            })
-            await onDone("Variant updated")
-          } catch (reason) {
-            onError(reason.message)
-          } finally {
-            setSaving(false)
-          }
-        }}>
-          <input name="name" defaultValue={variant.name} aria-label="Variant name" required />
-          <input name="sku" defaultValue={variant.sku} aria-label="Variant SKU" required />
-          <input name="costPrice" type="number" min="0" step="1" defaultValue={variant.costPrice} aria-label="Variant cost" required />
-          <input name="sellPrice" type="number" min="0" step="1" defaultValue={variant.sellPrice} aria-label="Variant sell" required />
-          <b>{variant.stockQty}</b>
-          <input type="number" step="1" placeholder="+/-" aria-label={`Stock for ${variant.name}`} onBlur={(event) => { if (event.target.value) { adjust(variant, event.target.value); event.target.value = "" } }} />
-          <button className="btn secondary" type="submit" disabled={saving}>Save</button>
-        </form>
-      ))}
-      <form className="variant-line" onSubmit={add}>
-        <input name="name" placeholder="Variant, e.g. Gold 6" aria-label="New variant name" required />
-        <input name="sku" placeholder="SKU" aria-label="New variant SKU" required />
-        <input name="costPrice" type="number" min="0" step="1" placeholder="Cost" aria-label="New variant cost" required />
-        <input name="sellPrice" type="number" min="0" step="1" placeholder="Sell" aria-label="New variant sell" required />
-        <input name="stockQty" type="number" min="0" step="1" defaultValue="0" aria-label="New variant stock" />
-        <button className="btn secondary" type="submit" disabled={saving}>Add variant</button>
+      {(product.variants || []).length ? (
+        <ul className="variant-list">
+          {(product.variants || []).map((variant) => (
+            <li key={variant.id}>
+              <div className="variant-item">
+                <div>
+                  <strong>{variant.name}</strong>
+                  <small>{variant.sku}</small>
+                </div>
+                <span><i>Cost</i>{taka(variant.costPrice)}</span>
+                <span><i>Sell</i>{taka(variant.sellPrice)}</span>
+                <span><i>Stock</i><b className={variant.stockQty === 0 ? "danger" : variant.stockQty <= LOW_STOCK_AT ? "warn" : ""}>{variant.stockQty}</b></span>
+                <form className="adjust" onSubmit={(event) => adjust(event, variant)}>
+                  <input name="delta" type="number" step="1" placeholder="+/-" aria-label={`Add or remove ${variant.name}`} />
+                  <button className="btn secondary" type="submit" disabled={saving}>Apply</button>
+                </form>
+                <button type="button" className="text-btn" onClick={() => setEditingId(editingId === variant.id ? null : variant.id)}>{editingId === variant.id ? "Close" : "Edit"}</button>
+              </div>
+              {editingId === variant.id ? (
+                <form className="inv-fields variant-edit" onSubmit={(event) => saveVariant(event, variant)}>
+                  <label className="field">
+                    <span>Name</span>
+                    <input name="name" defaultValue={variant.name} required />
+                  </label>
+                  <label className="field">
+                    <span>SKU</span>
+                    <input name="sku" defaultValue={variant.sku} required autoComplete="off" spellCheck="false" />
+                  </label>
+                  <label className="field">
+                    <span>Cost</span>
+                    <input name="costPrice" type="number" min="0" step="1" defaultValue={variant.costPrice} required />
+                  </label>
+                  <label className="field">
+                    <span>Sell</span>
+                    <input name="sellPrice" type="number" min="0" step="1" defaultValue={variant.sellPrice} required />
+                  </label>
+                  <button className="btn" type="submit" disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+                </form>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted small">No variants yet. A product with variants is sold by the variant, and each one needs its own SKU.</p>}
+      <form className="inv-fields variant-add" onSubmit={add}>
+        <label className="field">
+          <span>Variant name</span>
+          <input name="name" placeholder="Gold 6" required />
+        </label>
+        <label className="field">
+          <span>SKU</span>
+          <input name="sku" placeholder="RG-CHAIN-G6" required autoComplete="off" spellCheck="false" />
+        </label>
+        <label className="field">
+          <span>Cost</span>
+          <input name="costPrice" type="number" min="0" step="1" placeholder="0" required />
+        </label>
+        <label className="field">
+          <span>Sell</span>
+          <input name="sellPrice" type="number" min="0" step="1" placeholder="0" required />
+        </label>
+        <label className="field">
+          <span>Stock</span>
+          <input name="stockQty" type="number" min="0" step="1" defaultValue="0" />
+        </label>
+        <button className="btn secondary" type="submit" disabled={saving}>{saving ? "Saving…" : "Add variant"}</button>
       </form>
     </div>
   )

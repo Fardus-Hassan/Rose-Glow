@@ -1470,6 +1470,14 @@ tr.selected { background: var(--rose-soft); }
 .inv-stats b { color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 4px; }
 .inv-form { display: grid; gap: 8px; padding: 12px; margin-bottom: 12px; }
 .inv-form h2 { font-size: 0.95rem; }
+.inv-fields {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.7fr) minmax(120px, 1fr) 100px 100px 88px auto;
+  gap: 10px 12px;
+  align-items: end;
+}
+.inv-fields.short { grid-template-columns: minmax(0, 1fr) 140px auto; }
+.inv-fields .btn { min-height: 44px; }
 .inv-line {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(90px, 0.7fr) 100px 100px 80px auto;
@@ -1477,9 +1485,21 @@ tr.selected { background: var(--rose-soft); }
   align-items: center;
 }
 .inv-line.short { grid-template-columns: minmax(0, 1fr) 100px auto; }
-.variant-box { display: grid; gap: 8px; padding: 8px 0 4px; }
-.variant-line { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(90px, 0.8fr) 90px 90px 52px 72px auto; gap: 8px; align-items: center; }
-.variant-row td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.variant-box { display: grid; gap: 12px; padding: 4px 2px 8px; }
+.variant-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.variant-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 88px 88px 72px minmax(140px, auto) auto;
+  gap: 8px 12px;
+  align-items: center;
+}
+.variant-item small, .variant-item i { display: block; color: var(--muted); font-style: normal; font-size: 0.75rem; }
+.variant-item b { font-variant-numeric: tabular-nums; }
+.variant-add { padding-top: 12px; border-top: 1px solid var(--line); }
+.variant-edit { margin-top: 8px; }
+.inv-variants { display: inline-flex; margin-top: 2px; min-height: 28px; padding: 0; font-size: 0.82rem; }
+.inv-variants.on { color: var(--ink); }
+.variant-row td, .inv-edit td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .inv-line input, .inv-line .btn, .inv-form .add-line input, .inv-form .add-line .select-trigger { min-height: 40px; }
 .inv-combo-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .combo-parts { display: grid; gap: 8px; }
@@ -1749,8 +1769,9 @@ tr.selected { background: var(--rose-soft); }
   }
   .filter-pills::-webkit-scrollbar { display: none; }
   .inv-head { flex-direction: column; align-items: flex-start; }
-  .inv-line, .inv-line.short, .variant-line { grid-template-columns: 1fr 1fr; }
-  .inv-line .btn, .variant-line .btn { grid-column: 1 / -1; }
+  .inv-line, .inv-line.short, .variant-line, .inv-fields, .inv-fields.short { grid-template-columns: 1fr 1fr; }
+  .inv-line .btn, .variant-line .btn, .inv-fields .btn, .inv-fields .field:first-child { grid-column: 1 / -1; }
+  .variant-item { grid-template-columns: minmax(0, 1fr) auto; }
   .inv-table .card-head { flex-direction: column; align-items: flex-start; }
   .inv-table .card-head p { text-align: left; }
   .inv-table input, .inv-table .btn, .inv-table .text-btn,
