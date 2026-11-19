@@ -260,6 +260,10 @@ UPDATE orders SET status = 'returned'
 WHERE status = 'cancelled' AND courier_status = 'cancelled_return_received' AND NOT stock_held;
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_checked_at TIMESTAMPTZ;
+UPDATE orders SET courier_status = replace(replace(lower(courier_status), '-', '_'), ' ', '_')
+WHERE courier_status ~ '[ A-Z-]';
+UPDATE orders SET courier_status = 'partial_delivered_return_processing'
+WHERE courier_status = 'partial_delivered_return_proccessing';
 UPDATE orders SET status = 'returned'
 WHERE courier_status IN (
   'cancelled_return_processing',

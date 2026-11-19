@@ -67,8 +67,9 @@ export function readBalance(data) {
 }
 
 export function normalizeCourierStatus(value) {
-  const status = String(value || "").trim().toLowerCase()
+  const status = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_")
   if (status === "cancelled_return_proccessing") return "cancelled_return_processing"
+  if (status === "partial_delivered_return_proccessing") return "partial_delivered_return_processing"
   return status
 }
 
