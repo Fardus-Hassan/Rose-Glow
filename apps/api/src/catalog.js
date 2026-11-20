@@ -233,6 +233,7 @@ export async function adjustStock(id, body) {
 export async function createCombo(body) {
   const name = cleanName(body.name)
   const sellPrice = money(body.sellPrice)
+  const sku = readSku(body.sku)
   if (!name) throw fail(400, "Enter a combo name")
   if (sellPrice === null) throw fail(400, "Enter the combo's selling price")
   const catalog = await loadCatalog()
@@ -242,10 +243,10 @@ export async function createCombo(body) {
   try {
     await client.query("BEGIN")
     const inserted = await client.query(
-      `INSERT INTO products (name, cost_price, sell_price, stock_qty, is_combo)
-       VALUES ($1, 0, $2, 0, TRUE)
+      `INSERT INTO products (name, sku, cost_price, sell_price, stock_qty, is_combo)
+       VALUES ($1, $2, 0, $3, 0, TRUE)
        RETURNING id`,
-      [name, sellPrice],
+      [name, sku, sellPrice],
     )
     comboId = inserted.rows[0].id
     for (const item of items) {
@@ -257,6 +258,7 @@ export async function createCombo(body) {
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    if (error?.code === "23505") throw fail(400, "That SKU is already used")
     throw error
   } finally {
     client.release()
@@ -268,6 +270,7 @@ export async function createCombo(body) {
 export async function updateCombo(id, body) {
   const name = cleanName(body.name)
   const sellPrice = money(body.sellPrice)
+  const sku = readSku(body.sku)
   if (!name) throw fail(400, "Enter a combo name")
   if (sellPrice === null) throw fail(400, "Enter the combo's selling price")
   const catalog = await loadCatalog()
@@ -277,7 +280,7 @@ export async function updateCombo(id, body) {
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
-    await client.query(`UPDATE products SET name = $2, sell_price = $3 WHERE id = $1 AND is_combo = TRUE`, [id, name, sellPrice])
+    await client.query(`UPDATE products SET name = $2, sku = $3, sell_price = $4 WHERE id = $1 AND is_combo = TRUE`, [id, name, sku, sellPrice])
     await client.query(`DELETE FROM combo_items WHERE combo_id = $1`, [id])
     for (const item of items) {
       await client.query(
@@ -288,6 +291,7 @@ export async function updateCombo(id, body) {
     await client.query("COMMIT")
   } catch (error) {
     try { await client.query("ROLLBACK") } catch { /* already closed */ }
+    if (error?.code === "23505") throw fail(400, "That SKU is already used")
     throw error
   } finally {
     client.release()

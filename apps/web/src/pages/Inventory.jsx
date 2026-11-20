@@ -234,6 +234,7 @@ function ComboForm({ singles, onDone, onError }) {
         method: "POST",
         body: {
           name: form.get("name"),
+          sku: form.get("sku"),
           sellPrice: form.get("sellPrice"),
           items: parts.filter((part) => part.productId).map((part) => ({ productId: Number(part.productId), quantity: Number(part.quantity) })),
         },
@@ -253,13 +254,17 @@ function ComboForm({ singles, onDone, onError }) {
       <div className="card-head">
         <div>
           <h2>Make a combo</h2>
-          <p className="muted small">Sell two or more pieces together. Stock comes from the products inside.</p>
+          <p className="muted small">Sell two or more pieces together. Stock comes from the products inside. Use the same SKU as the website combo.</p>
         </div>
       </div>
       <div className="inv-fields short">
         <label className="field">
           <span>Name</span>
           <input name="name" required placeholder="Bridal set" />
+        </label>
+        <label className="field">
+          <span>SKU</span>
+          <input name="sku" placeholder="RG-SET-01" autoComplete="off" spellCheck="false" />
         </label>
         <label className="field">
           <span>Sell</span>
@@ -562,6 +567,7 @@ function ComboRow({ product, singles, onDone, onError }) {
         method: "PATCH",
         body: {
           name: form.get("name"),
+          sku: form.get("sku"),
           sellPrice: form.get("sellPrice"),
           items: parts.filter((part) => part.productId).map((part) => ({ productId: Number(part.productId), quantity: Number(part.quantity) })),
         },
@@ -590,6 +596,7 @@ function ComboRow({ product, singles, onDone, onError }) {
       <tr className="inv-combo">
         <td data-label="Combo">
           <strong>{product.name}</strong>
+          {product.sku ? <small className="courier-meta">{product.sku}</small> : null}
           <small>{product.components.map((part) => `${part.name} ×${part.quantity}`).join(" + ")}</small>
         </td>
         <td data-label="Cost" className="num">{taka(product.costPrice)}</td>
@@ -610,6 +617,7 @@ function ComboRow({ product, singles, onDone, onError }) {
             <form className="inv-edit-form" onSubmit={save}>
               <div className="inv-line short">
                 <input name="name" defaultValue={product.name} required aria-label="Combo name" />
+                <input name="sku" defaultValue={product.sku || ""} aria-label="SKU" autoComplete="off" spellCheck="false" placeholder="SKU" />
                 <input name="sellPrice" type="number" min="0" step="1" defaultValue={product.sellPrice} required aria-label="Selling price" />
                 <button className="btn secondary" type="submit" disabled={saving}>Save</button>
               </div>
