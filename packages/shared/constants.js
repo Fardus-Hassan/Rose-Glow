@@ -18,6 +18,8 @@ export const COURIERS = ["Steadfast", "Pathao", "RedX", "Paperfly", "Sundarban",
 
 export const LOW_STOCK_AT = 3
 
+export const DEFAULT_COURIER_NOTE = "কাস্টমার ফোন রিসিভ না করলে বা কোনো সমস্যা হলে অবশ্যই মার্চেন্টকে জানাতে হবে। মার্চেন্টকে না জানিয়ে কোনোভাবেই প্রোডাক্ট ফেরত পাঠানো যাবে না।"
+
 export const MANUAL_STATUSES = STATUSES.filter((item) => ["new", "confirmed", "courier"].includes(item.id))
 
 export function holdsStock(status) {

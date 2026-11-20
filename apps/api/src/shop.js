@@ -1,4 +1,5 @@
 import { pool } from "./db.js"
+import { DEFAULT_COURIER_NOTE } from "@rose/shared"
 import { fail, mobile, money, noteText } from "./http.js"
 import { createOrder, getOrder } from "./orders.js"
 
@@ -107,7 +108,8 @@ export async function importShopOrder(body) {
       discount,
       paidAmount: 0,
       paymentMethod: "cod",
-      note: noteText(body.note, 400),
+      note: DEFAULT_COURIER_NOTE,
+      privateNote: noteText(body.note, 1000),
       sourceId,
       shopOrderNumber,
       items: lines,

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
-import { MANUAL_STATUSES, PAYMENTS } from "@rose/shared"
+import { DEFAULT_COURIER_NOTE, MANUAL_STATUSES, PAYMENTS } from "@rose/shared"
 import { api, fromInputValue, nowInput } from "../api.js"
 import { taka, when } from "../format.js"
 import { addTo, lineKey, toggleGiftIn } from "../lines.js"
@@ -72,8 +72,6 @@ function PastOrders({ mobile, onFill }) {
     </article>
   )
 }
-
-const DEFAULT_COURIER_NOTE = "কাস্টমার ফোন রিসিভ না করলে বা কোনো সমস্যা হলে অবশ্যই মার্চেন্টকে জানাতে হবে। মার্চেন্টকে না জানিয়ে কোনোভাবেই প্রোডাক্ট ফেরত পাঠানো যাবে না।"
 
 export default function OrderCreate() {
   const { go } = useRoute()
